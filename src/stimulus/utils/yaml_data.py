@@ -116,7 +116,7 @@ class YamlSubConfigDict(BaseModel):
 
     global_params: YamlGlobalParams
     columns: list[YamlColumns]
-    transforms: YamlTransform
+    transforms: list[YamlTransform]
     split: YamlSplit
 
 
