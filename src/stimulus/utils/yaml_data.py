@@ -16,7 +16,9 @@ class YamlColumnsEncoder(BaseModel):
     """Model for column encoder configuration."""
 
     name: str
-    params: Optional[dict[str, Union[str, list[Any]]]]  # Allow both string and list values
+    params: Optional[
+        dict[str, Union[str, list[Any]]]
+    ]  # Allow both string and list values
 
 
 class YamlColumns(BaseModel):
@@ -32,7 +34,9 @@ class YamlTransformColumnsTransformation(BaseModel):
     """Model for column transformation configuration."""
 
     name: str
-    params: Optional[dict[str, Union[list[Any], float]]]  # Allow both list and float values
+    params: Optional[
+        dict[str, Union[list[Any], float]]
+    ]  # Allow both list and float values
 
 
 class YamlTransformColumns(BaseModel):
@@ -50,7 +54,9 @@ class YamlTransform(BaseModel):
 
     @field_validator("columns")
     @classmethod
-    def validate_param_lists_across_columns(cls, columns: list[YamlTransformColumns]) -> list[YamlTransformColumns]:
+    def validate_param_lists_across_columns(
+        cls, columns: list[YamlTransformColumns]
+    ) -> list[YamlTransformColumns]:
         """Validate that parameter lists across columns have consistent lengths.
 
         Args:
@@ -120,7 +126,9 @@ class YamlSchema(BaseModel):
     yaml_conf: YamlConfigDict
 
 
-def extract_transform_parameters_at_index(transform: YamlTransform, index: int = 0) -> YamlTransform:
+def extract_transform_parameters_at_index(
+    transform: YamlTransform, index: int = 0
+) -> YamlTransform:
     """Get a transform with parameters at the specified index.
 
     Args:
@@ -149,7 +157,9 @@ def extract_transform_parameters_at_index(transform: YamlTransform, index: int =
     return new_transform
 
 
-def expand_transform_parameter_combinations(transform: YamlTransform) -> list[YamlTransform]:
+def expand_transform_parameter_combinations(
+    transform: YamlTransform,
+) -> list[YamlTransform]:
     """Get all possible transforms by extracting parameters at each valid index.
 
     For a transform with parameter lists, creates multiple new transforms, each containing
@@ -167,9 +177,15 @@ def expand_transform_parameter_combinations(transform: YamlTransform) -> list[Ya
     for column in transform.columns:
         for transformation in column.transformations:
             if transformation.params:
-                list_lengths = [len(v) for v in transformation.params.values() if isinstance(v, list) and len(v) > 1]
+                list_lengths = [
+                    len(v)
+                    for v in transformation.params.values()
+                    if isinstance(v, list) and len(v) > 1
+                ]
                 if list_lengths:
-                    max_length = list_lengths[0]  # All lists have same length due to validator
+                    max_length = list_lengths[
+                        0
+                    ]  # All lists have same length due to validator
                     break
 
     # Generate a transform for each index
@@ -180,7 +196,9 @@ def expand_transform_parameter_combinations(transform: YamlTransform) -> list[Ya
     return transforms
 
 
-def expand_transform_list_combinations(transform_list: list[YamlTransform]) -> list[YamlTransform]:
+def expand_transform_list_combinations(
+    transform_list: list[YamlTransform],
+) -> list[YamlTransform]:
     """Expands a list of transforms into all possible parameter combinations.
 
     Takes a list of transforms where each transform may contain parameter lists,
@@ -229,19 +247,17 @@ def generate_data_configs(yaml_config: YamlConfigDict) -> list[YamlSubConfigDict
     if isinstance(yaml_config, dict) and not isinstance(yaml_config, YamlConfigDict):
         raise TypeError("Input must be a YamlConfigDict object")
 
-    sub_transforms = expand_transform_list_combinations(yaml_config.transforms)
     sub_splits = yaml_config.split
     sub_configs = []
     for split in sub_splits:
-        for transform in sub_transforms:
-            sub_configs.append(
-                YamlSubConfigDict(
-                    global_params=yaml_config.global_params,
-                    columns=yaml_config.columns,
-                    transforms=transform,
-                    split=split,
-                ),
-            )
+        sub_configs.append(
+            YamlSubConfigDict(
+                global_params=yaml_config.global_params,
+                columns=yaml_config.columns,
+                transforms=yaml_config.transform,
+                split=split,
+            ),
+        )
     return sub_configs
 
 
@@ -264,9 +280,13 @@ def dump_yaml_list_into_files(
             if len(data) == 0:
                 return dumper.represent_scalar("tag:yaml.org,2002:null", "")
             if isinstance(data[0], dict):
-                return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=False)
+                return dumper.represent_sequence(
+                    "tag:yaml.org,2002:seq", data, flow_style=False
+                )
             if isinstance(data[0], list):
-                return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
+                return dumper.represent_sequence(
+                    "tag:yaml.org,2002:seq", data, flow_style=True
+                )
         return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
 
     class CustomDumper(yaml.Dumper):
@@ -282,7 +302,9 @@ def dump_yaml_list_into_files(
             if len(self.indents) <= 1:  # At root level
                 super().write_line_break(_data)
 
-        def increase_indent(self, *, flow: bool = False, indentless: bool = False) -> None:  # type: ignore[override]
+        def increase_indent(
+            self, *, flow: bool = False, indentless: bool = False
+        ) -> None:  # type: ignore[override]
             """Ensure consistent indentation by preventing indentless sequences."""
             return super().increase_indent(
                 flow=flow,
@@ -305,21 +327,30 @@ def dump_yaml_list_into_files(
                         processed_dict[key] = []
                         for encoder in value:
                             processed_encoder = dict(encoder)
-                            if "params" not in processed_encoder or not processed_encoder["params"]:
+                            if (
+                                "params" not in processed_encoder
+                                or not processed_encoder["params"]
+                            ):
                                 processed_encoder["params"] = {}
                             processed_dict[key].append(processed_encoder)
                     elif key == "transformations" and isinstance(value, list):
                         processed_dict[key] = []
                         for transformation in value:
                             processed_transformation = dict(transformation)
-                            if "params" not in processed_transformation or not processed_transformation["params"]:
+                            if (
+                                "params" not in processed_transformation
+                                or not processed_transformation["params"]
+                            ):
                                 processed_transformation["params"] = {}
                             processed_dict[key].append(processed_transformation)
                     elif isinstance(value, dict):
                         processed_dict[key] = fix_params(value)
                     elif isinstance(value, list):
                         processed_dict[key] = [
-                            fix_params(list_item) if isinstance(list_item, dict) else list_item for list_item in value
+                            fix_params(list_item)
+                            if isinstance(list_item, dict)
+                            else list_item
+                            for list_item in value
                         ]
                     else:
                         processed_dict[key] = value
