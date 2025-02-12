@@ -230,9 +230,16 @@ def generate_data_configs(yaml_config: YamlConfigDict) -> list[YamlSubConfigDict
     separate data configurations.
 
     For example, if the config has:
-    - A transform with parameters [0.1, 0.2]
+    - Two transforms with parameters [0.1, 0.2], [0.3, 0.4]
     - Two splits [0.7/0.3] and [0.8/0.2]
-    This will generate 4 configs, 2 for each split.
+    This will generate 2 configs, 2 for each split.
+        config_1:
+            transform: [[0.1, 0.2], [0.3, 0.4]]
+            split: [0.7, 0.3]
+
+        config_2:
+            transform: [[0.1, 0.2], [0.3, 0.4]]
+            split: [0.8, 0.2]
 
     Args:
         yaml_config: The source YAML configuration containing transforms with
