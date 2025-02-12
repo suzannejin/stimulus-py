@@ -254,7 +254,7 @@ def generate_data_configs(yaml_config: YamlConfigDict) -> list[YamlSubConfigDict
             YamlSubConfigDict(
                 global_params=yaml_config.global_params,
                 columns=yaml_config.columns,
-                transforms=yaml_config.transform,
+                transforms=yaml_config.transforms,
                 split=split,
             ),
         )
