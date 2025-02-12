@@ -6,13 +6,13 @@ import yaml
 from pydantic import BaseModel, ValidationError, field_validator
 
 
-class YamlGlobalParams(BaseModel):
+class GlobalParams(BaseModel):
     """Model for global parameters in YAML configuration."""
 
     seed: int
 
 
-class YamlColumnsEncoder(BaseModel):
+class ColumnsEncoder(BaseModel):
     """Model for column encoder configuration."""
 
     name: str
@@ -21,16 +21,16 @@ class YamlColumnsEncoder(BaseModel):
     ]  # Allow both string and list values
 
 
-class YamlColumns(BaseModel):
+class Columns(BaseModel):
     """Model for column configuration."""
 
     column_name: str
     column_type: str
     data_type: str
-    encoder: list[YamlColumnsEncoder]
+    encoder: list[ColumnsEncoder]
 
 
-class YamlTransformColumnsTransformation(BaseModel):
+class TransformColumnsTransformation(BaseModel):
     """Model for column transformation configuration."""
 
     name: str
@@ -39,24 +39,24 @@ class YamlTransformColumnsTransformation(BaseModel):
     ]  # Allow both list and float values
 
 
-class YamlTransformColumns(BaseModel):
+class TransformColumns(BaseModel):
     """Model for transform columns configuration."""
 
     column_name: str
-    transformations: list[YamlTransformColumnsTransformation]
+    transformations: list[TransformColumnsTransformation]
 
 
-class YamlTransform(BaseModel):
+class Transform(BaseModel):
     """Model for transform configuration."""
 
     transformation_name: str
-    columns: list[YamlTransformColumns]
+    columns: list[TransformColumns]
 
     @field_validator("columns")
     @classmethod
     def validate_param_lists_across_columns(
-        cls, columns: list[YamlTransformColumns]
-    ) -> list[YamlTransformColumns]:
+        cls, columns: list[TransformColumns]
+    ) -> list[TransformColumns]:
         """Validate that parameter lists across columns have consistent lengths.
 
         Args:
@@ -94,7 +94,7 @@ class YamlTransform(BaseModel):
         return columns
 
 
-class YamlSplit(BaseModel):
+class Split(BaseModel):
     """Model for split configuration."""
 
     split_method: str
@@ -102,33 +102,33 @@ class YamlSplit(BaseModel):
     split_input_columns: list[str]
 
 
-class YamlConfigDict(BaseModel):
+class ConfigDict(BaseModel):
     """Model for main YAML configuration."""
 
-    global_params: YamlGlobalParams
-    columns: list[YamlColumns]
-    transforms: list[YamlTransform]
-    split: list[YamlSplit]
+    global_params: GlobalParams
+    columns: list[Columns]
+    transforms: list[Transform]
+    split: list[Split]
 
 
-class YamlSubConfigDict(BaseModel):
+class SubConfigDict(BaseModel):
     """Model for sub-configuration generated from main config."""
 
-    global_params: YamlGlobalParams
-    columns: list[YamlColumns]
-    transforms: list[YamlTransform]
-    split: YamlSplit
+    global_params: GlobalParams
+    columns: list[Columns]
+    transforms: list[Transform]
+    split: Split
 
 
-class YamlSchema(BaseModel):
+class Schema(BaseModel):
     """Model for validating YAML schema."""
 
-    yaml_conf: YamlConfigDict
+    yaml_conf: ConfigDict
 
 
 def extract_transform_parameters_at_index(
-    transform: YamlTransform, index: int = 0
-) -> YamlTransform:
+    transform: Transform, index: int = 0
+) -> Transform:
     """Get a transform with parameters at the specified index.
 
     Args:
@@ -139,7 +139,7 @@ def extract_transform_parameters_at_index(
         A new transform with single parameter values at the specified index
     """
     # Create a copy of the transform
-    new_transform = YamlTransform(**transform.model_dump())
+    new_transform = Transform(**transform.model_dump())
 
     # Process each column and transformation
     for column in new_transform.columns:
@@ -158,8 +158,8 @@ def extract_transform_parameters_at_index(
 
 
 def expand_transform_parameter_combinations(
-    transform: YamlTransform,
-) -> list[YamlTransform]:
+    transform: Transform,
+) -> list[Transform]:
     """Get all possible transforms by extracting parameters at each valid index.
 
     For a transform with parameter lists, creates multiple new transforms, each containing
@@ -197,8 +197,8 @@ def expand_transform_parameter_combinations(
 
 
 def expand_transform_list_combinations(
-    transform_list: list[YamlTransform],
-) -> list[YamlTransform]:
+    transform_list: list[Transform],
+) -> list[Transform]:
     """Expands a list of transforms into all possible parameter combinations.
 
     Takes a list of transforms where each transform may contain parameter lists,
@@ -207,11 +207,11 @@ def expand_transform_list_combinations(
     create two transforms: one with 0.1/1 and another with 0.2/2.
 
     Args:
-        transform_list: A list of YamlTransform objects containing parameter lists
+        transform_list: A list of Transform objects containing parameter lists
             that need to be expanded into individual transforms.
 
     Returns:
-        list[YamlTransform]: A flattened list of transforms where each transform
+        list[Transform]: A flattened list of transforms where each transform
             has single parameter values instead of parameter lists. The length of
             the returned list will be the sum of the number of parameter combinations
             for each input transform.
@@ -222,7 +222,7 @@ def expand_transform_list_combinations(
     return sub_transforms
 
 
-def generate_data_configs(yaml_config: YamlConfigDict) -> list[YamlSubConfigDict]:
+def generate_data_configs(yaml_config: ConfigDict) -> list[SubConfigDict]:
     """Generates all possible data configurations from a YAML config.
 
     Takes a YAML configuration that may contain parameter lists and splits,
@@ -246,19 +246,19 @@ def generate_data_configs(yaml_config: YamlConfigDict) -> list[YamlSubConfigDict
             parameter lists and multiple splits.
 
     Returns:
-        list[YamlSubConfigDict]: A list of data configurations, where each
+        list[SubConfigDict]: A list of data configurations, where each
             config has single parameter values and one split configuration. The
             length will be the product of the number of parameter combinations
             and the number of splits.
     """
-    if isinstance(yaml_config, dict) and not isinstance(yaml_config, YamlConfigDict):
-        raise TypeError("Input must be a YamlConfigDict object")
+    if isinstance(yaml_config, dict) and not isinstance(yaml_config, ConfigDict):
+        raise TypeError("Input must be a ConfigDict object")
 
     sub_splits = yaml_config.split
     sub_configs = []
     for split in sub_splits:
         sub_configs.append(
-            YamlSubConfigDict(
+            SubConfigDict(
                 global_params=yaml_config.global_params,
                 columns=yaml_config.columns,
                 transforms=yaml_config.transforms,
@@ -269,7 +269,7 @@ def generate_data_configs(yaml_config: YamlConfigDict) -> list[YamlSubConfigDict
 
 
 def dump_yaml_list_into_files(
-    yaml_list: list[YamlSubConfigDict],
+    yaml_list: list[SubConfigDict],
     directory_path: str,
     base_name: str,
 ) -> None:
@@ -378,14 +378,14 @@ def dump_yaml_list_into_files(
             )
 
 
-def check_yaml_schema(config_yaml: YamlConfigDict) -> str:
+def check_yaml_schema(config_yaml: ConfigDict) -> str:
     """Validate YAML configuration fields have correct types.
 
     If the children field is specific to a parent, the children fields class is hosted in the parent fields class.
     If any field in not the right type, the function prints an error message explaining the problem and exits the python code.
 
     Args:
-        config_yaml: The YamlConfigDict containing the fields of the yaml configuration file
+        config_yaml: The ConfigDict containing the fields of the yaml configuration file
 
     Returns:
         str: Empty string if validation succeeds
@@ -394,7 +394,7 @@ def check_yaml_schema(config_yaml: YamlConfigDict) -> str:
         ValueError: If validation fails
     """
     try:
-        YamlSchema(yaml_conf=config_yaml)
+        Schema(yaml_conf=config_yaml)
     except ValidationError as e:
         # Use logging instead of print for error handling
         raise ValueError("Wrong type on a field, see the pydantic report above") from e
