@@ -13,13 +13,23 @@ from stimulus.cli import check_model
 @pytest.fixture
 def data_path() -> str:
     """Get path to test data CSV file."""
-    return str(Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_stimulus_split.csv")
+    return str(
+        Path(__file__).parent.parent
+        / "test_data"
+        / "titanic"
+        / "titanic_stimulus_split.csv"
+    )
 
 
 @pytest.fixture
 def data_config() -> str:
     """Get path to test data config YAML."""
-    return str(Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_sub_config.yaml")
+    return str(
+        Path(__file__).parent.parent
+        / "test_data"
+        / "titanic"
+        / "titanic_sub_config.yaml"
+    )
 
 
 @pytest.fixture
@@ -34,7 +44,9 @@ def model_config() -> str:
     return str(Path(__file__).parent.parent / "test_model" / "titanic_model_cpu.yaml")
 
 
-def test_check_model_main(data_path: str, data_config: str, model_path: str, model_config: str) -> None:
+def test_check_model_main(
+    data_path: str, data_config: str, model_path: str, model_config: str
+) -> None:
     """Test that check_model.main runs without errors.
 
     Args:
