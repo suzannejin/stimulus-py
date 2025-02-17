@@ -14,7 +14,7 @@ from src.stimulus.cli.shuffle_csv import main
 @pytest.fixture
 def correct_yaml_path() -> str:
     """Fixture that returns the path to a correct YAML file."""
-    return "tests/test_data/titanic/titanic_sub_config.yaml"
+    return "tests/test_data/titanic/titanic_unique_split.yaml"
 
 
 @pytest.fixture
