@@ -12,9 +12,8 @@ from typing import Any
 import yaml
 
 from stimulus.utils.yaml_data import (
-    YamlSubConfigDict,
-    YamlSubConfigTransformDict,
-    check_yaml_schema,
+    YamlSplitConfigDict,
+    YamlSplitTransformDict,
     dump_yaml_list_into_files,
     generate_split_transform_configs,
 )
@@ -61,15 +60,15 @@ def main(config_yaml: str, out_dir_path: str) -> None:
     with open(config_yaml) as conf_file:
         yaml_config = yaml.safe_load(conf_file)
 
-    yaml_config_dict: YamlSubConfigDict = YamlSubConfigDict(**yaml_config)
+    yaml_config_dict: YamlSplitConfigDict = YamlSplitConfigDict(**yaml_config)
 
     # Generate the yaml files for each transform
-    split_transform_configs: list[YamlSubConfigTransformDict] = (
+    split_transform_configs: list[YamlSplitTransformDict] = (
         generate_split_transform_configs(yaml_config_dict)
     )
 
     # Dump all the YAML configs into files
-    dump_yaml_list_into_files(split_transform_configs, out_dir_path, "test")
+    dump_yaml_list_into_files(split_transform_configs, out_dir_path, "test_transforms")
 
 
 if __name__ == "__main__":
