@@ -37,8 +37,7 @@ dependencies = [
     "pandas>=2.2.0",
     "polars-lts-cpu>=0.20.30,<1.12.0",
     "pydantic>=2.0.0",
-    "ray[default,train,tune]>=2.23.0; python_version < '3.12'",
-    "ray[default,train,tune]>=2.38.0; python_version >= '3.12'",
+    "ray[default,train,tune]>=2.38.0",
     "safetensors>=0.4.5",
     "scikit-learn>=1.5.0",
     "scipy==1.14.1",
@@ -51,7 +50,6 @@ dependencies = [
 stimulus-shuffle-csv = "stimulus.cli.shuffle_csv:run"
 stimulus-transform-csv = "stimulus.cli.transform_csv:run"
 stimulus-split-csv = "stimulus.cli.split_csv:run"
-stimulus-predict = "stimulus.cli.predict:run"
 stimulus-check-model = "stimulus.cli.check_model:run"
 stimulus-tuning = "stimulus.cli.tuning:run"
 stimulus-split-yaml = "stimulus.cli.split_yaml:run"
