@@ -7,12 +7,14 @@ import yaml
 
 from stimulus.data.data_handlers import DatasetProcessor, TransformManager
 from stimulus.data.loaders import TransformLoader
-from stimulus.utils.yaml_data import YamlSubConfigDict
+from stimulus.utils.yaml_data import YamlSplitConfigDict
 
 
 def get_args() -> argparse.Namespace:
     """Get the arguments when using from the commandline."""
-    parser = argparse.ArgumentParser(description="CLI for transforming CSV data files using YAML configuration.")
+    parser = argparse.ArgumentParser(
+        description="CLI for transforming CSV data files using YAML configuration."
+    )
     parser.add_argument(
         "-c",
         "--csv",
@@ -53,8 +55,9 @@ def main(data_csv: str, config_yaml: str, out_path: str) -> None:
     # initialize the transform manager
     transform_config = processor.dataset_manager.config.transforms
     with open(config_yaml) as f:
-        yaml_config = YamlSubConfigDict(**yaml.safe_load(f))
+        yaml_config = YamlSplitConfigDict(**yaml.safe_load(f))
     transform_loader = TransformLoader(seed=yaml_config.global_params.seed)
+    print(transform_config)
     transform_loader.initialize_column_data_transformers_from_config(transform_config)
     transform_manager = TransformManager(transform_loader)
 
