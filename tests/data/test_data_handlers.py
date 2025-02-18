@@ -366,7 +366,7 @@ def test_dataset_loader_init(
 ) -> None:
     """Test initialization of DatasetLoader."""
     loader = DatasetLoader(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
         encoder_loader=encoder_loader,
     )
@@ -384,7 +384,7 @@ def test_dataset_loader_get_dataset(
 ) -> None:
     """Test getting dataset from loader."""
     loader = DatasetLoader(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
         encoder_loader=encoder_loader,
     )
