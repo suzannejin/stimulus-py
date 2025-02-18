@@ -112,21 +112,21 @@ class YamlConfigDict(BaseModel):
 
 
 # TODO: Rename this class to SplitConfigDict
-class YamlSubConfigDict(BaseModel):
+class YamlSplitConfigDict(BaseModel):
     """Model for sub-configuration generated from main config."""
 
     global_params: YamlGlobalParams
     columns: list[YamlColumns]
-    transforms: Union[YamlTransform, list[YamlTransform]]
+    transforms: list[YamlTransform]
     split: YamlSplit
 
 
-class YamlSubConfigTransformDict(BaseModel):
+class YamlSplitTransformDict(BaseModel):
     """Model for sub-configuration generated from main config."""
 
     global_params: YamlGlobalParams
     columns: list[YamlColumns]
-    transform: YamlTransform
+    transforms: YamlTransform
     split: YamlSplit
 
 
@@ -139,7 +139,7 @@ class YamlSchema(BaseModel):
 class YamlSplitSchema(BaseModel):
     """Model for validating a Split YAML schema."""
 
-    yaml_conf: YamlSubConfigDict
+    yaml_conf: YamlSplitConfigDict
 
 
 def extract_transform_parameters_at_index(
@@ -238,7 +238,7 @@ def expand_transform_list_combinations(
     return sub_transforms
 
 
-def generate_split_configs(yaml_config: YamlConfigDict) -> list[YamlSubConfigDict]:
+def generate_split_configs(yaml_config: YamlConfigDict) -> list[YamlSplitConfigDict]:
     """Generates all possible split configuration from a YAML config.
 
     Takes a YAML configuration that may contain parameter lists and splits,
@@ -273,7 +273,7 @@ def generate_split_configs(yaml_config: YamlConfigDict) -> list[YamlSubConfigDic
     sub_configs = []
     for split in sub_splits:
         sub_configs.append(
-            YamlSubConfigDict(
+            YamlSplitConfigDict(
                 global_params=yaml_config.global_params,
                 columns=yaml_config.columns,
                 transforms=yaml_config.transforms,
@@ -284,8 +284,8 @@ def generate_split_configs(yaml_config: YamlConfigDict) -> list[YamlSubConfigDic
 
 
 def generate_split_transform_configs(
-    yaml_config: YamlSubConfigDict,
-) -> list[YamlSubConfigTransformDict]:
+    yaml_config: YamlSplitConfigDict,
+) -> list[YamlSplitTransformDict]:
     """Generates all the transform configuration for a given split
 
     Takes a YAML configuration that may contain a transform or a list of transform,
@@ -313,26 +313,27 @@ def generate_split_transform_configs(
             length will be the product of the number of parameter combinations
             and the number of splits.
     """
-    if isinstance(yaml_config, dict) and not isinstance(yaml_config, YamlSubConfigDict):
+    if isinstance(yaml_config, dict) and not isinstance(
+        yaml_config, YamlSplitConfigDict
+    ):
         raise TypeError("Input must be a list of YamlSubConfigDict")
 
-    split_configs = yaml_config.split
-    split_transform_config: list[YamlSubConfigTransformDict] = []
-    for split_config in split_configs:
-        for transform in split_configs.get("transforms"):
-            split_transform_config.append(
-                YamlSubConfigTransformDict(
-                    global_params=split_config.get("global_params"),
-                    columns=split_config.get("columns"),
-                    transform=transform,
-                    split=split_config.get("split"),
-                )
+    sub_transforms = expand_transform_list_combinations(yaml_config.transforms)
+    split_transform_config: list[YamlSplitTransformDict] = []
+    for transform in sub_transforms:
+        split_transform_config.append(
+            YamlSplitTransformDict(
+                global_params=yaml_config.global_params,
+                columns=yaml_config.columns,
+                transforms=transform,
+                split=yaml_config.split,
             )
+        )
     return split_transform_config
 
 
 def dump_yaml_list_into_files(
-    yaml_list: list[YamlSubConfigDict],
+    yaml_list: list[YamlSplitConfigDict],
     directory_path: str,
     base_name: str,
 ) -> None:
