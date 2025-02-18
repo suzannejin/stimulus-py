@@ -40,11 +40,13 @@ def titanic_yaml_config(titanic_config_path: str) -> dict:
         dict: Loaded YAML configuration
     """
     with open(titanic_config_path) as file:
-        return yaml_data.YamlSubConfigDict(**yaml.safe_load(file))
+        return yaml_data.YamlSplitTransformDict(**yaml.safe_load(file))
 
 
 @pytest.fixture
-def titanic_encoder_loader(titanic_yaml_config: yaml_data.YamlSubConfigDict) -> loaders.EncoderLoader:
+def titanic_encoder_loader(
+    titanic_yaml_config: yaml_data.YamlSplitTransformDict,
+) -> loaders.EncoderLoader:
     """Get Titanic encoder loader."""
     loader = loaders.EncoderLoader()
     loader.initialize_column_encoders_from_config(titanic_yaml_config.columns)
@@ -57,8 +59,11 @@ def test_init_handlertorch(
     titanic_encoder_loader: loaders.EncoderLoader,
 ) -> None:
     """Test TorchDataset initialization."""
+    data_config: yaml_data.YamlSplitTransformDict
+    with open(titanic_config_path) as f:
+        data_config = yaml_data.YamlSplitTransformDict(**yaml.safe_load(f))
     handlertorch.TorchDataset(
-        config_path=titanic_config_path,
+        data_config=data_config,
         csv_path=titanic_csv_path,
         encoder_loader=titanic_encoder_loader,
     )
@@ -76,8 +81,11 @@ def test_len_handlertorch(
         titanic_csv_path: Path to CSV file
         titanic_encoder_loader: Encoder loader instance
     """
+    data_config: yaml_data.YamlSplitTransformDict
+    with open(titanic_config_path) as f:
+        data_config = yaml_data.YamlSplitTransformDict(**yaml.safe_load(f))
     dataset = handlertorch.TorchDataset(
-        config_path=titanic_config_path,
+        data_config=data_config,
         csv_path=titanic_csv_path,
         encoder_loader=titanic_encoder_loader,
     )
@@ -96,8 +104,11 @@ def test_getitem_handlertorch_slice(
         titanic_csv_path: Path to CSV file
         titanic_encoder_loader: Encoder loader instance
     """
+    data_config: yaml_data.YamlSplitTransformDict
+    with open(titanic_config_path) as f:
+        data_config = yaml_data.YamlSplitTransformDict(**yaml.safe_load(f))
     dataset = handlertorch.TorchDataset(
-        config_path=titanic_config_path,
+        data_config=data_config,
         csv_path=titanic_csv_path,
         encoder_loader=titanic_encoder_loader,
     )
@@ -117,8 +128,11 @@ def test_getitem_handlertorch_int(
         titanic_csv_path: Path to CSV file
         titanic_encoder_loader: Encoder loader instance
     """
+    data_config: yaml_data.YamlSplitTransformDict
+    with open(titanic_config_path) as f:
+        data_config = yaml_data.YamlSplitTransformDict(**yaml.safe_load(f))
     dataset = handlertorch.TorchDataset(
-        config_path=titanic_config_path,
+        data_config=data_config,
         csv_path=titanic_csv_path,
         encoder_loader=titanic_encoder_loader,
     )
