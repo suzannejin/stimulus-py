@@ -28,8 +28,22 @@ def get_args() -> argparse.Namespace:
         Parsed command line arguments.
     """
     parser = argparse.ArgumentParser(description="Launch check_model.")
-    parser.add_argument("-d", "--data", type=str, required=True, metavar="FILE", help="Path to input csv file.")
-    parser.add_argument("-m", "--model", type=str, required=True, metavar="FILE", help="Path to model file.")
+    parser.add_argument(
+        "-d",
+        "--data",
+        type=str,
+        required=True,
+        metavar="FILE",
+        help="Path to input csv file.",
+    )
+    parser.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        required=True,
+        metavar="FILE",
+        help="Path to model file.",
+    )
     parser.add_argument(
         "-e",
         "--data_config",
@@ -136,7 +150,7 @@ def get_args() -> argparse.Namespace:
 def main(
     model_path: str,
     data_path: str,
-    data_config_path: str,
+    data_config: yaml_data.YamlSplitTransformDict,
     model_config_path: str,
     initial_weights: str | None = None,  # noqa: ARG001
     ray_results_dirpath: str | None = None,
@@ -152,7 +166,7 @@ def main(
     Args:
         data_path: Path to input data file.
         model_path: Path to model file.
-        data_config_path: Path to data config file.
+        data_config: A YamlSplitTransformObject
         model_config_path: Path to model config file.
         initial_weights: Optional path to initial weights.
         ray_results_dirpath: Directory for ray results.
@@ -162,26 +176,25 @@ def main(
         best_metrics_path: Path to write the best metrics to.
         best_config_path: Path to write the best config to.
     """
-    # Convert data config to proper type
-    with open(data_config_path) as file:
-        data_config_dict: dict[str, Any] = yaml.safe_load(file)
-    data_config: yaml_data.YamlSubConfigDict = yaml_data.YamlSubConfigDict(**data_config_dict)
-
     with open(model_config_path) as file:
         model_config_dict: dict[str, Any] = yaml.safe_load(file)
-    model_config: yaml_model_schema.Model = yaml_model_schema.Model(**model_config_dict)
+    model_config: yaml_model_schema.Model = yaml_model_schema.Model(
+        **model_config_dict)
 
     encoder_loader = loaders.EncoderLoader()
-    encoder_loader.initialize_column_encoders_from_config(column_config=data_config.columns)
+    encoder_loader.initialize_column_encoders_from_config(
+        column_config=data_config.columns
+    )
 
     model_class = launch_utils.import_class_from_file(model_path)
 
-    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(model=model_config)
+    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(
+        model=model_config)
     ray_config_model = ray_config_loader.get_config()
 
     tuner = raytune_learner.TuneWrapper(
         model_config=ray_config_model,
-        data_config_path=data_config_path,
+        data_config=data_config,
         model_class=model_class,
         data_path=data_path,
         encoder_loader=encoder_loader,
@@ -226,10 +239,14 @@ def main(
 def run() -> None:
     """Run the model checking script."""
     args = get_args()
+    # Try to convert the configuration file to a YamlSplitTransformDict
+    config_dict: yaml_data.YamlSplitTransformDict
+    with open(args.data_config) as f:
+        config_dict = yaml_data.YamlSplitTransformDict(**yaml.safe_load(f))
     main(
         data_path=args.data,
         model_path=args.model,
-        data_config_path=args.data_config,
+        data_config=config_dict,
         model_config_path=args.model_config,
         initial_weights=args.initial_weights,
         ray_results_dirpath=args.ray_results_dirpath,
