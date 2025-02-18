@@ -8,6 +8,7 @@ import pytest
 import ray
 
 from stimulus.cli import check_model
+from src.stimulus.utils.yaml_data import YamlSplitTransformDict
 
 
 @pytest.fixture
@@ -62,11 +63,14 @@ def test_check_model_main(
     ray.init(ignore_reinit_error=True)
     # Verify all required files exist
     assert os.path.exists(data_path), f"Data file not found at {data_path}"
-    assert os.path.exists(data_config), f"Data config not found at {data_config}"
+    assert os.path.exists(
+        data_config), f"Data config not found at {data_config}"
     assert os.path.exists(model_path), f"Model file not found at {model_path}"
-    assert os.path.exists(model_config), f"Model config not found at {model_config}"
+    assert os.path.exists(
+        model_config), f"Model config not found at {model_config}"
 
     try:
+        config_dict: yam
         # Run main function - should complete without errors
         check_model.main(
             model_path=model_path,

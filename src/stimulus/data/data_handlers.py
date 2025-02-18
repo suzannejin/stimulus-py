@@ -287,7 +287,7 @@ class DatasetHandler:
 
     def __init__(
         self,
-        config_path: str,
+        data_config: yaml_data.YamlSplitTransformDict,
         csv_path: str,
     ) -> None:
         """Initialize the DatasetHandler with required config.
@@ -296,7 +296,7 @@ class DatasetHandler:
             config_path (str): Path to the dataset configuration file.
             csv_path (str): Path to the CSV data file.
         """
-        self.dataset_manager = DatasetManager(config_path)
+        self.dataset_manager = DatasetManager(data_config)
         self.columns = self.read_csv_header(csv_path)
         self.data = self.load_csv(csv_path)
 
@@ -422,13 +422,13 @@ class DatasetLoader(DatasetHandler):
 
     def __init__(
         self,
-        config_path: str,
+        data_config: yaml_data.YamlSplitTransformDict,
         csv_path: str,
         encoder_loader: loaders.EncoderLoader,
         split: Union[int, None] = None,
     ) -> None:
         """Initialize the DatasetLoader."""
-        super().__init__(config_path, csv_path)
+        super().__init__(data_config, csv_path)
         self.encoder_manager = EncodeManager(encoder_loader)
         self.data = (
             self.load_csv_per_split(csv_path, split)
