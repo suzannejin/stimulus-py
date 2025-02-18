@@ -24,7 +24,7 @@ def get_args() -> argparse.Namespace:
     """Get the arguments when using from the command line."""
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
-        "-j",
+        "-y",
         "--yaml",
         type=str,
         required=True,
@@ -76,6 +76,11 @@ def main(config_yaml: str, out_dir_path: str) -> None:
     dump_yaml_list_into_files(split_configs, out_dir_path, "test_split")
 
 
-if __name__ == "__main__":
+def run() -> None:
+    """Run the split_yaml CLI."""
     args = get_args()
     main(args.yaml, args.out_dir)
+
+
+if __name__ == "__main__":
+    run()
