@@ -293,7 +293,7 @@ class DatasetHandler:
         """Initialize the DatasetHandler with required config.
 
         Args:
-            config_path (str): Path to the dataset configuration file.
+            data_config (yaml_data.YamlSplitTransformDict): A YamlSplitTransformDict object holding the config.
             csv_path (str): Path to the CSV data file.
         """
         self.dataset_manager = DatasetManager(data_config)

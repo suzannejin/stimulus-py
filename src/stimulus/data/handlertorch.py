@@ -21,7 +21,7 @@ class TorchDataset(Dataset):
         """Initialize the TorchDataset.
 
         Args:
-            config_path: Path to the configuration file
+            data_config: A YamlSplitTransformDict holding the configuration.
             csv_path: Path to the CSV data file
             encoder_loader: Encoder loader instance
             split: Optional tuple containing split information
