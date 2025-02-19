@@ -330,104 +330,53 @@ def dump_yaml_list_into_files(
     directory_path: str,
     base_name: str,
 ) -> None:
-    """Dumps a list of YAML configurations into separate files with custom formatting."""
-    # Create a new class attribute rather than assigning to the method
-    # Remove this line since we'll add ignore_aliases to CustomDumper instead
-
-    def represent_none(dumper: yaml.Dumper, _: Any) -> yaml.Node:
-        """Custom representer to format None values as empty strings in YAML output."""
-        return dumper.represent_scalar("tag:yaml.org,2002:null", "")
-
-    def custom_representer(dumper: yaml.Dumper, data: Any) -> yaml.Node:
-        """Custom representer to handle different types of lists with appropriate formatting."""
-        if isinstance(data, list):
-            if len(data) == 0:
-                return dumper.represent_scalar("tag:yaml.org,2002:null", "")
-            if isinstance(data[0], dict):
-                return dumper.represent_sequence(
-                    "tag:yaml.org,2002:seq",
-                    data,
-                    flow_style=False,
-                )
-            if isinstance(data[0], list):
-                return dumper.represent_sequence(
-                    "tag:yaml.org,2002:seq",
-                    data,
-                    flow_style=True,
-                )
-        return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=True)
-
-    class CustomDumper(yaml.Dumper):
-        """Custom YAML dumper that adds extra formatting controls."""
-
+    """Dumps YAML configurations to files with consistent formatting."""
+    
+    class CleanDumper(yaml.SafeDumper):
+        """Simplified dumper maintaining key functionality"""
         def ignore_aliases(self, _data: Any) -> bool:
-            """Ignore aliases in the YAML output."""
-            return True
+            return True  # Disable anchor/alias generation
 
-        def write_line_break(self, _data: Any = None) -> None:
-            """Add extra newline after root-level elements."""
-            super().write_line_break(_data)
-            if len(self.indents) <= 1:  # At root level
-                super().write_line_break(_data)
+        def write_line_break(self, data=None):
+            """Maintain root-level spacing"""
+            super().write_line_break(data)
+            if not self.indent:  # At root level
+                super().write_line_break()
 
-        def increase_indent(  # type: ignore[override]
-            self,
-            *,
-            flow: bool = False,
-            indentless: bool = False,
-        ) -> None:
-            """Ensure consistent indentation by preventing indentless sequences."""
-            return super().increase_indent(
-                flow=flow,
-                indentless=indentless,
-            )  # Force indentless to False for better formatting
-
-    # Register the custom representers with our dumper
-    yaml.add_representer(type(None), represent_none, Dumper=CustomDumper)
-    yaml.add_representer(list, custom_representer, Dumper=CustomDumper)
+    # Register type handlers
+    CleanDumper.add_representer(type(None), 
+        lambda d, _: d.represent_scalar('tag:yaml.org,2002:null', ''))
+    
+    CleanDumper.add_representer(list, 
+        lambda d, data: d.represent_sequence(
+            'tag:yaml.org,2002:seq', data, 
+            flow_style=isinstance(data[0], (list, dict)) if data else False
+        ))
 
     for i, yaml_dict in enumerate(yaml_list):
-        dict_data = yaml_dict.model_dump(exclude_none=True)
-
-        def fix_params(input_dict: dict[str, Any]) -> dict[str, Any]:
-            """Recursively process dictionary to properly handle params fields."""
-            if isinstance(input_dict, dict):
-                processed_dict: dict[str, Any] = {}
-                for key, value in input_dict.items():
-                    if key == "encoder" and isinstance(value, list):
-                        processed_dict[key] = []
-                        for encoder in value:
-                            processed_encoder = dict(encoder)
-                            if "params" not in processed_encoder or not processed_encoder["params"]:
-                                processed_encoder["params"] = {}
-                            processed_dict[key].append(processed_encoder)
-                    elif key == "transformations" and isinstance(value, list):
-                        processed_dict[key] = []
-                        for transformation in value:
-                            processed_transformation = dict(transformation)
-                            if "params" not in processed_transformation or not processed_transformation["params"]:
-                                processed_transformation["params"] = {}
-                            processed_dict[key].append(processed_transformation)
-                    elif isinstance(value, dict):
-                        processed_dict[key] = fix_params(value)
-                    elif isinstance(value, list):
-                        processed_dict[key] = [
-                            fix_params(list_item) if isinstance(list_item, dict) else list_item for list_item in value
-                        ]
-                    else:
-                        processed_dict[key] = value
-                return processed_dict
-            return input_dict
-
-        dict_data = fix_params(dict_data)
-
+        data = _clean_params(yaml_dict.model_dump(exclude_none=True))
+        
         with open(f"{directory_path}/{base_name}_{i}.yaml", "w") as f:
             yaml.dump(
-                dict_data,
+                data,
                 f,
-                Dumper=CustomDumper,
+                Dumper=CleanDumper,
                 sort_keys=False,
-                default_flow_style=False,
                 indent=2,
-                width=float("inf"),  # Prevent line wrapping
+                width=float("inf"),
+                default_flow_style=None  # Let representers handle flow style
             )
+
+def _clean_params(data: dict) -> dict:
+    """Recursive cleaner for empty parameters (replaces fix_params)"""
+    if isinstance(data, dict):
+        return {
+            k: _clean_params(
+                v if k not in ('encoder', 'transformations') 
+                else [dict(e, params=e.get('params') or {}) for e in v]
+            )
+            for k, v in data.items()
+        }
+    if isinstance(data, list):
+        return [_clean_params(item) for item in data]
+    return data
