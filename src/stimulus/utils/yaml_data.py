@@ -431,26 +431,3 @@ def dump_yaml_list_into_files(
                 indent=2,
                 width=float("inf"),  # Prevent line wrapping
             )
-
-
-def check_schema(config: ConfigDict) -> str:
-    """Validate YAML configuration fields have correct types.
-
-    If the children field is specific to a parent, the children fields class is hosted in the parent fields class.
-    If any field in not the right type, the function prints an error message explaining the problem and exits the python code.
-
-    Args:
-        config_yaml: The YamlConfigDict containing the fields of the yaml configuration file
-
-    Returns:
-        str: Empty string if validation succeeds
-
-    Raises:
-        ValueError: If validation fails
-    """
-    try:
-        Schema(config=config)
-    except ValidationError as e:
-        # Use logging instead of print for error handling
-        raise ValueError("Wrong type on a field, see the pydantic report above") from e
-    return ""
