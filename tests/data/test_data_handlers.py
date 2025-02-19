@@ -14,15 +14,18 @@ from stimulus.data.data_handlers import (
 )
 from stimulus.utils.yaml_data import (
     YamlConfigDict,
+    YamlSplitConfigDict,
+    YamlSplitTransformDict,
     YamlTransform,
     YamlTransformColumns,
     YamlTransformColumnsTransformation,
-    generate_data_configs,
+    generate_split_configs,
+    generate_split_transform_configs,
 )
 
 
 # Fixtures
-## Data fixtures
+# Data fixtures
 @pytest.fixture
 def titanic_csv_path() -> str:
     """Get path to test Titanic CSV file.
@@ -67,20 +70,29 @@ def generate_sub_configs(base_config: YamlConfigDict) -> list[YamlConfigDict]:
     Returns:
         list[YamlConfigDict]: List of generated configurations
     """
-    return generate_data_configs(base_config)
+    split_configs: list[YamlSplitConfigDict] = generate_split_configs(
+        base_config)
+    split_transform_list: list[YamlSplitTransformDict] = []
+    for split in split_configs:
+        split_transform_list.extend(generate_split_transform_configs(split))
+    return split_transform_list
 
 
 @pytest.fixture
-def dump_single_split_config_to_disk() -> str:
+def dump_single_split_config_to_disk() -> YamlSplitTransformDict:
     """Get path for dumping single split config.
 
     Returns:
         str: Path to dump config file
     """
-    return "tests/test_data/titanic/titanic_sub_config.yaml"
+    config_dict: YamlSplitTransformDict
+    path: str = "tests/test_data/titanic/titanic_sub_config.yaml"
+    with open(path) as f:
+        config_dict = YamlSplitTransformDict(**yaml.safe_load(f))
+    return config_dict
 
 
-## Loader fixtures
+# Loader fixtures
 @pytest.fixture
 def encoder_loader(generate_sub_configs: list[YamlConfigDict]) -> loaders.EncoderLoader:
     """Create encoder loader with initialized encoders.
@@ -92,12 +104,15 @@ def encoder_loader(generate_sub_configs: list[YamlConfigDict]) -> loaders.Encode
         experiments.EncoderLoader: Initialized encoder loader
     """
     loader = loaders.EncoderLoader()
-    loader.initialize_column_encoders_from_config(generate_sub_configs[0].columns)
+    loader.initialize_column_encoders_from_config(
+        generate_sub_configs[0].columns)
     return loader
 
 
 @pytest.fixture
-def transform_loader(generate_sub_configs: list[YamlConfigDict]) -> loaders.TransformLoader:
+def transform_loader(
+    generate_sub_configs: list[YamlConfigDict],
+) -> loaders.TransformLoader:
     """Create transform loader with initialized transformers.
 
     Args:
@@ -107,7 +122,9 @@ def transform_loader(generate_sub_configs: list[YamlConfigDict]) -> loaders.Tran
         experiments.TransformLoader: Initialized transform loader
     """
     loader = loaders.TransformLoader()
-    loader.initialize_column_data_transformers_from_config(generate_sub_configs[0].transforms)
+    loader.initialize_column_data_transformers_from_config(
+        generate_sub_configs[0].transforms
+    )
     return loader
 
 
@@ -127,14 +144,18 @@ def split_loader(generate_sub_configs: list[YamlConfigDict]) -> loaders.SplitLoa
 
 
 # Test DatasetManager
-def test_dataset_manager_init(dump_single_split_config_to_disk: str) -> None:
+def test_dataset_manager_init(
+    dump_single_split_config_to_disk: YamlSplitTransformDict,
+) -> None:
     """Test initialization of DatasetManager."""
     manager = DatasetManager(dump_single_split_config_to_disk)
     assert hasattr(manager, "config")
     assert hasattr(manager, "column_categories")
 
 
-def test_dataset_manager_organize_columns(dump_single_split_config_to_disk: str) -> None:
+def test_dataset_manager_organize_columns(
+    dump_single_split_config_to_disk: str,
+) -> None:
     """Test column organization by type."""
     manager = DatasetManager(dump_single_split_config_to_disk)
     categories = manager.categorize_columns_by_type()
@@ -146,7 +167,9 @@ def test_dataset_manager_organize_columns(dump_single_split_config_to_disk: str)
     assert "passenger_id" in categories["meta"]
 
 
-def test_dataset_manager_organize_transforms(dump_single_split_config_to_disk: str) -> None:
+def test_dataset_manager_organize_transforms(
+    dump_single_split_config_to_disk: str,
+) -> None:
     """Test transform organization."""
     manager = DatasetManager(dump_single_split_config_to_disk)
     categories = manager.categorize_columns_by_type()
@@ -155,7 +178,9 @@ def test_dataset_manager_organize_transforms(dump_single_split_config_to_disk: s
     assert all(key in categories for key in ["input", "label", "meta"])
 
 
-def test_dataset_manager_get_transform_logic(dump_single_split_config_to_disk: str) -> None:
+def test_dataset_manager_get_transform_logic(
+    dump_single_split_config_to_disk: str,
+) -> None:
     """Test getting transform logic from config."""
     manager = DatasetManager(dump_single_split_config_to_disk)
     transform_logic = manager.get_transform_logic()
@@ -221,10 +246,12 @@ def test_transform_manager_transform_column() -> None:
             ),
         ],
     )
-    transform_loader.initialize_column_data_transformers_from_config(dummy_config)
+    transform_loader.initialize_column_data_transformers_from_config(
+        dummy_config)
     manager = TransformManager(transform_loader)
     data = [1, 2, 3]
-    transformed, added_row = manager.transform_column("test_col", "GaussianNoise", data)
+    transformed, added_row = manager.transform_column(
+        "test_col", "GaussianNoise", data)
     assert len(transformed) == len(data)
     assert added_row is False
 
@@ -303,15 +330,32 @@ def test_dataset_processor_apply_transformation_group(
     )
     processor_control.data = processor_control.load_csv(titanic_csv_path)
 
-    processor.apply_transformation_group(transform_manager=TransformManager(transform_loader))
+    processor.apply_transformation_group(
+        transform_manager=TransformManager(transform_loader)
+    )
 
-    assert processor.data["age"].to_list() != processor_control.data["age"].to_list()
-    assert processor.data["fare"].to_list() != processor_control.data["fare"].to_list()
-    assert processor.data["parch"].to_list() == processor_control.data["parch"].to_list()
-    assert processor.data["sibsp"].to_list() == processor_control.data["sibsp"].to_list()
-    assert processor.data["pclass"].to_list() == processor_control.data["pclass"].to_list()
-    assert processor.data["embarked"].to_list() == processor_control.data["embarked"].to_list()
-    assert processor.data["sex"].to_list() == processor_control.data["sex"].to_list()
+    assert processor.data["age"].to_list(
+    ) != processor_control.data["age"].to_list()
+    assert processor.data["fare"].to_list(
+    ) != processor_control.data["fare"].to_list()
+    assert (
+        processor.data["parch"].to_list(
+        ) == processor_control.data["parch"].to_list()
+    )
+    assert (
+        processor.data["sibsp"].to_list(
+        ) == processor_control.data["sibsp"].to_list()
+    )
+    assert (
+        processor.data["pclass"].to_list(
+        ) == processor_control.data["pclass"].to_list()
+    )
+    assert (
+        processor.data["embarked"].to_list()
+        == processor_control.data["embarked"].to_list()
+    )
+    assert processor.data["sex"].to_list(
+    ) == processor_control.data["sex"].to_list()
 
 
 # Test DatasetLoader
@@ -322,7 +366,7 @@ def test_dataset_loader_init(
 ) -> None:
     """Test initialization of DatasetLoader."""
     loader = DatasetLoader(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
         encoder_loader=encoder_loader,
     )
@@ -340,7 +384,7 @@ def test_dataset_loader_get_dataset(
 ) -> None:
     """Test getting dataset from loader."""
     loader = DatasetLoader(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
         encoder_loader=encoder_loader,
     )

@@ -7,7 +7,7 @@ import yaml
 
 from stimulus.data.data_handlers import DatasetProcessor, SplitManager
 from stimulus.data.loaders import SplitLoader
-from stimulus.utils.yaml_data import YamlSubConfigDict
+from stimulus.utils.yaml_data import YamlSplitConfigDict
 
 
 def get_args() -> argparse.Namespace:
@@ -49,7 +49,9 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main(data_csv: str, config_yaml: str, out_path: str, *, force: bool = False) -> None:
+def main(
+    data_csv: str, config_yaml: str, out_path: str, *, force: bool = False
+) -> None:
     """Connect CSV and YAML configuration and handle sanity checks.
 
     Args:
@@ -64,7 +66,7 @@ def main(data_csv: str, config_yaml: str, out_path: str, *, force: bool = False)
     # create a split manager from the config
     split_config = processor.dataset_manager.config.split
     with open(config_yaml) as f:
-        yaml_config = YamlSubConfigDict(**yaml.safe_load(f))
+        yaml_config = YamlSplitConfigDict(**yaml.safe_load(f))
     split_loader = SplitLoader(seed=yaml_config.global_params.seed)
     split_loader.initialize_splitter_from_config(split_config)
     split_manager = SplitManager(split_loader)

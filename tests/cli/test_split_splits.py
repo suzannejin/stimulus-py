@@ -1,4 +1,4 @@
-"""Tests for the split_yaml CLI command."""
+"""Tests for the split_split CLI command."""
 
 import hashlib
 import os
@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 import pytest
 
-from src.stimulus.cli.split_yaml import main
+from src.stimulus.cli import split_split
 
 
 # Fixtures
@@ -32,24 +32,27 @@ test_cases = [
 
 # Tests
 @pytest.mark.parametrize(("yaml_type", "error"), test_cases)
-def test_split_yaml(
+def test_split_split(
     request: pytest.FixtureRequest,
     snapshot: Callable[[], Any],
     yaml_type: str,
     error: Exception | None,
+    tmp_path,  # Pytest tmp file system
 ) -> None:
     """Tests the CLI command with correct and wrong YAML files."""
     yaml_path = request.getfixturevalue(yaml_type)
-    tmpdir = tempfile.gettempdir()
+    tmpdir = tmp_path
     if error:
         with pytest.raises(error):  # type: ignore[call-overload]
-            main(yaml_path, tmpdir)
+            split_split.main(yaml_path, tmpdir)
     else:
-        main(yaml_path, tmpdir)  # main() returns None, no need to assert
+        split_split.main(yaml_path, tmpdir)  # main() returns None, no need to assert
         files = os.listdir(tmpdir)
         test_out = [f for f in files if f.startswith("test_")]
         hashes = []
         for f in test_out:
             with open(os.path.join(tmpdir, f)) as file:
                 hashes.append(hashlib.md5(file.read().encode()).hexdigest())  # noqa: S324
-        assert sorted(hashes) == snapshot  # sorted ensures that the order of the hashes does not matter
+        assert (
+            sorted(hashes) == snapshot
+        )  # sorted ensures that the order of the hashes does not matter

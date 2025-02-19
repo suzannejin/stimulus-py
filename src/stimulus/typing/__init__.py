@@ -23,10 +23,17 @@ from stimulus.data.encoding.encoders import AbstractEncoder as Encoder
 from stimulus.data.handlertorch import TorchDataset
 from stimulus.data.loaders import EncoderLoader, SplitLoader, TransformLoader
 from stimulus.data.splitters.splitters import AbstractSplitter as Splitter
-from stimulus.data.transform.data_transformation_generators import AbstractDataTransformer as Transform
+from stimulus.data.transform.data_transformation_generators import (
+    AbstractDataTransformer as Transform,
+)
 from stimulus.learner.predict import PredictWrapper
 from stimulus.learner.raytune_learner import CheckpointDict, TuneModel, TuneWrapper
-from stimulus.learner.raytune_parser import RayTuneMetrics, RayTuneOptimizer, RayTuneResult, TuneParser
+from stimulus.learner.raytune_parser import (
+    RayTuneMetrics,
+    RayTuneOptimizer,
+    RayTuneResult,
+    TuneParser,
+)
 from stimulus.utils.performance import Performance
 from stimulus.utils.yaml_data import (
     YamlColumns,
@@ -35,7 +42,8 @@ from stimulus.utils.yaml_data import (
     YamlGlobalParams,
     YamlSchema,
     YamlSplit,
-    YamlSubConfigDict,
+    YamlSplitConfigDict,
+    YamlSplitTransformDict,
     YamlTransform,
     YamlTransformColumns,
     YamlTransformColumnsTransformation,
@@ -56,7 +64,9 @@ from stimulus.utils.yaml_model_schema import (
 
 # data/data_handlers.py
 
-DataManager: TypeAlias = DatasetManager | EncodeManager | SplitManager | TransformManager
+DataManager: TypeAlias = (
+    DatasetManager | EncodeManager | SplitManager | TransformManager
+)
 
 # data/experiments.py
 
@@ -75,7 +85,7 @@ YamlData: TypeAlias = (
     | YamlGlobalParams
     | YamlSchema
     | YamlSplit
-    | YamlSubConfigDict
+    | YamlSplitConfigDict
     | YamlTransform
     | YamlTransformColumns
     | YamlTransformColumnsTransformation

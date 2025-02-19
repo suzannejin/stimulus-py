@@ -21,6 +21,7 @@ from stimulus.data.loaders import EncoderLoader
 from stimulus.learner.predict import PredictWrapper
 from stimulus.utils.generic_utils import set_general_seeds
 from stimulus.utils.yaml_model_schema import RayTuneModel
+from stimulus.utils.yaml_data import YamlSplitTransformDict
 
 
 class CheckpointDict(TypedDict):
@@ -35,7 +36,7 @@ class TuneWrapper:
     def __init__(
         self,
         model_config: RayTuneModel,
-        data_config_path: str,
+        data_config: YamlSplitTransformDict,
         model_class: nn.Module,
         data_path: str,
         encoder_loader: EncoderLoader,
@@ -75,7 +76,10 @@ class TuneWrapper:
         self.run_config = train.RunConfig(
             name=tune_run_name
             if tune_run_name is not None
-            else "TuneModel_" + datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d_%H-%M-%S"),
+            else "TuneModel_"
+            + datetime.datetime.now(tz=datetime.timezone.utc).strftime(
+                "%Y-%m-%d_%H-%M-%S"
+            ),
             storage_path=ray_results_dir,
             checkpoint_config=train.CheckpointConfig(checkpoint_at_end=True),
             stop=model_config.tune.run_params.stop,
@@ -83,7 +87,8 @@ class TuneWrapper:
 
         # add the data path to the config
         if not os.path.exists(data_path):
-            raise ValueError("Data path does not exist. Given path:" + data_path)
+            raise ValueError(
+                "Data path does not exist. Given path:" + data_path)
         self.config["data_path"] = os.path.abspath(data_path)
 
         # Set up tune_run path
@@ -93,7 +98,10 @@ class TuneWrapper:
             ray_results_dir,
             tune_run_name
             if tune_run_name is not None
-            else "TuneModel_" + datetime.datetime.now(tz=datetime.timezone.utc).strftime("%Y-%m-%d_%H-%M-%S"),
+            else "TuneModel_"
+            + datetime.datetime.now(tz=datetime.timezone.utc).strftime(
+                "%Y-%m-%d_%H-%M-%S"
+            ),
         )
         self.config["_debug"] = debug
         self.config["model"] = model_class
@@ -104,7 +112,7 @@ class TuneWrapper:
         self.cpu_per_trial = model_config.tune.cpu_per_trial
 
         self.tuner = self.tuner_initialization(
-            data_config_path=data_config_path,
+            data_config=data_config,
             data_path=data_path,
             encoder_loader=encoder_loader,
             autoscaler=autoscaler,
@@ -112,7 +120,7 @@ class TuneWrapper:
 
     def tuner_initialization(
         self,
-        data_config_path: str,
+        data_config: YamlSplitTransformDict,
         data_path: str,
         encoder_loader: EncoderLoader,
         *,
@@ -130,25 +138,29 @@ class TuneWrapper:
                     "GPU per trial is more than what is available in the cluster, set autoscaler to True to allow for autoscaler to be used.",
                 )
         except KeyError as err:
-            logging.warning(f"KeyError: {err}, no GPU resources available in the cluster: {cluster_res}")
+            logging.warning(
+                f"KeyError: {err}, no GPU resources available in the cluster: {cluster_res}"
+            )
 
         if self.cpu_per_trial > cluster_res["CPU"] and not autoscaler:
             raise ValueError(
                 "CPU per trial is more than what is available in the cluster, set autoscaler to True to allow for autoscaler to be used.",
             )
 
-        logging.info(f"PER_TRIAL resources ->  GPU: {self.gpu_per_trial} CPU: {self.cpu_per_trial}")
+        logging.info(
+            f"PER_TRIAL resources ->  GPU: {self.gpu_per_trial} CPU: {self.cpu_per_trial}"
+        )
 
         # Pre-load and encode datasets once, then put them in Ray's object store
 
         training = TorchDataset(
-            config_path=data_config_path,
+            data_config=data_config,
             csv_path=data_path,
             encoder_loader=encoder_loader,
             split=0,
         )
         validation = TorchDataset(
-            config_path=data_config_path,
+            data_config=data_config,
             csv_path=data_path,
             encoder_loader=encoder_loader,
             split=1,
@@ -182,7 +194,12 @@ class TuneWrapper:
             resources={"cpu": self.cpu_per_trial, "gpu": self.gpu_per_trial},
         )
 
-        return tune.Tuner(trainable, tune_config=self.tune_config, param_space=self.config, run_config=self.run_config)
+        return tune.Tuner(
+            trainable,
+            tune_config=self.tune_config,
+            param_space=self.config,
+            run_config=self.run_config,
+        )
 
     def tune(self) -> ray.tune.ResultGrid:
         """Run the tuning process."""
@@ -221,7 +238,10 @@ class TuneModel(Trainable):
         self.step_size = config["tune"]["step_size"]
 
         # Get datasets from Ray's object store
-        training, validation = ray.get(self.config["_training_ref"]), ray.get(self.config["_validation_ref"])
+        training, validation = (
+            ray.get(self.config["_training_ref"]),
+            ray.get(self.config["_validation_ref"]),
+        )
 
         # use dataloader on training/validation data
         self.batch_size = config["data_params"]["batch_size"]
@@ -269,7 +289,8 @@ class TuneModel(Trainable):
         for _step_size in range(self.step_size):
             for x, y, _meta in self.training:
                 # the loss dict could be unpacked with ** and the function declaration handle it differently like **kwargs. to be decided, personally find this more clean and understable.
-                self.model.batch(x=x, y=y, optimizer=self.optimizer, **self.loss_dict)
+                self.model.batch(
+                    x=x, y=y, optimizer=self.optimizer, **self.loss_dict)
         return self.objective()
 
     def objective(self) -> dict[str, float]:
@@ -284,29 +305,48 @@ class TuneModel(Trainable):
             "recall",
             "spearmanr",
         ]  # TODO maybe we report only a subset of metrics, given certain criteria (eg. if classification or regression)
-        predict_val = PredictWrapper(self.model, self.validation, loss_dict=self.loss_dict)
-        predict_train = PredictWrapper(self.model, self.training, loss_dict=self.loss_dict)
+        predict_val = PredictWrapper(
+            self.model, self.validation, loss_dict=self.loss_dict
+        )
+        predict_train = PredictWrapper(
+            self.model, self.training, loss_dict=self.loss_dict
+        )
         return {
-            **{"val_" + metric: value for metric, value in predict_val.compute_metrics(metrics).items()},
-            **{"train_" + metric: value for metric, value in predict_train.compute_metrics(metrics).items()},
+            **{
+                "val_" + metric: value
+                for metric, value in predict_val.compute_metrics(metrics).items()
+            },
+            **{
+                "train_" + metric: value
+                for metric, value in predict_train.compute_metrics(metrics).items()
+            },
         }
 
-    def export_model(self, export_dir: str | None = None) -> None:  # type: ignore[override]
+    # type: ignore[override]
+    def export_model(self, export_dir: str | None = None) -> None:
         """Export model to safetensors format."""
         if export_dir is None:
             return
-        safe_save_model(self.model, os.path.join(export_dir, "model.safetensors"))
+        safe_save_model(self.model, os.path.join(
+            export_dir, "model.safetensors"))
 
     def load_checkpoint(self, checkpoint: dict[Any, Any] | None) -> None:
         """Load model and optimizer state from checkpoint."""
         if checkpoint is None:
             return
         checkpoint_dir = checkpoint["checkpoint_dir"]
-        self.model = safe_load_model(self.model, os.path.join(checkpoint_dir, "model.safetensors"))
-        self.optimizer.load_state_dict(torch.load(os.path.join(checkpoint_dir, "optimizer.pt")))
+        self.model = safe_load_model(
+            self.model, os.path.join(checkpoint_dir, "model.safetensors")
+        )
+        self.optimizer.load_state_dict(
+            torch.load(os.path.join(checkpoint_dir, "optimizer.pt"))
+        )
 
     def save_checkpoint(self, checkpoint_dir: str) -> dict[Any, Any]:
         """Save model and optimizer state to checkpoint."""
-        safe_save_model(self.model, os.path.join(checkpoint_dir, "model.safetensors"))
-        torch.save(self.optimizer.state_dict(), os.path.join(checkpoint_dir, "optimizer.pt"))
+        safe_save_model(self.model, os.path.join(
+            checkpoint_dir, "model.safetensors"))
+        torch.save(
+            self.optimizer.state_dict(), os.path.join(checkpoint_dir, "optimizer.pt")
+        )
         return {"checkpoint_dir": checkpoint_dir}

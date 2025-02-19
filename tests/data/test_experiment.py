@@ -21,7 +21,9 @@ def dna_experiment_config_path() -> str:
 
 
 @pytest.fixture
-def dna_experiment_sub_yaml(dna_experiment_config_path: str) -> yaml_data.YamlConfigDict:
+def dna_experiment_sub_yaml(
+    dna_experiment_config_path: str,
+) -> yaml_data.YamlConfigDict:
     """Get a sub-configuration from the DNA experiment config.
 
     Args:
@@ -34,8 +36,11 @@ def dna_experiment_sub_yaml(dna_experiment_config_path: str) -> yaml_data.YamlCo
         yaml_dict = yaml.safe_load(f)
         yaml_config = yaml_data.YamlConfigDict(**yaml_dict)
 
-    yaml_configs = yaml_data.generate_data_configs(yaml_config)
-    return yaml_configs[0]
+    yaml_split_configs = yaml_data.generate_split_configs(yaml_config)
+    yaml_split_transform_configs = yaml_data.generate_split_transform_configs(
+        yaml_split_configs[0]
+    )
+    return yaml_split_transform_configs[0]
 
 
 @pytest.fixture
@@ -80,7 +85,9 @@ def test_get_encoder(text_onehot_encoder_params: tuple[str, dict[str, str]]) -> 
     assert isinstance(encoder, AbstractEncoder)
 
 
-def test_set_encoder_as_attribute(text_onehot_encoder_params: tuple[str, dict[str, str]]) -> None:
+def test_set_encoder_as_attribute(
+    text_onehot_encoder_params: tuple[str, dict[str, str]],
+) -> None:
     """Test the set_encoder_as_attribute method of the AbstractExperiment class.
 
     Args:
@@ -95,7 +102,9 @@ def test_set_encoder_as_attribute(text_onehot_encoder_params: tuple[str, dict[st
     assert experiment.get_function_encode_all("ciao") == encoder.encode_all
 
 
-def test_build_experiment_class_encoder_dict(dna_experiment_sub_yaml: yaml_data.YamlConfigDict) -> None:
+def test_build_experiment_class_encoder_dict(
+    dna_experiment_sub_yaml: yaml_data.YamlConfigDict,
+) -> None:
     """Test the build_experiment_class_encoder_dict method.
 
     Args:
@@ -115,7 +124,8 @@ def test_get_data_transformer() -> None:
     """Test the get_data_transformer method of the TransformLoader class."""
     experiment = loaders.TransformLoader()
     transformer = experiment.get_data_transformer("ReverseComplement")
-    assert isinstance(transformer, data_transformation_generators.ReverseComplement)
+    assert isinstance(
+        transformer, data_transformation_generators.ReverseComplement)
 
 
 def test_set_data_transformer_as_attribute() -> None:
@@ -141,7 +151,10 @@ def test_initialize_column_data_transformers_from_config(
 
     assert hasattr(experiment, "col1")
     column_transformers = experiment.col1
-    assert any(isinstance(t, data_transformation_generators.ReverseComplement) for t in column_transformers.values())
+    assert any(
+        isinstance(t, data_transformation_generators.ReverseComplement)
+        for t in column_transformers.values()
+    )
 
 
 def test_initialize_splitter_from_config(

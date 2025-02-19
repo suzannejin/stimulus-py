@@ -50,10 +50,11 @@ class DatasetManager:
 
     def __init__(
         self,
-        config_path: str,
+        config_dict: yaml_data.YamlSplitConfigDict,
     ) -> None:
         """Initialize the DatasetManager."""
-        self.config = self._load_config(config_path)
+        # self.config = self._load_config(config_path)
+        self.config: yaml_data.YamlSplitTransformDict = config_dict
         self.column_categories = self.categorize_columns_by_type()
 
     def categorize_columns_by_type(self) -> dict:
@@ -93,7 +94,8 @@ class DatasetManager:
 
         return {"input": input_columns, "label": label_columns, "meta": meta_columns}
 
-    def _load_config(self, config_path: str) -> yaml_data.YamlConfigDict:
+    # TODO: Remove or change this function as the config is now preloaded
+    def _load_config(self, config_path: str) -> yaml_data.YamlSplitConfigDict:
         """Loads and parses a YAML configuration file.
 
         Args:
@@ -108,8 +110,11 @@ class DatasetManager:
             >>> print(config["columns"][0]["column_name"])
             'hello'
         """
+
         with open(config_path) as file:
-            return yaml_data.YamlSubConfigDict(**yaml.safe_load(file))
+            # FIXME: cette fonction est appellé pour test_shuffle_csv et test_tune
+            return yaml_data.YamlSplitConfigDict(**yaml.safe_load(file))
+            return yaml_data.YamlSplitTransformDict(**yaml.safe_load(file))
 
     def get_split_columns(self) -> list[str]:
         """Get the columns that are used for splitting."""
@@ -185,7 +190,8 @@ class EncodeManager:
             >>> print(encoded.shape)
             torch.Size([2, 4, 4])  # 2 sequences, length 4, one-hot encoded
         """
-        encode_all_function = self.encoder_loader.get_function_encode_all(column_name)
+        encode_all_function = self.encoder_loader.get_function_encode_all(
+            column_name)
         return encode_all_function(column_data)
 
     def encode_columns(self, column_data: dict) -> dict:
@@ -207,11 +213,16 @@ class EncodeManager:
             >>> print(encoded["dna_seq"].shape)
             torch.Size([2, 4, 4])  # 2 sequences, length 4, one-hot encoded
         """
-        return {col: self.encode_column(col, values) for col, values in column_data.items()}
+        return {
+            col: self.encode_column(col, values) for col, values in column_data.items()
+        }
 
     def encode_dataframe(self, dataframe: pl.DataFrame) -> dict[str, torch.Tensor]:
         """Encode the dataframe using the encoders."""
-        return {col: self.encode_column(col, dataframe[col].to_list()) for col in dataframe.columns}
+        return {
+            col: self.encode_column(col, dataframe[col].to_list())
+            for col in dataframe.columns
+        }
 
 
 class TransformManager:
@@ -224,7 +235,9 @@ class TransformManager:
         """Initialize the TransformManager."""
         self.transform_loader = transform_loader
 
-    def transform_column(self, column_name: str, transform_name: str, column_data: list) -> tuple[list, bool]:
+    def transform_column(
+        self, column_name: str, transform_name: str, column_data: list
+    ) -> tuple[list, bool]:
         """Transform a column of data using the specified transformation.
 
         Args:
@@ -236,7 +249,9 @@ class TransformManager:
             list: The transformed data.
             bool: Whether the transformation added new rows to the data.
         """
-        transformer = self.transform_loader.__getattribute__(column_name)[transform_name]
+        transformer = self.transform_loader.__getattribute__(column_name)[
+            transform_name
+        ]
         return transformer.transform_all(column_data), transformer.add_row
 
 
@@ -250,7 +265,9 @@ class SplitManager:
         """Initialize the SplitManager."""
         self.split_loader = split_loader
 
-    def get_split_indices(self, data: dict) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def get_split_indices(
+        self, data: dict
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Get the indices for train, validation, and test splits."""
         return self.split_loader.get_function_split()(data)
 
@@ -270,16 +287,16 @@ class DatasetHandler:
 
     def __init__(
         self,
-        config_path: str,
+        data_config: yaml_data.YamlSplitTransformDict,
         csv_path: str,
     ) -> None:
         """Initialize the DatasetHandler with required config.
 
         Args:
-            config_path (str): Path to the dataset configuration file.
+            data_config (yaml_data.YamlSplitTransformDict): A YamlSplitTransformDict object holding the config.
             csv_path (str): Path to the CSV data file.
         """
-        self.dataset_manager = DatasetManager(config_path)
+        self.dataset_manager = DatasetManager(data_config)
         self.columns = self.read_csv_header(csv_path)
         self.data = self.load_csv(csv_path)
 
@@ -353,7 +370,8 @@ class DatasetProcessor(DatasetHandler):
         split_input_data = self.select_columns(split_columns)
 
         # get the split indices
-        train, validation, test = split_manager.get_split_indices(split_input_data)
+        train, validation, test = split_manager.get_split_indices(
+            split_input_data)
 
         # add the split column to the data
         split_column = np.full(len(self.data), -1).astype(int)
@@ -367,17 +385,25 @@ class DatasetProcessor(DatasetHandler):
 
     def apply_transformation_group(self, transform_manager: TransformManager) -> None:
         """Apply the transformation group to the data."""
-        for column_name, transform_name, _params in self.dataset_manager.get_transform_logic()["transformations"]:
+        for (
+            column_name,
+            transform_name,
+            _params,
+        ) in self.dataset_manager.get_transform_logic()["transformations"]:
             transformed_data, add_row = transform_manager.transform_column(
                 column_name,
                 transform_name,
                 self.data[column_name],
             )
             if add_row:
-                new_rows = self.data.with_columns(pl.Series(column_name, transformed_data))
+                new_rows = self.data.with_columns(
+                    pl.Series(column_name, transformed_data)
+                )
                 self.data = pl.vstack(self.data, new_rows)
             else:
-                self.data = self.data.with_columns(pl.Series(column_name, transformed_data))
+                self.data = self.data.with_columns(
+                    pl.Series(column_name, transformed_data)
+                )
 
     def shuffle_labels(self, seed: Optional[float] = None) -> None:
         """Shuffles the labels in the data."""
@@ -386,7 +412,9 @@ class DatasetProcessor(DatasetHandler):
 
         label_keys = self.dataset_manager.column_categories["label"]
         for key in label_keys:
-            self.data = self.data.with_columns(pl.Series(key, np.random.permutation(list(self.data[key]))))
+            self.data = self.data.with_columns(
+                pl.Series(key, np.random.permutation(list(self.data[key])))
+            )
 
 
 class DatasetLoader(DatasetHandler):
@@ -394,15 +422,19 @@ class DatasetLoader(DatasetHandler):
 
     def __init__(
         self,
-        config_path: str,
+        data_config: yaml_data.YamlSplitTransformDict,
         csv_path: str,
         encoder_loader: loaders.EncoderLoader,
         split: Union[int, None] = None,
     ) -> None:
         """Initialize the DatasetLoader."""
-        super().__init__(config_path, csv_path)
+        super().__init__(data_config, csv_path)
         self.encoder_manager = EncodeManager(encoder_loader)
-        self.data = self.load_csv_per_split(csv_path, split) if split is not None else self.load_csv(csv_path)
+        self.data = (
+            self.load_csv_per_split(csv_path, split)
+            if split is not None
+            else self.load_csv(csv_path)
+        )
 
     def get_all_items(self) -> tuple[dict, dict, dict]:
         """Get the full dataset as three separate dictionaries for inputs, labels and metadata.
@@ -428,8 +460,10 @@ class DatasetLoader(DatasetHandler):
             self.dataset_manager.column_categories["label"],
             self.dataset_manager.column_categories["meta"],
         )
-        input_data = self.encoder_manager.encode_dataframe(self.data[input_columns])
-        label_data = self.encoder_manager.encode_dataframe(self.data[label_columns])
+        input_data = self.encoder_manager.encode_dataframe(
+            self.data[input_columns])
+        label_data = self.encoder_manager.encode_dataframe(
+            self.data[label_columns])
         meta_data = {key: self.data[key].to_list() for key in meta_columns}
         return input_data, label_data, meta_data
 
@@ -447,16 +481,21 @@ class DatasetLoader(DatasetHandler):
         we are gonna load only the relevant data for it.
         """
         if "split" not in self.columns:
-            raise ValueError("The category split is not present in the csv file")
+            raise ValueError(
+                "The category split is not present in the csv file")
         if split not in [0, 1, 2]:
-            raise ValueError(f"The split value should be 0, 1 or 2. The specified split value is {split}")
+            raise ValueError(
+                f"The split value should be 0, 1 or 2. The specified split value is {split}"
+            )
         return pl.scan_csv(csv_path).filter(pl.col("split") == split).collect()
 
     def __len__(self) -> int:
         """Return the length of the first list in input, assumes that all are the same length."""
         return len(self.data)
 
-    def __getitem__(self, idx: Any) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor], dict[str, list]]:
+    def __getitem__(
+        self, idx: Any
+    ) -> tuple[dict[str, torch.Tensor], dict[str, torch.Tensor], dict[str, list]]:
         """Get the data at a given index, and encodes the input and label, leaving meta as it is.
 
         Args:
@@ -474,17 +513,24 @@ class DatasetLoader(DatasetHandler):
             data_at_index = self.data.slice(start, stop - start)
 
             # Process DataFrame
-            input_data = self.encoder_manager.encode_dataframe(data_at_index[input_columns])
-            label_data = self.encoder_manager.encode_dataframe(data_at_index[label_columns])
-            meta_data = {key: data_at_index[key].to_list() for key in meta_columns}
+            input_data = self.encoder_manager.encode_dataframe(
+                data_at_index[input_columns]
+            )
+            label_data = self.encoder_manager.encode_dataframe(
+                data_at_index[label_columns]
+            )
+            meta_data = {key: data_at_index[key].to_list()
+                         for key in meta_columns}
 
         elif isinstance(idx, int):
             # For single row, convert to dict with column names as keys
             row_dict = dict(zip(self.data.columns, self.data.row(idx)))
 
             # Create single-row DataFrames for encoding
-            input_df = pl.DataFrame({col: [row_dict[col]] for col in input_columns})
-            label_df = pl.DataFrame({col: [row_dict[col]] for col in label_columns})
+            input_df = pl.DataFrame(
+                {col: [row_dict[col]] for col in input_columns})
+            label_df = pl.DataFrame(
+                {col: [row_dict[col]] for col in label_columns})
 
             input_data = self.encoder_manager.encode_dataframe(input_df)
             label_data = self.encoder_manager.encode_dataframe(label_df)
@@ -494,8 +540,13 @@ class DatasetLoader(DatasetHandler):
             data_at_index = self.data.select(idx)
 
             # Process DataFrame
-            input_data = self.encoder_manager.encode_dataframe(data_at_index[input_columns])
-            label_data = self.encoder_manager.encode_dataframe(data_at_index[label_columns])
-            meta_data = {key: data_at_index[key].to_list() for key in meta_columns}
+            input_data = self.encoder_manager.encode_dataframe(
+                data_at_index[input_columns]
+            )
+            label_data = self.encoder_manager.encode_dataframe(
+                data_at_index[label_columns]
+            )
+            meta_data = {key: data_at_index[key].to_list()
+                         for key in meta_columns}
 
         return input_data, label_data, meta_data

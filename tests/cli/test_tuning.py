@@ -12,14 +12,18 @@ import pytest
 import ray
 import yaml
 
-from stimulus.cli import tuning
+from src.stimulus.cli import tuning
+from src.stimulus.utils.yaml_data import YamlSplitTransformDict
 
 
 @pytest.fixture
 def data_path() -> str:
     """Get path to test data CSV file."""
     return str(
-        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_stimulus_split.csv",
+        Path(__file__).parent.parent
+        / "test_data"
+        / "titanic"
+        / "titanic_stimulus_split.csv",
     )
 
 
@@ -27,7 +31,10 @@ def data_path() -> str:
 def data_config() -> str:
     """Get path to test data config YAML."""
     return str(
-        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_sub_config.yaml",
+        Path(__file__).parent.parent
+        / "test_data"
+        / "titanic"
+        / "titanic_sub_config.yaml",
     )
 
 
@@ -115,6 +122,10 @@ def test_tuning_main(
     assert os.path.exists(model_config), f"Model config not found at {model_config}"
 
     try:
+        config_dict: YamlSplitTransformDict
+        with open(data_config) as f:
+            config_dict = YamlSplitTransformDict(**yaml.safe_load(f))
+
         results_dir = Path("tests/test_data/titanic/test_results/").resolve()
         results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -122,10 +133,11 @@ def test_tuning_main(
         tuning.main(
             model_path=model_path,
             data_path=data_path,
-            data_config_path=data_config,
+            data_config=config_dict,
             model_config_path=model_config,
             initial_weights=None,
-            ray_results_dirpath=str(results_dir),  # Directory path without URI scheme
+            # Directory path without URI scheme
+            ray_results_dirpath=str(results_dir),
             output_path=str(results_dir / "best_model.safetensors"),
             best_optimizer_path=str(results_dir / "best_optimizer.pt"),
             best_metrics_path=str(results_dir / "best_metrics.csv"),

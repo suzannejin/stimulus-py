@@ -22,8 +22,22 @@ def get_args() -> argparse.Namespace:
         Parsed command line arguments.
     """
     parser = argparse.ArgumentParser(description="Launch check_model.")
-    parser.add_argument("-d", "--data", type=str, required=True, metavar="FILE", help="Path to input csv file.")
-    parser.add_argument("-m", "--model", type=str, required=True, metavar="FILE", help="Path to model file.")
+    parser.add_argument(
+        "-d",
+        "--data",
+        type=str,
+        required=True,
+        metavar="FILE",
+        help="Path to input csv file.",
+    )
+    parser.add_argument(
+        "-m",
+        "--model",
+        type=str,
+        required=True,
+        metavar="FILE",
+        help="Path to model file.",
+    )
     parser.add_argument(
         "-e",
         "--data_config",
@@ -107,14 +121,16 @@ def main(
     """
     with open(data_config_path) as file:
         data_config = yaml.safe_load(file)
-        data_config = yaml_data.YamlSubConfigDict(**data_config)
+        data_config = yaml_data.YamlSplitTransformDict(**data_config)
 
     with open(model_config_path) as file:
         model_config = yaml.safe_load(file)
         model_config = yaml_model_schema.Model(**model_config)
 
     encoder_loader = loaders.EncoderLoader()
-    encoder_loader.initialize_column_encoders_from_config(column_config=data_config.columns)
+    encoder_loader.initialize_column_encoders_from_config(
+        column_config=data_config.columns
+    )
 
     logger.info("Dataset loaded successfully.")
 
@@ -122,7 +138,8 @@ def main(
 
     logger.info("Model class loaded successfully.")
 
-    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(model=model_config)
+    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(
+        model=model_config)
     ray_config_dict = ray_config_loader.get_config().model_dump()
     ray_config_model = ray_config_loader.get_config()
 
@@ -140,7 +157,7 @@ def main(
     logger.info("Model instance loaded successfully.")
 
     torch_dataset = handlertorch.TorchDataset(
-        config_path=data_config_path,
+        data_config=data_config,
         csv_path=data_path,
         encoder_loader=encoder_loader,
     )
@@ -171,7 +188,7 @@ def main(
 
     tuner = raytune_learner.TuneWrapper(
         model_config=ray_config_model,
-        data_config_path=data_config_path,
+        data_config=data_config,
         model_class=model_class,
         data_path=data_path,
         encoder_loader=encoder_loader,
