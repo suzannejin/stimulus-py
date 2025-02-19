@@ -179,18 +179,16 @@ def main(
     """
     with open(model_config_path) as file:
         model_config_dict: dict[str, Any] = yaml.safe_load(file)
-    model_config: yaml_model_schema.Model = yaml_model_schema.Model(
-        **model_config_dict)
+    model_config: yaml_model_schema.Model = yaml_model_schema.Model(**model_config_dict)
 
     encoder_loader = loaders.EncoderLoader()
     encoder_loader.initialize_column_encoders_from_config(
-        column_config=data_config.columns
+        column_config=data_config.columns,
     )
 
     model_class = launch_utils.import_class_from_file(model_path)
 
-    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(
-        model=model_config)
+    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(model=model_config)
     ray_config_model = ray_config_loader.get_config()
 
     tuner = raytune_learner.TuneWrapper(

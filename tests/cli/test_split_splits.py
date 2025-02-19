@@ -2,7 +2,7 @@
 
 import hashlib
 import os
-import tempfile
+from pathlib import Path
 from typing import Any, Callable
 
 import pytest
@@ -37,7 +37,7 @@ def test_split_split(
     snapshot: Callable[[], Any],
     yaml_type: str,
     error: Exception | None,
-    tmp_path,  # Pytest tmp file system
+    tmp_path: Path,  # Pytest tmp file system
 ) -> None:
     """Tests the CLI command with correct and wrong YAML files."""
     yaml_path = request.getfixturevalue(yaml_type)
@@ -53,6 +53,4 @@ def test_split_split(
         for f in test_out:
             with open(os.path.join(tmpdir, f)) as file:
                 hashes.append(hashlib.md5(file.read().encode()).hexdigest())  # noqa: S324
-        assert (
-            sorted(hashes) == snapshot
-        )  # sorted ensures that the order of the hashes does not matter
+        assert sorted(hashes) == snapshot  # sorted ensures that the order of the hashes does not matter

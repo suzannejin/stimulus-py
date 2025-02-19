@@ -129,7 +129,7 @@ def main(
 
     encoder_loader = loaders.EncoderLoader()
     encoder_loader.initialize_column_encoders_from_config(
-        column_config=data_config.columns
+        column_config=data_config.columns,
     )
 
     logger.info("Dataset loaded successfully.")
@@ -138,8 +138,7 @@ def main(
 
     logger.info("Model class loaded successfully.")
 
-    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(
-        model=model_config)
+    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(model=model_config)
     ray_config_dict = ray_config_loader.get_config().model_dump()
     ray_config_model = ray_config_loader.get_config()
 
