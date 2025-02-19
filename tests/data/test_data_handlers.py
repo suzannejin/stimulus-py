@@ -70,8 +70,7 @@ def generate_sub_configs(base_config: YamlConfigDict) -> list[YamlConfigDict]:
     Returns:
         list[YamlConfigDict]: List of generated configurations
     """
-    split_configs: list[YamlSplitConfigDict] = generate_split_configs(
-        base_config)
+    split_configs: list[YamlSplitConfigDict] = generate_split_configs(base_config)
     split_transform_list: list[YamlSplitTransformDict] = []
     for split in split_configs:
         split_transform_list.extend(generate_split_transform_configs(split))
@@ -104,8 +103,7 @@ def encoder_loader(generate_sub_configs: list[YamlConfigDict]) -> loaders.Encode
         experiments.EncoderLoader: Initialized encoder loader
     """
     loader = loaders.EncoderLoader()
-    loader.initialize_column_encoders_from_config(
-        generate_sub_configs[0].columns)
+    loader.initialize_column_encoders_from_config(generate_sub_configs[0].columns)
     return loader
 
 
@@ -123,7 +121,7 @@ def transform_loader(
     """
     loader = loaders.TransformLoader()
     loader.initialize_column_data_transformers_from_config(
-        generate_sub_configs[0].transforms
+        generate_sub_configs[0].transforms,
     )
     return loader
 
@@ -246,12 +244,10 @@ def test_transform_manager_transform_column() -> None:
             ),
         ],
     )
-    transform_loader.initialize_column_data_transformers_from_config(
-        dummy_config)
+    transform_loader.initialize_column_data_transformers_from_config(dummy_config)
     manager = TransformManager(transform_loader)
     data = [1, 2, 3]
-    transformed, added_row = manager.transform_column(
-        "test_col", "GaussianNoise", data)
+    transformed, added_row = manager.transform_column("test_col", "GaussianNoise", data)
     assert len(transformed) == len(data)
     assert added_row is False
 
@@ -287,7 +283,7 @@ def test_dataset_processor_init(
 ) -> None:
     """Test initialization of DatasetProcessor."""
     processor = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
 
@@ -302,7 +298,7 @@ def test_dataset_processor_apply_split(
 ) -> None:
     """Test applying splits in DatasetProcessor."""
     processor = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
     processor.data = processor.load_csv(titanic_csv_path)
@@ -319,43 +315,28 @@ def test_dataset_processor_apply_transformation_group(
 ) -> None:
     """Test applying transformation groups."""
     processor = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
     processor.data = processor.load_csv(titanic_csv_path)
 
     processor_control = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
     processor_control.data = processor_control.load_csv(titanic_csv_path)
 
     processor.apply_transformation_group(
-        transform_manager=TransformManager(transform_loader)
+        transform_manager=TransformManager(transform_loader),
     )
 
-    assert processor.data["age"].to_list(
-    ) != processor_control.data["age"].to_list()
-    assert processor.data["fare"].to_list(
-    ) != processor_control.data["fare"].to_list()
-    assert (
-        processor.data["parch"].to_list(
-        ) == processor_control.data["parch"].to_list()
-    )
-    assert (
-        processor.data["sibsp"].to_list(
-        ) == processor_control.data["sibsp"].to_list()
-    )
-    assert (
-        processor.data["pclass"].to_list(
-        ) == processor_control.data["pclass"].to_list()
-    )
-    assert (
-        processor.data["embarked"].to_list()
-        == processor_control.data["embarked"].to_list()
-    )
-    assert processor.data["sex"].to_list(
-    ) == processor_control.data["sex"].to_list()
+    assert processor.data["age"].to_list() != processor_control.data["age"].to_list()
+    assert processor.data["fare"].to_list() != processor_control.data["fare"].to_list()
+    assert processor.data["parch"].to_list() == processor_control.data["parch"].to_list()
+    assert processor.data["sibsp"].to_list() == processor_control.data["sibsp"].to_list()
+    assert processor.data["pclass"].to_list() == processor_control.data["pclass"].to_list()
+    assert processor.data["embarked"].to_list() == processor_control.data["embarked"].to_list()
+    assert processor.data["sex"].to_list() == processor_control.data["sex"].to_list()
 
 
 # Test DatasetLoader

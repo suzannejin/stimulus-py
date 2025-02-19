@@ -30,7 +30,8 @@ class EncoderLoader:
         self.seed = seed
 
     def initialize_column_encoders_from_config(
-        self, column_config: yaml_data.YamlColumns
+        self,
+        column_config: yaml_data.YamlColumns,
     ) -> None:
         """Build the loader from a config dictionary.
 
@@ -38,8 +39,7 @@ class EncoderLoader:
             column_config (yaml_data.YamlColumns): Configuration dictionary containing field names (column_name) and their encoder specifications.
         """
         for field in column_config:
-            encoder = self.get_encoder(
-                field.encoder[0].name, field.encoder[0].params)
+            encoder = self.get_encoder(field.encoder[0].name, field.encoder[0].params)
             self.set_encoder_as_attribute(field.column_name, encoder)
 
     def get_function_encode_all(self, field_name: str) -> Any:
@@ -54,7 +54,9 @@ class EncoderLoader:
         return getattr(self, field_name).encode_all
 
     def get_encoder(
-        self, encoder_name: str, encoder_params: Optional[dict] = None
+        self,
+        encoder_name: str,
+        encoder_params: Optional[dict] = None,
     ) -> Any:
         """Gets an encoder object from the encoders module and initializes it with the given parameters.
 
@@ -69,7 +71,7 @@ class EncoderLoader:
             return getattr(encoders, encoder_name)(**encoder_params)
         except AttributeError:
             logging.exception(
-                f"Encoder '{encoder_name}' not found in the encoders module."
+                f"Encoder '{encoder_name}' not found in the encoders module.",
             )
             logging.exception(
                 f"Available encoders: {[name for name, obj in encoders.__dict__.items() if isinstance(obj, type) and name not in ('ABC', 'Any')]}",
@@ -80,7 +82,7 @@ class EncoderLoader:
             if encoder_params is None:
                 return getattr(encoders, encoder_name)()
             logging.exception(
-                f"Encoder '{encoder_name}' has incorrect parameters: {encoder_params}"
+                f"Encoder '{encoder_name}' has incorrect parameters: {encoder_params}",
             )
             logging.exception(
                 f"Expected parameters for '{encoder_name}': {inspect.signature(getattr(encoders, encoder_name))}",
@@ -88,7 +90,9 @@ class EncoderLoader:
             raise
 
     def set_encoder_as_attribute(
-        self, field_name: str, encoder: encoders.AbstractEncoder
+        self,
+        field_name: str,
+        encoder: encoders.AbstractEncoder,
     ) -> None:
         """Sets the encoder as an attribute of the loader.
 
@@ -111,7 +115,9 @@ class TransformLoader:
         self.seed = seed
 
     def get_data_transformer(
-        self, transformation_name: str, transformation_params: Optional[dict] = None
+        self,
+        transformation_name: str,
+        transformation_params: Optional[dict] = None,
     ) -> Any:
         """Gets a transformer object from the transformers module.
 
@@ -124,11 +130,11 @@ class TransformLoader:
         """
         try:
             return getattr(data_transformation_generators, transformation_name)(
-                **transformation_params
+                **transformation_params,
             )
         except AttributeError:
             logging.exception(
-                f"Transformer '{transformation_name}' not found in the transformers module."
+                f"Transformer '{transformation_name}' not found in the transformers module.",
             )
             logging.exception(
                 f"Available transformers: {[name for name, obj in data_transformation_generators.__dict__.items() if isinstance(obj, type) and name not in ('ABC', 'Any')]}",
@@ -139,7 +145,7 @@ class TransformLoader:
             if transformation_params is None:
                 return getattr(data_transformation_generators, transformation_name)()
             logging.exception(
-                f"Transformer '{transformation_name}' has incorrect parameters: {transformation_params}"
+                f"Transformer '{transformation_name}' has incorrect parameters: {transformation_params}",
             )
             logging.exception(
                 f"Expected parameters for '{transformation_name}': {inspect.signature(getattr(data_transformation_generators, transformation_name))}",
@@ -147,7 +153,9 @@ class TransformLoader:
             raise
 
     def set_data_transformer_as_attribute(
-        self, field_name: str, data_transformer: Any
+        self,
+        field_name: str,
+        data_transformer: Any,
     ) -> None:
         """Sets the data transformer as an attribute of the loader.
 
@@ -167,7 +175,8 @@ class TransformLoader:
             field_value[data_transformer.__class__.__name__] = data_transformer
 
     def initialize_column_data_transformers_from_config(
-        self, transform_config: yaml_data.YamlTransform
+        self,
+        transform_config: yaml_data.YamlTransform,
     ) -> None:
         """Build the loader from a config dictionary.
 
@@ -202,7 +211,8 @@ class TransformLoader:
             col_name = column.column_name
             for transform_spec in column.transformations:
                 transformer = self.get_data_transformer(
-                    transform_spec.name, transform_spec.params
+                    transform_spec.name,
+                    transform_spec.params,
                 )
                 self.set_data_transformer_as_attribute(col_name, transformer)
 
@@ -236,7 +246,9 @@ class SplitLoader:
         return self.split.get_split_indexes
 
     def get_splitter(
-        self, splitter_name: str, splitter_params: Optional[dict] = None
+        self,
+        splitter_name: str,
+        splitter_params: Optional[dict] = None,
     ) -> Any:
         """Gets a splitter object from the splitters module.
 
@@ -253,7 +265,7 @@ class SplitLoader:
             if splitter_params is None:
                 return getattr(splitters, splitter_name)()
             logging.exception(
-                f"Splitter '{splitter_name}' has incorrect parameters: {splitter_params}"
+                f"Splitter '{splitter_name}' has incorrect parameters: {splitter_params}",
             )
             logging.exception(
                 f"Expected parameters for '{splitter_name}': {inspect.signature(getattr(splitters, splitter_name))}",
@@ -269,13 +281,13 @@ class SplitLoader:
         self.split = splitter
 
     def initialize_splitter_from_config(
-        self, split_config: yaml_data.YamlSplitConfigDict
+        self,
+        split_config: yaml_data.YamlSplitConfigDict,
     ) -> None:
         """Build the loader from a config dictionary.
 
         Args:
             split_config (yaml_data.YamlSplitConfigDict): Configuration dictionary containing split configurations.
         """
-        splitter = self.get_splitter(
-            split_config.split_method, split_config.params)
+        splitter = self.get_splitter(split_config.split_method, split_config.params)
         self.set_splitter_as_attribute(splitter)

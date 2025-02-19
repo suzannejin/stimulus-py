@@ -38,7 +38,7 @@ def dna_experiment_sub_yaml(
 
     yaml_split_configs = yaml_data.generate_split_configs(yaml_config)
     yaml_split_transform_configs = yaml_data.generate_split_transform_configs(
-        yaml_split_configs[0]
+        yaml_split_configs[0],
     )
     return yaml_split_transform_configs[0]
 
@@ -124,8 +124,7 @@ def test_get_data_transformer() -> None:
     """Test the get_data_transformer method of the TransformLoader class."""
     experiment = loaders.TransformLoader()
     transformer = experiment.get_data_transformer("ReverseComplement")
-    assert isinstance(
-        transformer, data_transformation_generators.ReverseComplement)
+    assert isinstance(transformer, data_transformation_generators.ReverseComplement)
 
 
 def test_set_data_transformer_as_attribute() -> None:
@@ -151,10 +150,7 @@ def test_initialize_column_data_transformers_from_config(
 
     assert hasattr(experiment, "col1")
     column_transformers = experiment.col1
-    assert any(
-        isinstance(t, data_transformation_generators.ReverseComplement)
-        for t in column_transformers.values()
-    )
+    assert any(isinstance(t, data_transformation_generators.ReverseComplement) for t in column_transformers.values())
 
 
 def test_initialize_splitter_from_config(
