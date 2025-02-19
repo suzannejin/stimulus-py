@@ -1,7 +1,9 @@
-import yaml
 from typing import Any
 
-import stimulus.utils.yaml_data_schema as yaml_data_schema
+import yaml
+
+from stimulus.utils import yaml_data_schema
+
 
 def extract_transform_parameters_at_index(
     transform: yaml_data_schema.Transform,

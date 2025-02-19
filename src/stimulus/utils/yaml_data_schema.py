@@ -2,7 +2,6 @@
 
 from typing import Any, Optional, Union
 
-import yaml
 from pydantic import BaseModel, field_validator
 
 
