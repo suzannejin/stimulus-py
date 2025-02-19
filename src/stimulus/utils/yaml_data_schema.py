@@ -3,7 +3,7 @@
 from typing import Any, Optional, Union
 
 import yaml
-from pydantic import BaseModel, ValidationError, field_validator
+from pydantic import BaseModel, field_validator
 
 
 class GlobalParams(BaseModel):
@@ -108,7 +108,6 @@ class ConfigDict(BaseModel):
     split: list[Split]
 
 
-# TODO: Rename this class to SplitConfigDict
 class SplitConfigDict(BaseModel):
     """Model for sub-configuration generated from main config."""
 
@@ -331,9 +330,10 @@ def dump_yaml_list_into_files(
     base_name: str,
 ) -> None:
     """Dumps YAML configurations to files with consistent formatting."""
-    
+
     class CleanDumper(yaml.SafeDumper):
         """Simplified dumper maintaining key functionality"""
+
         def ignore_aliases(self, _data: Any) -> bool:
             return True  # Disable anchor/alias generation
 
@@ -344,18 +344,20 @@ def dump_yaml_list_into_files(
                 super().write_line_break()
 
     # Register type handlers
-    CleanDumper.add_representer(type(None), 
-        lambda d, _: d.represent_scalar('tag:yaml.org,2002:null', ''))
-    
-    CleanDumper.add_representer(list, 
+    CleanDumper.add_representer(type(None), lambda d, _: d.represent_scalar("tag:yaml.org,2002:null", ""))
+
+    CleanDumper.add_representer(
+        list,
         lambda d, data: d.represent_sequence(
-            'tag:yaml.org,2002:seq', data, 
-            flow_style=isinstance(data[0], (list, dict)) if data else False
-        ))
+            "tag:yaml.org,2002:seq",
+            data,
+            flow_style=isinstance(data[0], (list, dict)) if data else False,
+        ),
+    )
 
     for i, yaml_dict in enumerate(yaml_list):
         data = _clean_params(yaml_dict.model_dump(exclude_none=True))
-        
+
         with open(f"{directory_path}/{base_name}_{i}.yaml", "w") as f:
             yaml.dump(
                 data,
@@ -364,16 +366,16 @@ def dump_yaml_list_into_files(
                 sort_keys=False,
                 indent=2,
                 width=float("inf"),
-                default_flow_style=None  # Let representers handle flow style
+                default_flow_style=None,  # Let representers handle flow style
             )
+
 
 def _clean_params(data: dict) -> dict:
     """Recursive cleaner for empty parameters (replaces fix_params)"""
     if isinstance(data, dict):
         return {
             k: _clean_params(
-                v if k not in ('encoder', 'transformations') 
-                else [dict(e, params=e.get('params') or {}) for e in v]
+                v if k not in ("encoder", "transformations") else [dict(e, params=e.get("params") or {}) for e in v],
             )
             for k, v in data.items()
         }
