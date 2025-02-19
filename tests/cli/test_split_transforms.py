@@ -38,11 +38,12 @@ def test_split_transforms(
 ) -> None:
     """Tests the CLI command with correct and wrong YAML files."""
     yaml_path: str = request.getfixturevalue(yaml_type)
-    tmpdir = tmp_path
-    if error:
-        with pytest.raises(error):
+    tmpdir = str(tmp_path)
+    if error is not None:
+        with pytest.raises(error):  # type: ignore[call-overload]
             main(yaml_path, tmpdir)
     else:
+        # convert tmpdir to str
         main(yaml_path, tmpdir)
         files = os.listdir(tmpdir)
         test_out = [f for f in files if f.startswith("test_")]

@@ -318,8 +318,7 @@ class TuneModel(Trainable):
             **{"train_" + metric: value for metric, value in predict_train.compute_metrics(metrics).items()},
         }
 
-    # type: ignore[override]
-    def export_model(self, export_dir: str | None = None) -> None:
+    def export_model(self, export_dir: str | None = None) -> None:  # type: ignore[override]
         """Export model to safetensors format."""
         if export_dir is None:
             return

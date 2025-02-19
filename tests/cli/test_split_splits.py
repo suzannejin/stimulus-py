@@ -41,7 +41,7 @@ def test_split_split(
 ) -> None:
     """Tests the CLI command with correct and wrong YAML files."""
     yaml_path = request.getfixturevalue(yaml_type)
-    tmpdir = tmp_path
+    tmpdir = str(tmp_path)
     if error:
         with pytest.raises(error):  # type: ignore[call-overload]
             split_split.main(yaml_path, tmpdir)

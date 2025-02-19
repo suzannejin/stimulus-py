@@ -283,7 +283,7 @@ def test_dataset_processor_init(
 ) -> None:
     """Test initialization of DatasetProcessor."""
     processor = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
 
@@ -298,7 +298,7 @@ def test_dataset_processor_apply_split(
 ) -> None:
     """Test applying splits in DatasetProcessor."""
     processor = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
     processor.data = processor.load_csv(titanic_csv_path)
@@ -315,13 +315,13 @@ def test_dataset_processor_apply_transformation_group(
 ) -> None:
     """Test applying transformation groups."""
     processor = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
     processor.data = processor.load_csv(titanic_csv_path)
 
     processor_control = DatasetProcessor(
-        config_path=dump_single_split_config_to_disk,
+        data_config=dump_single_split_config_to_disk,
         csv_path=titanic_csv_path,
     )
     processor_control.data = processor_control.load_csv(titanic_csv_path)

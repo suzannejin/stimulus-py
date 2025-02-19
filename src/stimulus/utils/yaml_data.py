@@ -370,12 +370,12 @@ def dump_yaml_list_into_files(
             if len(self.indents) <= 1:  # At root level
                 super().write_line_break(_data)
 
-        def increase_indent(
+        def increase_indent(  # type: ignore[override]
             self,
             *,
             flow: bool = False,
             indentless: bool = False,
-        ) -> None:  # type: ignore[override]
+        ) -> None:
             """Ensure consistent indentation by preventing indentless sequences."""
             return super().increase_indent(
                 flow=flow,

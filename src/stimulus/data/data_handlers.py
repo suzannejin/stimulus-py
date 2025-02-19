@@ -343,9 +343,9 @@ class DatasetHandler:
 class DatasetProcessor(DatasetHandler):
     """Class for loading dataset, applying transformations and splitting."""
 
-    def __init__(self, config_path: str, csv_path: str) -> None:
+    def __init__(self, data_config: yaml_data.YamlSplitTransformDict, csv_path: str) -> None:
         """Initialize the DatasetProcessor."""
-        super().__init__(config_path, csv_path)
+        super().__init__(data_config, csv_path)
 
     def add_split(self, split_manager: SplitManager, *, force: bool = False) -> None:
         """Add a column specifying the train, validation, test splits of the data.

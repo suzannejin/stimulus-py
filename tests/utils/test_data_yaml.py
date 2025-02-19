@@ -59,7 +59,7 @@ def test_split_config_validation(load_titanic_yaml_from_file: YamlConfigDict) ->
 
 
 def test_sub_config_validation(
-    load_split_config_yaml_from_file: YamlConfigDict,
+    load_split_config_yaml_from_file: YamlSplitConfigDict,
 ) -> None:
     """Test sub-config validation."""
     split_config = generate_split_transform_configs(
