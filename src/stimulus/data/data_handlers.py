@@ -189,7 +189,7 @@ class DatasetLoader(DatasetHandler):
         label_columns: list[str],
         meta_columns: list[str],
         csv_path: str,
-        split: Union[int, None] = None,
+        split: Optional[int] = None,
     ) -> None:
         """Initialize the DatasetLoader."""
         super().__init__(csv_path)
