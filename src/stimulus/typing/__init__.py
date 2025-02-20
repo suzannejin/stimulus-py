@@ -7,7 +7,7 @@ The aliases from this module should be used for typing purposes only.
 """
 # ruff: noqa: F401
 
-from typing import TypeAlias, TypeVar, Any
+from typing import Any, TypeAlias, TypeVar
 
 # these imports mostly alias everything
 from stimulus.data.data_handlers import (
@@ -83,5 +83,5 @@ Data: TypeAlias = (
 
 # Replace with type aliases if needed
 CheckpointDict = dict[str, Any]
-TuneModel = TypeVar('TuneModel')
-TuneWrapper = TypeVar('TuneWrapper')
+TuneModel = TypeVar("TuneModel")
+TuneWrapper = TypeVar("TuneWrapper")

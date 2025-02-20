@@ -5,13 +5,13 @@ import warnings
 
 import pytest
 import ray
-import yaml
 import torch
+import yaml
 
-from stimulus.data.data_handlers import TorchDataset, DatasetLoader
+from stimulus.data.data_handlers import DatasetLoader, TorchDataset
 from stimulus.data.encoding import encoders as encoders_module
 from stimulus.learner.raytune_learner import TuneWrapper
-from stimulus.utils.yaml_model_schema import Model, RayTuneModel, RayConfigLoader
+from stimulus.utils.yaml_model_schema import Model, RayConfigLoader, RayTuneModel
 from tests.test_model import titanic_model
 
 
@@ -21,6 +21,7 @@ def ray_config_loader() -> RayTuneModel:
     with open("tests/test_model/titanic_model_cpu.yaml") as file:
         model_config = yaml.safe_load(file)
     return RayConfigLoader(Model(**model_config)).get_config()
+
 
 @pytest.fixture
 def get_encoders() -> dict[str, encoders_module.AbstractEncoder]:
@@ -38,45 +39,67 @@ def get_encoders() -> dict[str, encoders_module.AbstractEncoder]:
     }
     return encoders
 
+
 @pytest.fixture
 def get_input_columns() -> list[str]:
-    """Get the input columns."""    
+    """Get the input columns."""
     return ["embarked", "pclass", "sex", "age", "sibsp", "parch", "fare"]
+
 
 @pytest.fixture
 def get_label_columns() -> list[str]:
     """Get the label columns."""
     return ["survived"]
 
+
 @pytest.fixture
 def get_meta_columns() -> list[str]:
     """Get the meta columns."""
     return ["passenger_id"]
+
 
 @pytest.fixture
 def titanic_dataset() -> TorchDataset:
     """Create a TorchDataset instance for testing."""
     return "tests/test_data/titanic/titanic_stimulus_split.csv"
 
-@pytest.fixture
-def get_train_loader(titanic_dataset: str, get_encoders: dict[str, encoders_module.AbstractEncoder], get_input_columns: list[str], get_label_columns: list[str], get_meta_columns: list[str]) -> DatasetLoader:
-    """Get the DatasetLoader."""
-    return DatasetLoader(csv_path=titanic_dataset,
-                        encoders=get_encoders, 
-                        input_columns=get_input_columns, 
-                        label_columns=get_label_columns, 
-                        meta_columns=get_meta_columns, 
-                        split=0)
 
 @pytest.fixture
-def get_validation_loader(titanic_dataset: str, get_encoders: dict[str, encoders_module.AbstractEncoder], get_input_columns: list[str], get_label_columns: list[str], get_meta_columns: list[str]) -> DatasetLoader:
+def get_train_loader(
+    titanic_dataset: str,
+    get_encoders: dict[str, encoders_module.AbstractEncoder],
+    get_input_columns: list[str],
+    get_label_columns: list[str],
+    get_meta_columns: list[str],
+) -> DatasetLoader:
     """Get the DatasetLoader."""
-    return DatasetLoader(csv_path=titanic_dataset,
-                        encoders=get_encoders, 
-                        input_columns=get_input_columns, 
-                        label_columns=get_label_columns, 
-                        meta_columns=get_meta_columns, 
-                        split=1)
+    return DatasetLoader(
+        csv_path=titanic_dataset,
+        encoders=get_encoders,
+        input_columns=get_input_columns,
+        label_columns=get_label_columns,
+        meta_columns=get_meta_columns,
+        split=0,
+    )
+
+
+@pytest.fixture
+def get_validation_loader(
+    titanic_dataset: str,
+    get_encoders: dict[str, encoders_module.AbstractEncoder],
+    get_input_columns: list[str],
+    get_label_columns: list[str],
+    get_meta_columns: list[str],
+) -> DatasetLoader:
+    """Get the DatasetLoader."""
+    return DatasetLoader(
+        csv_path=titanic_dataset,
+        encoders=get_encoders,
+        input_columns=get_input_columns,
+        label_columns=get_label_columns,
+        meta_columns=get_meta_columns,
+        split=1,
+    )
 
 
 def test_tunewrapper_init(
@@ -92,7 +115,6 @@ def test_tunewrapper_init(
     ray.init(ignore_reinit_error=True)
 
     try:
-
         tune_wrapper = TuneWrapper(
             model_config=ray_config_loader,
             model_class=titanic_model.ModelTitanic,
@@ -129,7 +151,6 @@ def test_tune_wrapper_tune(
     ray.init(ignore_reinit_error=True)
 
     try:
-
         tune_wrapper = TuneWrapper(
             model_config=ray_config_loader,
             model_class=titanic_model.ModelTitanic,
