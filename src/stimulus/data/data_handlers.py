@@ -298,3 +298,38 @@ class DatasetLoader(DatasetHandler):
             meta_data = {key: data_at_index[key].to_list() for key in self.meta_columns}
 
         return input_data, label_data, meta_data
+    
+class TorchDataset(torch.utils.data.Dataset):
+    """Class for creating a torch dataset."""
+
+    def __init__(
+        self,
+        encoders: dict[str, encoders_module.AbstractEncoder],
+        input_columns: list[str],
+        label_columns: list[str],
+        meta_columns: list[str],
+        csv_path: str,
+        split: Optional[int] = None,
+    ) -> None:
+        """Initialize the TorchDataset.
+
+        Args:
+            data_config: A YamlSplitTransformDict holding the configuration.
+            csv_path: Path to the CSV data file
+            encoder_loader: Encoder loader instance
+            split: Optional tuple containing split information
+        """
+        self.loader = DatasetLoader(
+            encoders=encoders,
+            input_columns=input_columns,
+            label_columns=label_columns,
+            meta_columns=meta_columns,
+            csv_path=csv_path,
+            split=split,
+        )
+
+    def __len__(self) -> int:
+        return len(self.loader)
+
+    def __getitem__(self, idx: int) -> tuple[dict, dict, dict]:
+        return self.loader[idx]
