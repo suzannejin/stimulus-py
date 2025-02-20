@@ -13,19 +13,17 @@ from typing import TypeAlias
 from stimulus.data.data_handlers import (
     DatasetHandler,
     DatasetLoader,
-    DatasetManager,
     DatasetProcessor,
-    EncodeManager,
-    SplitManager,
-    TransformManager,
+    TorchDataset,
 )
 from stimulus.data.encoding.encoders import AbstractEncoder as Encoder
-from stimulus.data.handlertorch import TorchDataset
-from stimulus.data.loaders import EncoderLoader, SplitLoader, TransformLoader
-from stimulus.data.splitters.splitters import AbstractSplitter as Splitter
-from stimulus.data.transform.data_transformation_generators import (
-    AbstractDataTransformer as Transform,
+from stimulus.data.interface.data_config_parser import (
+    create_encoders,
+    create_splitter,
+    create_transforms,
 )
+from stimulus.data.splitting import AbstractSplitter as Splitter
+from stimulus.data.transforming.transforms import AbstractTransform as Transform
 from stimulus.learner.predict import PredictWrapper
 from stimulus.learner.raytune_learner import CheckpointDict, TuneModel, TuneWrapper
 from stimulus.learner.raytune_parser import (
@@ -35,18 +33,18 @@ from stimulus.learner.raytune_parser import (
     TuneParser,
 )
 from stimulus.utils.performance import Performance
-from stimulus.utils.yaml_data import (
-    YamlColumns,
-    YamlColumnsEncoder,
-    YamlConfigDict,
-    YamlGlobalParams,
-    YamlSchema,
-    YamlSplit,
-    YamlSplitConfigDict,
-    YamlSplitTransformDict,
-    YamlTransform,
-    YamlTransformColumns,
-    YamlTransformColumnsTransformation,
+from stimulus.data.interface.data_config_schema import (
+    Columns,
+    ColumnsEncoder,
+    ConfigDict,
+    GlobalParams,
+    Schema,
+    Split,
+    SplitConfigDict,
+    SplitTransformDict,
+    Transform,
+    TransformColumns,
+    TransformColumnsTransformation,
 )
 from stimulus.utils.yaml_model_schema import (
     CustomTunableParameter,
@@ -59,16 +57,8 @@ from stimulus.utils.yaml_model_schema import (
     TunableParameter,
     Tune,
     TuneParams,
-    YamlRayConfigLoader,
+    RayConfigLoader,
 )
-
-# data/data_handlers.py
-
-DataManager: TypeAlias = DatasetManager | EncodeManager | SplitManager | TransformManager
-
-# data/experiments.py
-
-Loader: TypeAlias = DatasetLoader | EncoderLoader | TransformLoader | SplitLoader
 
 # learner/raytune_parser.py
 
@@ -76,15 +66,15 @@ RayTuneData: TypeAlias = RayTuneMetrics | RayTuneOptimizer | RayTuneResult
 
 # utils/yaml_data.py
 
-YamlData: TypeAlias = (
-    YamlColumns
-    | YamlColumnsEncoder
-    | YamlConfigDict
-    | YamlGlobalParams
-    | YamlSchema
-    | YamlSplit
-    | YamlSplitConfigDict
-    | YamlTransform
-    | YamlTransformColumns
-    | YamlTransformColumnsTransformation
+Data: TypeAlias = (
+    Columns
+    | ColumnsEncoder
+    | ConfigDict
+    | GlobalParams
+    | Schema
+    | Split
+    | SplitConfigDict
+    | Transform
+    | TransformColumns
+    | TransformColumnsTransformation
 )

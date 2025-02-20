@@ -16,11 +16,10 @@ from safetensors.torch import save_model as safe_save_model
 from torch import nn, optim
 from torch.utils.data import DataLoader
 
-from stimulus.data.handlertorch import TorchDataset
-from stimulus.data.loaders import EncoderLoader
+from stimulus.data.data_handlers import TorchDataset
 from stimulus.learner.predict import PredictWrapper
 from stimulus.utils.generic_utils import set_general_seeds
-from stimulus.utils.yaml_data import YamlSplitTransformDict
+from stimulus.data.interface.data_config_schema import SplitTransformDict
 from stimulus.utils.yaml_model_schema import RayTuneModel
 
 
@@ -36,10 +35,10 @@ class TuneWrapper:
     def __init__(
         self,
         model_config: RayTuneModel,
-        data_config: YamlSplitTransformDict,
+        data_config: SplitTransformDict,
         model_class: nn.Module,
         data_path: str,
-        encoder_loader: EncoderLoader,
+        #encoder_loader: EncoderLoader,
         seed: int,
         ray_results_dir: Optional[str] = None,
         tune_run_name: Optional[str] = None,
@@ -113,15 +112,15 @@ class TuneWrapper:
         self.tuner = self.tuner_initialization(
             data_config=data_config,
             data_path=data_path,
-            encoder_loader=encoder_loader,
+            #encoder_loader=encoder_loader,
             autoscaler=autoscaler,
         )
 
     def tuner_initialization(
         self,
-        data_config: YamlSplitTransformDict,
+        data_config: SplitTransformDict,
         data_path: str,
-        encoder_loader: EncoderLoader,
+        #encoder_loader: EncoderLoader,
         *,
         autoscaler: bool = False,
     ) -> tune.Tuner:
@@ -155,13 +154,13 @@ class TuneWrapper:
         training = TorchDataset(
             data_config=data_config,
             csv_path=data_path,
-            encoder_loader=encoder_loader,
+            #encoder_loader=encoder_loader,
             split=0,
         )
         validation = TorchDataset(
             data_config=data_config,
             csv_path=data_path,
-            encoder_loader=encoder_loader,
+            #encoder_loader=encoder_loader,
             split=1,
         )
 
