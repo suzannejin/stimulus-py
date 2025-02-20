@@ -43,7 +43,6 @@ class DatasetHandler:
         encoder_manager (EncodeManager): Manager for handling data encoding operations.
         transform_manager (TransformManager): Manager for handling data transformations.
         split_manager (SplitManager): Manager for handling dataset splitting.
-        dataset_manager (DatasetManager): Manager for organizing dataset columns and config.
     """
 
     def __init__(
@@ -111,11 +110,13 @@ class DatasetProcessor(DatasetHandler):
         self,
         csv_path: str,
         transforms: dict[str, list[transforms_module.AbstractTransform]],
+        split_columns: list[str],
         splitter: splitters_module.AbstractSplitter,
     ) -> None:
         """Initialize the DatasetProcessor."""
         super().__init__(csv_path)
         self.transforms = transforms
+        self.split_columns = split_columns
         self.splitter = splitter
 
     def add_split(self, *, force: bool = False) -> None:
@@ -131,11 +132,10 @@ class DatasetProcessor(DatasetHandler):
                 "The category split is already present in the csv file. If you want to still use this function, set force=True",
             )
         # get relevant split columns from the dataset_manager
-        split_columns = self.dataset_manager.get_split_columns()
-        split_input_data = self.select_columns(split_columns)
+        split_input_data = self.select_columns(self.split_columns)
 
         # get the split indices
-        train, validation, test = self.splitter.get_split_indices(split_input_data)
+        train, validation, test = self.splitter.get_split_indexes(split_input_data)
 
         # add the split column to the data
         split_column = np.full(len(self.data), -1).astype(int)
@@ -157,7 +157,7 @@ class DatasetProcessor(DatasetHandler):
             for transform in transforms_list:
                 transformed_data = transform.transform(self.data[column_name])
 
-                if transform.adds_rows():
+                if transform.add_row:
                     new_rows = self.data.with_columns(
                         pl.Series(column_name, transformed_data),
                     )
@@ -167,13 +167,12 @@ class DatasetProcessor(DatasetHandler):
                         pl.Series(column_name, transformed_data),
                     )
 
-    def shuffle_labels(self, seed: Optional[float] = None) -> None:
+    def shuffle_labels(self, label_columns: list[str], seed: Optional[float] = None) -> None:
         """Shuffles the labels in the data."""
         # set the np seed
         np.random.seed(seed)
 
-        label_keys = self.dataset_manager.column_categories["label"]
-        for key in label_keys:
+        for key in label_columns:
             self.data = self.data.with_columns(
                 pl.Series(key, np.random.permutation(list(self.data[key]))),
             )
@@ -198,6 +197,33 @@ class DatasetLoader(DatasetHandler):
         self.input_columns = input_columns
         self.label_columns = label_columns
         self.meta_columns = meta_columns
+
+    def encode_dataframe(self, dataframe: pl.DataFrame) -> dict[str, torch.Tensor]:
+        """Encode the dataframe columns using the configured encoders.
+
+        Takes a polars DataFrame and encodes each column using its corresponding encoder
+        from self.encoders.
+
+        Args:
+            dataframe: Polars DataFrame containing the columns to encode
+
+        Returns:
+            Dict mapping column names to their encoded tensors. The exact shape of each
+            tensor depends on the encoder used for that column.
+
+        Example:
+            >>> df = pl.DataFrame({
+            ...     "dna_seq": ["ACGT", "TGCA"],
+            ...     "labels": [1, 2]
+            ... })
+            >>> encoded = dataset_loader.encode_dataframe(df)
+            >>> print(encoded["dna_seq"].shape)
+            torch.Size([2, 4, 4])  # 2 sequences, length 4, one-hot encoded
+        """
+        return {
+            col: self.encoders[col].encode_all(dataframe[col].to_list())
+            for col in dataframe.columns
+        }
 
     def get_all_items(self) -> tuple[dict, dict, dict]:
         """Get the full dataset as three separate dictionaries for inputs, labels and metadata.
