@@ -1,6 +1,5 @@
 """Test suite for the data transformation generators."""
 
-import os
 from typing import Any
 
 import numpy as np
@@ -252,6 +251,3 @@ class TestReverseComplement:
         for item in transformed_data:
             assert isinstance(item, str)
         assert transformed_data == test_data.expected_multiple_outputs
-
-
-
