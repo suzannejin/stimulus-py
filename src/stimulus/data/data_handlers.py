@@ -251,10 +251,6 @@ class DatasetLoader(DatasetHandler):
         """Load the part of csv file that has the specified split value.
 
         Split is a number that for 0 is train, 1 is validation, 2 is test.
-        This is accessed through the column with category `split`. Example column name could be `split:split:int`.
-
-        NOTE that the aim of having this function is that depending on the training, validation and test scenarios,
-        we are gonna load only the relevant data for it.
         """
         if "split" not in self.columns:
             raise ValueError("The category split is not present in the csv file")

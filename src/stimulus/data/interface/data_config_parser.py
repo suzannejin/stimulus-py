@@ -59,19 +59,27 @@ def create_encoders(column_config: list[Columns]) -> dict[str, encoders_module.A
     }
 
 
-def create_transforms(transform_config: list[TransformColumns]) -> dict[str, list[Any]]:
-    """Factory for creating transforms from config"""
-    return {
-        column.column_name: [
-            _instantiate_component(
-                module=transforms_module,
-                name=transformation.name,
-                params=transformation.params,
-            )
-            for transformation in column.transformations
-        ]
-        for column in transform_config.columns
-    }
+def create_transforms(transform_config: list[Transform]) -> dict[str, list[Any]]:
+    """Factory for creating transforms from config.
+
+    Args:
+        transform_config: List of Transform objects from the YAML config
+
+    Returns:
+        Dictionary mapping column names to lists of instantiated transform objects
+    """
+    transforms = {}
+    for transform in transform_config:
+        for column in transform.columns:
+            transforms[column.column_name] = [
+                _instantiate_component(
+                    module=transforms_module,
+                    name=transformation.name,
+                    params=transformation.params,
+                )
+                for transformation in column.transformations
+            ]
+    return transforms
 
 
 def create_splitter(split_config: Split) -> splitters_module.AbstractSplitter:
@@ -83,12 +91,13 @@ def create_splitter(split_config: Split) -> splitters_module.AbstractSplitter:
     )
 
 
-def parse_data_config(
+def parse_split_transform_config(
     config: SplitTransformDict,
 ) -> tuple[
     dict[str, encoders_module.AbstractEncoder],
-    dict[str, list[transforms_module.AbstractTransform]],
-    splitters_module.AbstractSplitter,
+    list[str],
+    list[str],
+    list[str],
 ]:
     """Parse the configuration and return a dictionary of the parsed configuration.
 
@@ -99,10 +108,11 @@ def parse_data_config(
         A tuple of the parsed configuration.
     """
     encoders = create_encoders(config.columns)
-    transforms = create_transforms(config.transforms)
-    splitter = create_splitter(config.split)
+    input_columns = [column.column_name for column in config.columns if column.column_type == "input"]
+    label_columns = [column.column_name for column in config.columns if column.column_type == "label"]
+    meta_columns = [column.column_name for column in config.columns if column.column_type == "meta"]
 
-    return encoders, transforms, splitter
+    return encoders, input_columns, label_columns, meta_columns
 
 
 def extract_transform_parameters_at_index(
