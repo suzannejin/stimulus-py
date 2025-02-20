@@ -64,47 +64,51 @@ def titanic_dataset() -> TorchDataset:
 
 
 @pytest.fixture
-def get_train_loader(
+def get_train_dataset(
     titanic_dataset: str,
     get_encoders: dict[str, encoders_module.AbstractEncoder],
     get_input_columns: list[str],
     get_label_columns: list[str],
     get_meta_columns: list[str],
-) -> DatasetLoader:
+) -> TorchDataset:
     """Get the DatasetLoader."""
-    return DatasetLoader(
-        csv_path=titanic_dataset,
-        encoders=get_encoders,
-        input_columns=get_input_columns,
-        label_columns=get_label_columns,
-        meta_columns=get_meta_columns,
-        split=0,
+    return TorchDataset(
+        loader=DatasetLoader(
+            csv_path=titanic_dataset,
+            encoders=get_encoders,
+            input_columns=get_input_columns,
+            label_columns=get_label_columns,
+            meta_columns=get_meta_columns,
+            split=0,
+        ),
     )
 
 
 @pytest.fixture
-def get_validation_loader(
+def get_validation_dataset(
     titanic_dataset: str,
     get_encoders: dict[str, encoders_module.AbstractEncoder],
     get_input_columns: list[str],
     get_label_columns: list[str],
     get_meta_columns: list[str],
-) -> DatasetLoader:
+) -> TorchDataset:
     """Get the DatasetLoader."""
-    return DatasetLoader(
-        csv_path=titanic_dataset,
-        encoders=get_encoders,
-        input_columns=get_input_columns,
-        label_columns=get_label_columns,
-        meta_columns=get_meta_columns,
-        split=1,
+    return TorchDataset(
+        loader=DatasetLoader(
+            csv_path=titanic_dataset,
+            encoders=get_encoders,
+            input_columns=get_input_columns,
+            label_columns=get_label_columns,
+            meta_columns=get_meta_columns,
+            split=1,
+        ),
     )
 
 
 def test_tunewrapper_init(
     ray_config_loader: RayTuneModel,
-    get_train_loader: DatasetLoader,
-    get_validation_loader: DatasetLoader,
+    get_train_dataset: TorchDataset,
+    get_validation_dataset: TorchDataset,
 ) -> None:
     """Test the initialization of the TuneWrapper class."""
     # Filter ResourceWarning during Ray shutdown
@@ -117,8 +121,8 @@ def test_tunewrapper_init(
         tune_wrapper = TuneWrapper(
             model_config=ray_config_loader,
             model_class=titanic_model.ModelTitanic,
-            train_loader=get_train_loader,
-            validation_loader=get_validation_loader,
+            train_dataset=get_train_dataset,
+            validation_dataset=get_validation_dataset,
             seed=42,
             ray_results_dir=os.path.abspath("tests/test_data/titanic/ray_results"),
             tune_run_name="test_run",
@@ -139,8 +143,8 @@ def test_tunewrapper_init(
 
 def test_tune_wrapper_tune(
     ray_config_loader: RayTuneModel,
-    get_train_loader: DatasetLoader,
-    get_validation_loader: DatasetLoader,
+    get_train_dataset: TorchDataset,
+    get_validation_dataset: TorchDataset,
 ) -> None:
     """Test the tune method of TuneWrapper class."""
     # Filter ResourceWarning during Ray shutdown
@@ -153,8 +157,8 @@ def test_tune_wrapper_tune(
         tune_wrapper = TuneWrapper(
             model_config=ray_config_loader,
             model_class=titanic_model.ModelTitanic,
-            train_loader=get_train_loader,
-            validation_loader=get_validation_loader,
+            train_dataset=get_train_dataset,
+            validation_dataset=get_validation_dataset,
             seed=42,
             ray_results_dir=os.path.abspath("tests/test_data/titanic/ray_results"),
             tune_run_name="test_run",
