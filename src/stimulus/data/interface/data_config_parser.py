@@ -6,25 +6,12 @@ import yaml
 
 from stimulus.data.encoding import encoders as encoders_module
 from stimulus.data.interface.data_config_schema import (
-    Columns as Columns,
-)
-from stimulus.data.interface.data_config_schema import (
-    ConfigDict as ConfigDict,
-)
-from stimulus.data.interface.data_config_schema import (
-    Split as Split,
-)
-from stimulus.data.interface.data_config_schema import (
-    SplitConfigDict as SplitConfigDict,
-)
-from stimulus.data.interface.data_config_schema import (
-    SplitTransformDict as SplitTransformDict,
-)
-from stimulus.data.interface.data_config_schema import (
-    Transform as Transform,
-)
-from stimulus.data.interface.data_config_schema import (
-    TransformColumns as TransformColumns,
+    Columns,
+    ConfigDict,
+    Split,
+    SplitConfigDict,
+    SplitTransformDict,
+    Transform,
 )
 from stimulus.data.splitting import splitters as splitters_module
 from stimulus.data.transforming import transforms as transforms_module
@@ -48,7 +35,7 @@ def _instantiate_component(module: Any, name: str, params: dict) -> Any:
 
 
 def create_encoders(column_config: list[Columns]) -> dict[str, encoders_module.AbstractEncoder]:
-    """Factory for creating encoders from config"""
+    """Factory for creating encoders from config."""
     return {
         column.column_name: _instantiate_component(
             module=encoders_module,
@@ -83,7 +70,7 @@ def create_transforms(transform_config: list[Transform]) -> dict[str, list[Any]]
 
 
 def create_splitter(split_config: Split) -> splitters_module.AbstractSplitter:
-    """Factory for creating splitters from config"""
+    """Factory for creating splitters from config."""
     return _instantiate_component(
         module=splitters_module,
         name=split_config.split_method,
@@ -225,7 +212,7 @@ def generate_split_configs(config: ConfigDict) -> list[SplitConfigDict]:
             split: [0.8, 0.2]
 
     Args:
-        yaml_config: The source YAML configuration containing transforms with
+        config: The source YAML configuration containing transforms with
             parameter lists and multiple splits.
 
     Returns:
@@ -272,11 +259,11 @@ def generate_split_transform_configs(
             split: [0.7, 0.3]
 
     Args:
-        yaml_config: The source YAML configuration containing each
+        config: The source YAML configuration containing each
             a split with transforms with parameters lists
 
     Returns:
-        list[YamlSubConfigTransformDict]: A list of data configurations, where each
+        list[SplitTransformDict]: A list of data configurations, where each
             config has a list of parameters and one split configuration. The
             length will be the product of the number of parameter combinations
             and the number of splits.
@@ -309,13 +296,13 @@ def dump_yaml_list_into_files(
     """Dumps YAML configurations to files with consistent formatting."""
 
     class CleanDumper(yaml.SafeDumper):
-        """Simplified dumper maintaining key functionality"""
+        """Simplified dumper maintaining key functionality."""
 
         def ignore_aliases(self, _data: Any) -> bool:
             return True  # Disable anchor/alias generation
 
-        def write_line_break(self, data=None):
-            """Maintain root-level spacing"""
+        def write_line_break(self, data: Any = None) -> None:
+            """Maintain root-level spacing."""
             super().write_line_break(data)
             if not self.indent:  # At root level
                 super().write_line_break()
@@ -348,11 +335,14 @@ def dump_yaml_list_into_files(
 
 
 def _clean_params(data: dict) -> dict:
-    """Recursive cleaner for empty parameters (replaces fix_params)"""
+    """Recursive cleaner for empty parameters (replaces fix_params)."""
     if isinstance(data, dict):
         return {
-            k: _clean_params(
-                v if k not in ("encoder", "transformations") else [dict(e, params=e.get("params") or {}) for e in v],
+            k: (
+                # Handle special cases for encoder/transformations lists
+                [dict(e, params=e.get("params") or {}) for e in v]
+                if k in ("encoder", "transformations")
+                else _clean_params(v)
             )
             for k, v in data.items()
         }

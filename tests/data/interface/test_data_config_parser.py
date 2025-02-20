@@ -1,3 +1,5 @@
+"""Test the data config parser."""
+
 import pytest
 import yaml
 
@@ -90,8 +92,8 @@ def load_full_config(full_config_path: str) -> dict:
         return ConfigDict(**yaml.safe_load(f))
 
 
-def test_create_encoders(load_full_config):
-    """Test encoder creation from config"""
+def test_create_encoders(load_full_config: ConfigDict) -> None:
+    """Test encoder creation from config."""
     config = load_full_config
 
     encoders = create_encoders(config.columns)
@@ -102,8 +104,8 @@ def test_create_encoders(load_full_config):
     assert len(encoders) == len(config.columns)
 
 
-def test_create_transforms(load_split_config):
-    """Test transform pipeline creation"""
+def test_create_transforms(load_split_config: SplitTransformDict) -> None:
+    """Test transform pipeline creation."""
     transforms = create_transforms(load_split_config.transforms)
 
     # Verify transform structure
@@ -113,16 +115,16 @@ def test_create_transforms(load_split_config):
     assert "std" in age_transforms[0].__dict__
 
 
-def test_create_splitter(load_full_config):
-    """Test splitter creation with parameters"""
+def test_create_splitter(load_full_config: ConfigDict) -> None:
+    """Test splitter creation with parameters."""
     splitter = create_splitter(load_full_config.split[0])
 
     assert splitter.__class__.__name__ == "RandomSplit"
     assert splitter.split == [0.7, 0.15, 0.15]
 
 
-def test_parse_split_transform_config(load_transform_config):
-    """Test full config parsing workflow"""
+def test_parse_split_transform_config(load_transform_config: SplitTransformDict) -> None:
+    """Test full config parsing workflow."""
     encoders, input_columns, label_columns, meta_columns = parse_split_transform_config(load_transform_config)
 
     assert len(encoders) == 9
@@ -131,8 +133,8 @@ def test_parse_split_transform_config(load_transform_config):
     assert len(meta_columns) == 1
 
 
-def test_expand_transform_parameter_combinations(load_split_config):
-    """Test parameter expansion logic"""
+def test_expand_transform_parameter_combinations(load_split_config: SplitTransformDict) -> None:
+    """Test parameter expansion logic."""
     expanded = expand_transform_parameter_combinations(load_split_config.transforms[0])
     assert len(expanded) == 3  # Because we have 3 std values in the YAML
 
@@ -141,8 +143,8 @@ def test_expand_transform_parameter_combinations(load_split_config):
     assert first_params["std"] == 0.1
 
 
-def test_generate_split_configs(load_full_config):
-    """Test split configuration generation"""
+def test_generate_split_configs(load_full_config: ConfigDict) -> None:
+    """Test split configuration generation."""
     split_configs = generate_split_configs(load_full_config)
     assert len(split_configs) == 1  # Only one split in the test YAML
 
@@ -151,8 +153,8 @@ def test_generate_split_configs(load_full_config):
     assert cfg.split.split_method == "RandomSplit"
 
 
-def test_generate_split_transform_configs(load_full_config):
-    """Test combined split/transform config generation"""
+def test_generate_split_transform_configs(load_full_config: ConfigDict) -> None:
+    """Test combined split/transform config generation."""
     split_configs = generate_split_configs(load_full_config)
     combined_configs = generate_split_transform_configs(split_configs[0])
 

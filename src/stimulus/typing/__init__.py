@@ -6,6 +6,7 @@ and likely not instantiated, as well as aliases for other types to use for typin
 The aliases from this module should be used for typing purposes only.
 """
 # ruff: noqa: F401
+# ruff: noqa: F811
 
 from typing import Any, TypeAlias, TypeVar
 
@@ -63,9 +64,9 @@ from stimulus.utils.yaml_model_schema import (
 
 RayTuneData: TypeAlias = RayTuneMetrics | RayTuneOptimizer | RayTuneResult
 
-# utils/yaml_data.py
+# data/interface/data_config_schema.py
 
-Data: TypeAlias = (
+YamlData: TypeAlias = (
     Columns
     | ColumnsEncoder
     | ConfigDict
@@ -76,6 +77,7 @@ Data: TypeAlias = (
     | Transform
     | TransformColumns
     | TransformColumnsTransformation
+    | SplitTransformDict
 )
 
 # Replace these problematic imports

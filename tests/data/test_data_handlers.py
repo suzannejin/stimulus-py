@@ -30,7 +30,7 @@ def titanic_csv_path() -> str:
 # Updated component fixtures
 @pytest.fixture
 def dummy_encoders() -> dict[str, Any]:
-    """Create simple encoders for test columns"""
+    """Create simple encoders for test columns."""
     return {
         "age": encoders_module.NumericEncoder(dtype=torch.float32),
         "fare": encoders_module.NumericEncoder(dtype=torch.float32),
@@ -40,7 +40,7 @@ def dummy_encoders() -> dict[str, Any]:
 
 @pytest.fixture
 def dummy_transforms() -> dict[str, list]:
-    """Create test transforms"""
+    """Create test transforms."""
     return {
         "age": [
             transforms_module.GaussianNoise(std=0.1),
@@ -53,7 +53,7 @@ def dummy_transforms() -> dict[str, list]:
 
 @pytest.fixture
 def dummy_splitter() -> splitters_module.AbstractSplitter:
-    """Create test splitter"""
+    """Create test splitter."""
     return splitters_module.RandomSplit(split=[0.7, 0.2, 0.1])
 
 

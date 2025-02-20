@@ -26,7 +26,7 @@ def ray_config_loader() -> RayTuneModel:
 @pytest.fixture
 def get_encoders() -> dict[str, encoders_module.AbstractEncoder]:
     """Load the EncoderLoader configuration."""
-    encoders = {
+    return {
         "passenger_id": encoders_module.NumericEncoder(dtype=torch.int64),
         "survived": encoders_module.NumericEncoder(dtype=torch.int64),
         "pclass": encoders_module.NumericEncoder(dtype=torch.int64),
@@ -37,7 +37,6 @@ def get_encoders() -> dict[str, encoders_module.AbstractEncoder]:
         "fare": encoders_module.NumericEncoder(dtype=torch.float32),
         "embarked": encoders_module.StrClassificationEncoder(),
     }
-    return encoders
 
 
 @pytest.fixture

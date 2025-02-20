@@ -52,7 +52,6 @@ class DatasetHandler:
         """Initialize the DatasetHandler with required config.
 
         Args:
-            data_config (yaml_data.YamlSplitTransformDict): A YamlSplitTransformDict object holding the config.
             csv_path (str): Path to the CSV data file.
         """
         self.columns = self.read_csv_header(csv_path)
