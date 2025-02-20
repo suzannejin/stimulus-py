@@ -22,7 +22,7 @@ The data handling pipeline consists of:
 See titanic.yaml in tests/test_data/titanic/ for an example configuration file format.
 """
 
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 import numpy as np
 import polars as pl
@@ -212,18 +212,12 @@ class DatasetLoader(DatasetHandler):
             tensor depends on the encoder used for that column.
 
         Example:
-            >>> df = pl.DataFrame({
-            ...     "dna_seq": ["ACGT", "TGCA"],
-            ...     "labels": [1, 2]
-            ... })
+            >>> df = pl.DataFrame({"dna_seq": ["ACGT", "TGCA"], "labels": [1, 2]})
             >>> encoded = dataset_loader.encode_dataframe(df)
             >>> print(encoded["dna_seq"].shape)
             torch.Size([2, 4, 4])  # 2 sequences, length 4, one-hot encoded
         """
-        return {
-            col: self.encoders[col].encode_all(dataframe[col].to_list())
-            for col in dataframe.columns
-        }
+        return {col: self.encoders[col].encode_all(dataframe[col].to_list()) for col in dataframe.columns}
 
     def get_all_items(self) -> tuple[dict, dict, dict]:
         """Get the full dataset as three separate dictionaries for inputs, labels and metadata.
@@ -324,7 +318,8 @@ class DatasetLoader(DatasetHandler):
             meta_data = {key: data_at_index[key].to_list() for key in self.meta_columns}
 
         return input_data, label_data, meta_data
-    
+
+
 class TorchDataset(torch.utils.data.Dataset):
     """Class for creating a torch dataset."""
 

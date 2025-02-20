@@ -10,7 +10,7 @@ import polars as pl
 import torch
 from torch.utils.data import DataLoader
 
-from stimulus.data.handlertorch import TorchDataset
+from stimulus.data.data_handlers import TorchDataset
 from stimulus.learner.predict import PredictWrapper
 from stimulus.utils.model_file_interface import get_experiment, import_class_from_file
 

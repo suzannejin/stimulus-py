@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 from stimulus.data import handlertorch, loaders
 from stimulus.learner import raytune_learner
-from stimulus.utils import launch_utils, yaml_data, yaml_model_schema
+from stimulus.utils import model_file_interface, yaml_data, yaml_model_schema
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ def main(
 
     logger.info("Dataset loaded successfully.")
 
-    model_class = launch_utils.import_class_from_file(model_path)
+    model_class = model_file_interface.import_class_from_file(model_path)
 
     logger.info("Model class loaded successfully.")
 

@@ -1,7 +1,8 @@
 """Tests for CSV data loading and processing functionality."""
 
-import pytest
 from typing import Any
+
+import pytest
 import torch
 
 from stimulus.data.data_handlers import (
@@ -10,8 +11,8 @@ from stimulus.data.data_handlers import (
     TorchDataset,
 )
 from stimulus.data.encoding import encoders as encoders_module
-from stimulus.data.transforming import transforms as transforms_module
 from stimulus.data.splitting import splitters as splitters_module
+from stimulus.data.transforming import transforms as transforms_module
 
 
 # Fixtures
@@ -25,6 +26,7 @@ def titanic_csv_path() -> str:
     """
     return "tests/test_data/titanic/titanic_stimulus.csv"
 
+
 # Updated component fixtures
 @pytest.fixture
 def dummy_encoders() -> dict[str, Any]:
@@ -32,16 +34,22 @@ def dummy_encoders() -> dict[str, Any]:
     return {
         "age": encoders_module.NumericEncoder(dtype=torch.float32),
         "fare": encoders_module.NumericEncoder(dtype=torch.float32),
-        "survived": encoders_module.NumericEncoder(dtype=torch.int64)
+        "survived": encoders_module.NumericEncoder(dtype=torch.int64),
     }
+
 
 @pytest.fixture
 def dummy_transforms() -> dict[str, list]:
     """Create test transforms"""
     return {
-        "age": [transforms_module.GaussianNoise(std=0.1), transforms_module.GaussianNoise(std=0.2), transforms_module.GaussianNoise(std=0.3)],
+        "age": [
+            transforms_module.GaussianNoise(std=0.1),
+            transforms_module.GaussianNoise(std=0.2),
+            transforms_module.GaussianNoise(std=0.3),
+        ],
         "fare": [transforms_module.GaussianNoise(std=0.1)],
     }
+
 
 @pytest.fixture
 def dummy_splitter() -> splitters_module.AbstractSplitter:
@@ -53,14 +61,14 @@ def dummy_splitter() -> splitters_module.AbstractSplitter:
 def test_dataset_processor_init(
     titanic_csv_path: str,
     dummy_transforms: dict,
-    dummy_splitter: Any
+    dummy_splitter: Any,
 ) -> None:
     """Test initialization of DatasetProcessor."""
     processor = DatasetProcessor(
         csv_path=titanic_csv_path,
         transforms=dummy_transforms,
         splitter=dummy_splitter,
-        split_columns=["age", "fare"]
+        split_columns=["age", "fare"],
     )
 
     assert processor.data.shape[0] > 0
@@ -72,21 +80,21 @@ def test_dataset_processor_init(
 def test_dataset_processor_apply_split(
     titanic_csv_path: str,
     dummy_transforms: dict,
-    dummy_splitter: Any
+    dummy_splitter: Any,
 ) -> None:
     """Test applying splits in DatasetProcessor."""
     processor = DatasetProcessor(
         csv_path=titanic_csv_path,
         transforms=dummy_transforms,
         splitter=dummy_splitter,
-        split_columns=["age", "fare"]
+        split_columns=["age", "fare"],
     )
-    
+
     # Should start without split column
     assert "split" not in processor.data.columns
-    
+
     processor.add_split()
-    
+
     assert "split" in processor.data.columns
     assert set(processor.data["split"].unique().to_list()).issubset({0, 1, 2})
 
@@ -94,21 +102,21 @@ def test_dataset_processor_apply_split(
 def test_dataset_processor_apply_transformation_group(
     titanic_csv_path: str,
     dummy_transforms: dict,
-    dummy_splitter: Any
+    dummy_splitter: Any,
 ) -> None:
     """Test applying transformation groups."""
     processor = DatasetProcessor(
         csv_path=titanic_csv_path,
         transforms=dummy_transforms,
         splitter=dummy_splitter,
-        split_columns=["age", "fare"]
+        split_columns=["age", "fare"],
     )
-    
+
     control = DatasetProcessor(
         csv_path=titanic_csv_path,
         transforms={},  # No transforms
         splitter=dummy_splitter,
-        split_columns=["age", "fare"]
+        split_columns=["age", "fare"],
     )
 
     processor.apply_transformations()
@@ -119,24 +127,25 @@ def test_dataset_processor_apply_transformation_group(
     # Untransformed columns should match
     assert processor.data["survived"].to_list() == control.data["survived"].to_list()
 
+
 def test_dataset_processor_shuffle_labels(
     titanic_csv_path: str,
     dummy_transforms: dict,
-    dummy_splitter: Any
+    dummy_splitter: Any,
 ) -> None:
     """Test shuffling labels."""
     processor = DatasetProcessor(
         csv_path=titanic_csv_path,
         transforms=dummy_transforms,
         splitter=dummy_splitter,
-        split_columns=["age", "fare"]
-    )   
+        split_columns=["age", "fare"],
+    )
 
     control = DatasetProcessor(
         csv_path=titanic_csv_path,
         transforms=dummy_transforms,
         splitter=dummy_splitter,
-        split_columns=["age", "fare"]
+        split_columns=["age", "fare"],
     )
     processor.shuffle_labels(label_columns=["survived"])
 
@@ -184,3 +193,46 @@ def test_dataset_loader_get_dataset(
     # Test encoder types
     assert isinstance(loader.encoders["age"], encoders_module.NumericEncoder)
     assert isinstance(loader.encoders["survived"], encoders_module.NumericEncoder)
+
+
+def test_torch_dataset_init(
+    titanic_csv_path: str,
+    dummy_encoders: dict,
+) -> None:
+    """Test initialization of TorchDataset."""
+    dataset = TorchDataset(
+        encoders=dummy_encoders,
+        input_columns=["age", "fare"],
+        label_columns=["survived"],
+        meta_columns=["passenger_id"],
+        csv_path=titanic_csv_path,
+    )
+
+    assert len(dataset) > 0
+    assert isinstance(dataset[0], tuple)
+    assert len(dataset[0]) == 3
+    assert isinstance(dataset[0][0], dict)
+    assert isinstance(dataset[0][1], dict)
+    assert isinstance(dataset[0][2], dict)
+
+
+def test_torch_dataset_get_item(
+    titanic_csv_path: str,
+    dummy_encoders: dict,
+) -> None:
+    """Test getting item from TorchDataset."""
+    dataset = TorchDataset(
+        encoders=dummy_encoders,
+        input_columns=["age", "fare"],
+        label_columns=["survived"],
+        meta_columns=["passenger_id"],
+        csv_path=titanic_csv_path,
+    )
+
+    inputs, labels, meta = dataset[0]
+    assert isinstance(inputs, dict)
+    assert isinstance(labels, dict)
+    assert isinstance(meta, dict)
+    assert isinstance(inputs["age"], torch.Tensor)
+    assert isinstance(inputs["fare"], torch.Tensor)
+    assert isinstance(labels["survived"], torch.Tensor)
