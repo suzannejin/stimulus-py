@@ -321,29 +321,14 @@ class TorchDataset(torch.utils.data.Dataset):
 
     def __init__(
         self,
-        encoders: dict[str, encoders_module.AbstractEncoder],
-        input_columns: list[str],
-        label_columns: list[str],
-        meta_columns: list[str],
-        csv_path: str,
-        split: Optional[int] = None,
+        loader: DatasetLoader,
     ) -> None:
         """Initialize the TorchDataset.
 
         Args:
-            data_config: A YamlSplitTransformDict holding the configuration.
-            csv_path: Path to the CSV data file
-            encoder_loader: Encoder loader instance
-            split: Optional tuple containing split information
+            loader: A DatasetLoader instance
         """
-        self.loader = DatasetLoader(
-            encoders=encoders,
-            input_columns=input_columns,
-            label_columns=label_columns,
-            meta_columns=meta_columns,
-            csv_path=csv_path,
-            split=split,
-        )
+        self.loader = loader
 
     def __len__(self) -> int:
         return len(self.loader)

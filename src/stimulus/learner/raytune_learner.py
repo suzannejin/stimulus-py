@@ -17,8 +17,8 @@ from torch import nn, optim
 from torch.utils.data import DataLoader
 
 from stimulus.data.data_handlers import TorchDataset
-from stimulus.data.interface.data_config_schema import SplitTransformDict
 from stimulus.learner.predict import PredictWrapper
+from stimulus.typing import DatasetLoader
 from stimulus.utils.generic_utils import set_general_seeds
 from stimulus.utils.yaml_model_schema import RayTuneModel
 
@@ -35,10 +35,9 @@ class TuneWrapper:
     def __init__(
         self,
         model_config: RayTuneModel,
-        data_config: SplitTransformDict,
         model_class: nn.Module,
-        data_path: str,
-        # encoder_loader: EncoderLoader,
+        train_loader: DatasetLoader,
+        validation_loader: DatasetLoader,
         seed: int,
         ray_results_dir: Optional[str] = None,
         tune_run_name: Optional[str] = None,
@@ -84,11 +83,6 @@ class TuneWrapper:
             stop=model_config.tune.run_params.stop,
         )
 
-        # add the data path to the config
-        if not os.path.exists(data_path):
-            raise ValueError("Data path does not exist. Given path:" + data_path)
-        self.config["data_path"] = os.path.abspath(data_path)
-
         # Set up tune_run path
         if ray_results_dir is None:
             ray_results_dir = os.environ.get("HOME", "")
@@ -103,24 +97,23 @@ class TuneWrapper:
         )
         self.config["_debug"] = debug
         self.config["model"] = model_class
-        self.config["encoder_loader"] = encoder_loader
+        self.config["train_loader"] = train_loader
+        self.config["validation_loader"] = validation_loader
         self.config["ray_worker_seed"] = tune.randint(0, 1000)
 
         self.gpu_per_trial = model_config.tune.gpu_per_trial
         self.cpu_per_trial = model_config.tune.cpu_per_trial
 
         self.tuner = self.tuner_initialization(
-            data_config=data_config,
-            data_path=data_path,
-            # encoder_loader=encoder_loader,
+            train_loader=train_loader,
+            validation_loader=validation_loader,
             autoscaler=autoscaler,
         )
 
     def tuner_initialization(
         self,
-        data_config: SplitTransformDict,
-        data_path: str,
-        # encoder_loader: EncoderLoader,
+        train_loader: DatasetLoader,
+        validation_loader: DatasetLoader,
         *,
         autoscaler: bool = False,
     ) -> tune.Tuner:
@@ -152,16 +145,10 @@ class TuneWrapper:
         # Pre-load and encode datasets once, then put them in Ray's object store
 
         training = TorchDataset(
-            data_config=data_config,
-            csv_path=data_path,
-            # encoder_loader=encoder_loader,
-            split=0,
+            loader=train_loader,
         )
         validation = TorchDataset(
-            data_config=data_config,
-            csv_path=data_path,
-            # encoder_loader=encoder_loader,
-            split=1,
+            loader=validation_loader,
         )
 
         # log to debug the names of the columns and shapes of tensors for a batch of training

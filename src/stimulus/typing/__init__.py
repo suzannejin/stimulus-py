@@ -7,7 +7,7 @@ The aliases from this module should be used for typing purposes only.
 """
 # ruff: noqa: F401
 
-from typing import TypeAlias
+from typing import TypeAlias, TypeVar, Any
 
 # these imports mostly alias everything
 from stimulus.data.data_handlers import (
@@ -38,7 +38,6 @@ from stimulus.data.interface.data_config_schema import (
 from stimulus.data.splitting import AbstractSplitter as Splitter
 from stimulus.data.transforming.transforms import AbstractTransform as Transform
 from stimulus.learner.predict import PredictWrapper
-from stimulus.learner.raytune_learner import CheckpointDict, TuneModel, TuneWrapper
 from stimulus.learner.raytune_parser import (
     RayTuneMetrics,
     RayTuneOptimizer,
@@ -78,3 +77,11 @@ Data: TypeAlias = (
     | TransformColumns
     | TransformColumnsTransformation
 )
+
+# Replace these problematic imports
+# from stimulus.learner.raytune_learner import CheckpointDict, TuneModel, TuneWrapper
+
+# Replace with type aliases if needed
+CheckpointDict = dict[str, Any]
+TuneModel = TypeVar('TuneModel')
+TuneWrapper = TypeVar('TuneWrapper')

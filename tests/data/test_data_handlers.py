@@ -200,14 +200,14 @@ def test_torch_dataset_init(
     dummy_encoders: dict,
 ) -> None:
     """Test initialization of TorchDataset."""
-    dataset = TorchDataset(
+    loader = DatasetLoader(
         encoders=dummy_encoders,
         input_columns=["age", "fare"],
         label_columns=["survived"],
         meta_columns=["passenger_id"],
         csv_path=titanic_csv_path,
     )
-
+    dataset = TorchDataset(loader)
     assert len(dataset) > 0
     assert isinstance(dataset[0], tuple)
     assert len(dataset[0]) == 3
@@ -221,13 +221,14 @@ def test_torch_dataset_get_item(
     dummy_encoders: dict,
 ) -> None:
     """Test getting item from TorchDataset."""
-    dataset = TorchDataset(
+    loader = DatasetLoader(
         encoders=dummy_encoders,
         input_columns=["age", "fare"],
         label_columns=["survived"],
         meta_columns=["passenger_id"],
         csv_path=titanic_csv_path,
     )
+    dataset = TorchDataset(loader)
 
     inputs, labels, meta = dataset[0]
     assert isinstance(inputs, dict)
