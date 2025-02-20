@@ -1,6 +1,6 @@
 """Module for defining the data config schema."""
 
-from typing import Any, Union, Optional
+from typing import Any, Optional, Union
 
 from pydantic import BaseModel, field_validator
 

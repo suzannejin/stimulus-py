@@ -22,14 +22,16 @@ The data handling pipeline consists of:
 See titanic.yaml in tests/test_data/titanic/ for an example configuration file format.
 """
 
-import stimulus.data.encoding.encoders as encoders_module
-import stimulus.data.transforming.transforms as transforms_module
-import stimulus.data.splitting.splitters as splitters_module
-import stimulus.data.interface.data_config_parser as data_config_parser
-import polars as pl
-import numpy as np
 from typing import Any, Optional, Union
+
+import numpy as np
+import polars as pl
 import torch
+
+import stimulus.data.encoding.encoders as encoders_module
+import stimulus.data.splitting.splitters as splitters_module
+import stimulus.data.transforming.transforms as transforms_module
+
 
 class DatasetHandler:
     """Main class for handling dataset loading, encoding, transformation and splitting.
@@ -105,11 +107,12 @@ class DatasetHandler:
 class DatasetProcessor(DatasetHandler):
     """Class for loading dataset, applying transformations and splitting."""
 
-    def __init__(self, 
-                csv_path: str,
-                transforms: dict[str, list[transforms_module.AbstractTransform]],
-                splitter: splitters_module.AbstractSplitter,
-                ) -> None:
+    def __init__(
+        self,
+        csv_path: str,
+        transforms: dict[str, list[transforms_module.AbstractTransform]],
+        splitter: splitters_module.AbstractSplitter,
+    ) -> None:
         """Initialize the DatasetProcessor."""
         super().__init__(csv_path)
         self.transforms = transforms
@@ -146,14 +149,14 @@ class DatasetProcessor(DatasetHandler):
 
     def apply_transformations(self) -> None:
         """Apply the transformation group to the data.
-        
+
         Applies all transformations defined in self.transforms to their corresponding columns.
         Each column can have multiple transformations that are applied sequentially.
         """
         for column_name, transforms_list in self.transforms.items():
             for transform in transforms_list:
                 transformed_data = transform.transform(self.data[column_name])
-                
+
                 if transform.adds_rows():
                     new_rows = self.data.with_columns(
                         pl.Series(column_name, transformed_data),
@@ -254,7 +257,6 @@ class DatasetLoader(DatasetHandler):
         Args:
             idx: The index of the data to be returned, it can be a single index, a list of indexes or a slice
         """
-
         # Handle different index types
         if isinstance(idx, slice):
             # Get the actual indices for the slice

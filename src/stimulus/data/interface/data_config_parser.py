@@ -1,22 +1,33 @@
 """Module for parsing data configs."""
-from typing import Any, Union, Optional
 
-from stimulus.data.encoding import encoders as encoders_module
-from stimulus.data.splitting import splitters as splitters_module
-from stimulus.data.transforming import transforms as transforms_module
-from stimulus.data.interface.data_config_schema import (
-    Columns as Columns,
-    ConfigDict as ConfigDict,
-    SplitConfigDict as SplitConfigDict,
-    SplitTransformDict as SplitTransformDict,
-    Transform as Transform,
-    TransformColumns as TransformColumns,
-    Split as Split,
-)
+from typing import Any
+
 import yaml
 
-
-
+from stimulus.data.encoding import encoders as encoders_module
+from stimulus.data.interface.data_config_schema import (
+    Columns as Columns,
+)
+from stimulus.data.interface.data_config_schema import (
+    ConfigDict as ConfigDict,
+)
+from stimulus.data.interface.data_config_schema import (
+    Split as Split,
+)
+from stimulus.data.interface.data_config_schema import (
+    SplitConfigDict as SplitConfigDict,
+)
+from stimulus.data.interface.data_config_schema import (
+    SplitTransformDict as SplitTransformDict,
+)
+from stimulus.data.interface.data_config_schema import (
+    Transform as Transform,
+)
+from stimulus.data.interface.data_config_schema import (
+    TransformColumns as TransformColumns,
+)
+from stimulus.data.splitting import splitters as splitters_module
+from stimulus.data.transforming import transforms as transforms_module
 
 
 def _instantiate_component(module: Any, name: str, params: dict) -> Any:
@@ -63,12 +74,12 @@ def create_transforms(transform_config: list[TransformColumns]) -> dict[str, lis
     }
 
 
-def create_splitter(split_config: list[Split]) -> splitters_module.AbstractSplitter:
+def create_splitter(split_config: Split) -> splitters_module.AbstractSplitter:
     """Factory for creating splitters from config"""
     return _instantiate_component(
         module=splitters_module,
-        name=split_config[0].split_method,
-        params=split_config[0].params,
+        name=split_config.split_method,
+        params=split_config.params,
     )
 
 
@@ -92,6 +103,7 @@ def parse_data_config(
     splitter = create_splitter(config.split)
 
     return encoders, transforms, splitter
+
 
 def extract_transform_parameters_at_index(
     transform: Transform,
