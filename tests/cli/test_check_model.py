@@ -6,8 +6,10 @@ from pathlib import Path
 
 import pytest
 import ray
+from click.testing import CliRunner
 
 from stimulus.cli import check_model
+from stimulus.cli.main import cli
 
 
 @pytest.fixture
@@ -22,7 +24,7 @@ def data_path() -> str:
 def data_config() -> str:
     """Get path to test data config YAML."""
     return str(
-        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_sub_config.yaml",
+        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_unique_transform.yaml",
     )
 
 
@@ -65,7 +67,7 @@ def test_check_model_main(
 
     try:
         # Run main function - should complete without errors
-        check_model.main(
+        check_model.check_model(
             model_path=model_path,
             data_path=data_path,
             data_config_path=data_config,
@@ -74,6 +76,54 @@ def test_check_model_main(
             num_samples=1,
             ray_results_dirpath=None,
         )
+    finally:
+        # Ensure Ray is shut down properly
+        if ray.is_initialized():
+            ray.shutdown()
+
+            # Clean up any ray files/directories that may have been created
+            ray_results_dir = os.path.expanduser("~/ray_results")
+            if os.path.exists(ray_results_dir):
+                import shutil
+
+                shutil.rmtree(ray_results_dir)
+
+
+def test_cli_invocation(
+    data_path: str,
+    data_config: str,
+    model_path: str,
+    model_config: str,
+) -> None:
+    """Test the CLI invocation of check-model command.
+
+    Args:
+        data_path: Path to test CSV data.
+        data_config: Path to data config YAML.
+        model_path: Path to model implementation.
+        model_config: Path to model config YAML.
+    """
+    ray.init(ignore_reinit_error=True)
+    runner = CliRunner()
+    try:
+        result = runner.invoke(
+            cli,
+            [
+                "check-model",
+                "-d",
+                data_path,
+                "-m",
+                model_path,
+                "-e",
+                data_config,
+                "-c",
+                model_config,
+                "-n",
+                "1",
+            ],
+        )
+        assert result.exit_code == 0
+
     finally:
         # Ensure Ray is shut down properly
         if ray.is_initialized():
