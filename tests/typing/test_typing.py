@@ -13,11 +13,8 @@ def test_data_handlers_types() -> None:
         from stimulus.typing import (
             DatasetHandler,
             DatasetLoader,
-            DatasetManager,
             DatasetProcessor,
-            EncodeManager,
-            SplitManager,
-            TransformManager,
+            TorchDataset,
         )
     except ImportError:
         pytest.fail("Failed to import Data Handlers types")
@@ -27,6 +24,7 @@ def test_learner_types() -> None:
     """Test the learner types."""
     try:
         from stimulus.typing import (
+            CheckpointDict,
             PredictWrapper,
             RayTuneMetrics,
             RayTuneOptimizer,
@@ -39,24 +37,24 @@ def test_learner_types() -> None:
         pytest.fail("Failed to import Learner types")
 
 
-def test_yaml_data_types() -> None:
-    """Test the YAML data types."""
+def test_data_config_schema_types() -> None:
+    """Test the data config schema types."""
     try:
         from stimulus.typing import (
-            YamlColumns,
-            YamlColumnsEncoder,
-            YamlConfigDict,
-            YamlGlobalParams,
-            YamlSchema,
-            YamlSplit,
-            YamlSplitConfigDict,
-            YamlSplitTransformDict,
-            YamlTransform,
-            YamlTransformColumns,
-            YamlTransformColumnsTransformation,
+            Columns,
+            ColumnsEncoder,
+            ConfigDict,
+            GlobalParams,
+            Schema,
+            Split,
+            SplitConfigDict,
+            SplitTransformDict,
+            Transform,
+            TransformColumns,
+            TransformColumnsTransformation,
         )
     except ImportError:
-        pytest.fail("Failed to import YAML Data types")
+        pytest.fail("Failed to import Data Config Schema types")
 
 
 def test_yaml_model_schema_types() -> None:
@@ -67,13 +65,13 @@ def test_yaml_model_schema_types() -> None:
             Data,
             Loss,
             Model,
+            RayConfigLoader,
             RayTuneModel,
             RunParams,
             Scheduler,
             TunableParameter,
             Tune,
             TuneParams,
-            YamlRayConfigLoader,
         )
     except ImportError:
         pytest.fail("Failed to import YAML Model Schema types")
@@ -82,6 +80,6 @@ def test_yaml_model_schema_types() -> None:
 def test_type_aliases() -> None:
     """Test the type aliases."""
     try:
-        from stimulus.typing import DataManager, Loader, RayTuneData, YamlData
+        from stimulus.typing import Data, RayTuneData
     except ImportError:
         pytest.fail("Failed to import Type Aliases")

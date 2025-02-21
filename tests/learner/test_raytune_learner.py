@@ -5,13 +5,13 @@ import warnings
 
 import pytest
 import ray
+import torch
 import yaml
 
-from stimulus.data.handlertorch import TorchDataset
-from stimulus.data.loaders import EncoderLoader
+from stimulus.data.data_handlers import DatasetLoader, TorchDataset
+from stimulus.data.encoding import encoders as encoders_module
 from stimulus.learner.raytune_learner import TuneWrapper
-from stimulus.utils.yaml_data import YamlSplitTransformDict
-from stimulus.utils.yaml_model_schema import Model, RayTuneModel, YamlRayConfigLoader
+from stimulus.utils.yaml_model_schema import Model, RayConfigLoader, RayTuneModel
 from tests.test_model import titanic_model
 
 
@@ -20,35 +20,95 @@ def ray_config_loader() -> RayTuneModel:
     """Load the RayTuneModel configuration."""
     with open("tests/test_model/titanic_model_cpu.yaml") as file:
         model_config = yaml.safe_load(file)
-    return YamlRayConfigLoader(Model(**model_config)).get_config()
+    return RayConfigLoader(Model(**model_config)).get_config()
 
 
 @pytest.fixture
-def encoder_loader() -> EncoderLoader:
+def get_encoders() -> dict[str, encoders_module.AbstractEncoder]:
     """Load the EncoderLoader configuration."""
-    with open("tests/test_data/titanic/titanic_sub_config.yaml") as file:
-        data_config = yaml.safe_load(file)
-    encoder_loader = EncoderLoader()
-    encoder_loader.initialize_column_encoders_from_config(
-        YamlSplitTransformDict(**data_config).columns,
-    )
-    return encoder_loader
+    return {
+        "passenger_id": encoders_module.NumericEncoder(dtype=torch.int64),
+        "survived": encoders_module.NumericEncoder(dtype=torch.int64),
+        "pclass": encoders_module.NumericEncoder(dtype=torch.int64),
+        "sex": encoders_module.StrClassificationEncoder(),
+        "age": encoders_module.NumericEncoder(dtype=torch.float32),
+        "sibsp": encoders_module.NumericEncoder(dtype=torch.int64),
+        "parch": encoders_module.NumericEncoder(dtype=torch.int64),
+        "fare": encoders_module.NumericEncoder(dtype=torch.float32),
+        "embarked": encoders_module.StrClassificationEncoder(),
+    }
 
 
 @pytest.fixture
-def titanic_dataset(encoder_loader: EncoderLoader) -> TorchDataset:
+def get_input_columns() -> list[str]:
+    """Get the input columns."""
+    return ["embarked", "pclass", "sex", "age", "sibsp", "parch", "fare"]
+
+
+@pytest.fixture
+def get_label_columns() -> list[str]:
+    """Get the label columns."""
+    return ["survived"]
+
+
+@pytest.fixture
+def get_meta_columns() -> list[str]:
+    """Get the meta columns."""
+    return ["passenger_id"]
+
+
+@pytest.fixture
+def titanic_dataset() -> TorchDataset:
     """Create a TorchDataset instance for testing."""
+    return "tests/test_data/titanic/titanic_stimulus_split.csv"
+
+
+@pytest.fixture
+def get_train_dataset(
+    titanic_dataset: str,
+    get_encoders: dict[str, encoders_module.AbstractEncoder],
+    get_input_columns: list[str],
+    get_label_columns: list[str],
+    get_meta_columns: list[str],
+) -> TorchDataset:
+    """Get the DatasetLoader."""
     return TorchDataset(
-        csv_path="tests/test_data/titanic/titanic_stimulus_split.csv",
-        config_path="tests/test_data/titanic/titanic_sub_config.yaml",
-        encoder_loader=encoder_loader,
-        split=0,
+        loader=DatasetLoader(
+            csv_path=titanic_dataset,
+            encoders=get_encoders,
+            input_columns=get_input_columns,
+            label_columns=get_label_columns,
+            meta_columns=get_meta_columns,
+            split=0,
+        ),
+    )
+
+
+@pytest.fixture
+def get_validation_dataset(
+    titanic_dataset: str,
+    get_encoders: dict[str, encoders_module.AbstractEncoder],
+    get_input_columns: list[str],
+    get_label_columns: list[str],
+    get_meta_columns: list[str],
+) -> TorchDataset:
+    """Get the DatasetLoader."""
+    return TorchDataset(
+        loader=DatasetLoader(
+            csv_path=titanic_dataset,
+            encoders=get_encoders,
+            input_columns=get_input_columns,
+            label_columns=get_label_columns,
+            meta_columns=get_meta_columns,
+            split=1,
+        ),
     )
 
 
 def test_tunewrapper_init(
     ray_config_loader: RayTuneModel,
-    encoder_loader: EncoderLoader,
+    get_train_dataset: TorchDataset,
+    get_validation_dataset: TorchDataset,
 ) -> None:
     """Test the initialization of the TuneWrapper class."""
     # Filter ResourceWarning during Ray shutdown
@@ -58,16 +118,11 @@ def test_tunewrapper_init(
     ray.init(ignore_reinit_error=True)
 
     try:
-        data_config: YamlSplitTransformDict
-        with open("tests/test_data/titanic/titanic_sub_config.yaml") as f:
-            data_config = YamlSplitTransformDict(**yaml.safe_load(f))
-
         tune_wrapper = TuneWrapper(
             model_config=ray_config_loader,
             model_class=titanic_model.ModelTitanic,
-            data_path="tests/test_data/titanic/titanic_stimulus_split.csv",
-            data_config=data_config,
-            encoder_loader=encoder_loader,
+            train_dataset=get_train_dataset,
+            validation_dataset=get_validation_dataset,
             seed=42,
             ray_results_dir=os.path.abspath("tests/test_data/titanic/ray_results"),
             tune_run_name="test_run",
@@ -88,7 +143,8 @@ def test_tunewrapper_init(
 
 def test_tune_wrapper_tune(
     ray_config_loader: RayTuneModel,
-    encoder_loader: EncoderLoader,
+    get_train_dataset: TorchDataset,
+    get_validation_dataset: TorchDataset,
 ) -> None:
     """Test the tune method of TuneWrapper class."""
     # Filter ResourceWarning during Ray shutdown
@@ -98,16 +154,11 @@ def test_tune_wrapper_tune(
     ray.init(ignore_reinit_error=True)
 
     try:
-        data_config: YamlSplitTransformDict
-        with open("tests/test_data/titanic/titanic_sub_config.yaml") as f:
-            data_config = YamlSplitTransformDict(**yaml.safe_load(f))
-
         tune_wrapper = TuneWrapper(
             model_config=ray_config_loader,
             model_class=titanic_model.ModelTitanic,
-            data_path="tests/test_data/titanic/titanic_stimulus_split.csv",
-            data_config=data_config,
-            encoder_loader=encoder_loader,
+            train_dataset=get_train_dataset,
+            validation_dataset=get_validation_dataset,
             seed=42,
             ray_results_dir=os.path.abspath("tests/test_data/titanic/ray_results"),
             tune_run_name="test_run",

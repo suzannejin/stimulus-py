@@ -7,7 +7,7 @@ from typing import Any
 import numpy as np
 
 
-class AbstractDataTransformer(ABC):
+class AbstractTransform(ABC):
     """Abstract class for data transformers.
 
     Data transformers implement in_place or augmentation transformations.
@@ -64,7 +64,7 @@ class AbstractDataTransformer(ABC):
         raise NotImplementedError
 
 
-class AbstractNoiseGenerator(AbstractDataTransformer):
+class AbstractNoiseGenerator(AbstractTransform):
     """Abstract class for noise generators.
 
     All noise function should have the seed in it. This is because the multiprocessing of them could unset the seed.
@@ -76,7 +76,7 @@ class AbstractNoiseGenerator(AbstractDataTransformer):
         self.add_row = False
 
 
-class AbstractAugmentationGenerator(AbstractDataTransformer):
+class AbstractAugmentationGenerator(AbstractTransform):
     """Abstract class for augmentation generators.
 
     All augmentation function should have the seed in it. This is because the multiprocessing of them could unset the seed.

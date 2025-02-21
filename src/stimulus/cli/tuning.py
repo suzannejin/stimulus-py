@@ -12,7 +12,7 @@ import yaml
 
 from stimulus.data import loaders
 from stimulus.learner import raytune_learner, raytune_parser
-from stimulus.utils import launch_utils, yaml_data, yaml_model_schema
+from stimulus.utils import model_file_interface, yaml_data, yaml_model_schema
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +186,7 @@ def main(
         column_config=data_config.columns,
     )
 
-    model_class = launch_utils.import_class_from_file(model_path)
+    model_class = model_file_interface.import_class_from_file(model_path)
 
     ray_config_loader = yaml_model_schema.YamlRayConfigLoader(model=model_config)
     ray_config_model = ray_config_loader.get_config()

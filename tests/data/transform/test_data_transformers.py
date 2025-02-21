@@ -1,21 +1,16 @@
 """Test suite for the data transformation generators."""
 
-import os
 from typing import Any
 
 import numpy as np
 import pytest
 
-from src.stimulus.data.transform.data_transformation_generators import (
-    AbstractDataTransformer,
+from src.stimulus.data.transforming.transforms import (
+    AbstractTransform,
     GaussianChunk,
     GaussianNoise,
     ReverseComplement,
     UniformTextMasker,
-)
-from stimulus.utils.yaml_data import (
-    dump_yaml_list_into_files,
-    generate_split_transform_configs,
 )
 
 
@@ -33,7 +28,7 @@ class DataTransformerTest:
 
     def __init__(  # noqa: D107
         self,
-        transformer: AbstractDataTransformer,
+        transformer: AbstractTransform,
         params: dict,
         single_input: Any,
         expected_single_output: Any,
@@ -256,19 +251,3 @@ class TestReverseComplement:
         for item in transformed_data:
             assert isinstance(item, str)
         assert transformed_data == test_data.expected_multiple_outputs
-
-
-@pytest.fixture
-def titanic_config_path(base_config: dict) -> str:
-    """Ensure the config file exists and return its path."""
-    config_path = "tests/test_data/titanic/titanic_sub_config_0.yaml"
-
-    if not os.path.exists(config_path):
-        configs = generate_split_transform_configs(base_config)
-        dump_yaml_list_into_files(
-            [configs[0]],
-            "tests/test_data/titanic/",
-            "titanic_sub_config",
-        )
-
-    return os.path.abspath(config_path)

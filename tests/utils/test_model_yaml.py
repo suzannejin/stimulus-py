@@ -26,7 +26,7 @@ def test_raytune_space_selector(titanic_model_yaml_path: str) -> None:
     with open(titanic_model_yaml_path) as file:
         model_config = yaml.safe_load(file)
     model = yaml_model_schema.Model.model_validate(model_config)
-    loader = yaml_model_schema.YamlRayConfigLoader(model)
+    loader = yaml_model_schema.RayConfigLoader(model)
 
     result = loader.raytune_space_selector(tune.choice, [1, 2, 3])
     assert str(type(result).__name__) == "Categorical"
@@ -43,7 +43,7 @@ def test_convert_raytune(titanic_model_yaml_path: str) -> None:
     with open(titanic_model_yaml_path) as file:
         model_config = yaml.safe_load(file)
     model = yaml_model_schema.Model.model_validate(model_config)
-    loader = yaml_model_schema.YamlRayConfigLoader(model)
+    loader = yaml_model_schema.RayConfigLoader(model)
 
     param = yaml_model_schema.TunableParameter(space=[16, 32, 64], mode="choice")
     result = loader.convert_raytune(param)
@@ -59,7 +59,7 @@ def test_convert_config_to_ray(titanic_model_yaml_path: str) -> None:
     with open(titanic_model_yaml_path) as file:
         model_config = yaml.safe_load(file)
     model = yaml_model_schema.Model.model_validate(model_config)
-    loader = yaml_model_schema.YamlRayConfigLoader(model)
+    loader = yaml_model_schema.RayConfigLoader(model)
 
     ray_model = loader.convert_config_to_ray(model)
     assert isinstance(ray_model, yaml_model_schema.RayTuneModel)
@@ -74,7 +74,7 @@ def test_get_config(titanic_model_yaml_path: str) -> None:
     with open(titanic_model_yaml_path) as file:
         model_config = yaml.safe_load(file)
     model = yaml_model_schema.Model.model_validate(model_config)
-    loader = yaml_model_schema.YamlRayConfigLoader(model)
+    loader = yaml_model_schema.RayConfigLoader(model)
 
     config = loader.get_config()
     assert isinstance(config, yaml_model_schema.RayTuneModel)
@@ -89,7 +89,7 @@ def test_sampint() -> None:
     sample_space = [1, 5]
     n_space = [2, 4]
 
-    result = yaml_model_schema.YamlRayConfigLoader.sampint(sample_space, n_space)
+    result = yaml_model_schema.RayConfigLoader.sampint(sample_space, n_space)
 
     assert isinstance(result, list)
     assert all(isinstance(x, int) for x in result)

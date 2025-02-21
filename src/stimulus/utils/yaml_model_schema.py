@@ -120,7 +120,7 @@ class RayTuneModel(pydantic.BaseModel):
     tune: Tune
 
 
-class YamlRayConfigLoader:
+class RayConfigLoader:
     """Load and convert YAML configurations to Ray Tune format.
 
     This class handles loading model configurations and converting them into

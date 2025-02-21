@@ -59,30 +59,18 @@ columns:
         params: {}
 
 transforms:
-  - transformation_name: noise
+  - transformation_name: "noise"
     columns:
-      - column_name: age
+      - column_name: "age"
         transformations:
           - name: GaussianNoise
             params:
-              std: 0.1
-      - column_name: fare
+              std: [0.1, 0.2, 0.3]
+      - column_name: "fare"
         transformations:
           - name: GaussianNoise
             params:
-              std: 0.1
-  - transformation_name: noise2
-    columns:
-      - column_name: age
-        transformations:
-          - name: GaussianNoise
-            params:
-              std: 0.1
-      - column_name: fare
-        transformations:
-          - name: GaussianNoise
-            params:
-              std: 0.1
+              std: [0.1, 0.2, 0.3]
 
 split:
   split_method: RandomSplit
