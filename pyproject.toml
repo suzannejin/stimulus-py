@@ -43,17 +43,12 @@ dependencies = [
     "scipy==1.14.1",
     "syrupy>=4.8.0",
     "torch>=2.2.2",
-    "torch==2.2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'"
+    "torch==2.2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "click>=8.1.0"
 ]
 
 [project.scripts]
-stimulus-shuffle-csv = "stimulus.cli.shuffle_csv:run"
-stimulus-transform-csv = "stimulus.cli.transform_csv:run"
-stimulus-split-csv = "stimulus.cli.split_csv:run"
-stimulus-check-model = "stimulus.cli.check_model:run"
-stimulus-tuning = "stimulus.cli.tuning:run"
-stimulus-split-yaml-split = "stimulus.cli.split_split:run"
-stimulus-split-yaml-transform = "stimulus.cli.split_transforms:run"
+stimulus = "stimulus.cli.main:cli"
 
 [project.urls]
 Homepage = "https://mathysgrapotte.github.io/stimulus-py"
