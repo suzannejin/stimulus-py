@@ -123,3 +123,50 @@ def shuffle_csv(
         config_yaml=yaml,
         out_path=output,
     )
+
+
+@cli.command()
+@click.option(
+    "-c",
+    "--csv",
+    type=click.Path(exists=True),
+    required=True,
+    help="The file path for the csv containing all data",
+)
+@click.option(
+    "-y",
+    "--yaml",
+    type=click.Path(exists=True),
+    required=True,
+    help="The YAML config file that holds all parameter info",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    required=True,
+    help="The output file path to write the split csv",
+)
+@click.option(
+    "-f",
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Overwrite the split column if it already exists in the csv",
+)
+def split_csv(
+    csv: str,
+    yaml: str,
+    output: str,
+    *,
+    force: bool,
+) -> None:
+    """Split rows in a CSV data file."""
+    from stimulus.cli.split_csv import split_csv as split_csv_func
+
+    split_csv_func(
+        data_csv=csv,
+        config_yaml=yaml,
+        out_path=output,
+        force=force,
+    )
