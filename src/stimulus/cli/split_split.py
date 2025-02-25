@@ -6,48 +6,18 @@ YAML files, each containing a unique split.
 The resulting YAML files can be used as input configurations for the stimulus package.
 """
 
-import argparse
+import logging
 from typing import Any
 
 import yaml
 
-from stimulus.utils.yaml_data import (
-    YamlConfigDict,
-    YamlSplitConfigDict,
-    check_yaml_schema,
-    dump_yaml_list_into_files,
-    generate_split_configs,
-)
+from stimulus.data.interface import data_config_parser
 
 
-def get_args() -> argparse.Namespace:
-    """Get the arguments when using from the command line."""
-    parser = argparse.ArgumentParser(description="")
-    parser.add_argument(
-        "-y",
-        "--yaml",
-        type=str,
-        required=True,
-        metavar="FILE",
-        help="The YAML config file that hold all transform - split - parameter info",
-    )
-    parser.add_argument(
-        "-d",
-        "--out_dir",
-        type=str,
-        required=False,
-        nargs="?",
-        const="./",
-        default="./",
-        metavar="DIR",
-        # TODO: Change the output name
-        help="The output dir where all the YAMLs are written to. Output YAML will be called split-#[number].yaml transform-#[number].yaml. Default -> ./",
-    )
-
-    return parser.parse_args()
+logger = logging.getLogger(__name__)
 
 
-def main(config_yaml: str, out_dir_path: str) -> None:
+def split_split(config_yaml: str, out_dir_path: str) -> None:
     """Reads a YAML config file and generates a file per unique split.
 
     This script reads a YAML with a defined structure and creates all the YAML files ready to be passed to
@@ -64,23 +34,16 @@ def main(config_yaml: str, out_dir_path: str) -> None:
     with open(config_yaml) as conf_file:
         yaml_config = yaml.safe_load(conf_file)
 
-    yaml_config_dict: YamlConfigDict = YamlConfigDict(**yaml_config)
-    # check if the yaml schema is correct
-    # FIXME: isn't it redundant to check and already class with pydantic ?
-    check_yaml_schema(yaml_config_dict)
+    yaml_config_dict = data_config_parser.YamlConfigDict(**yaml_config)
+
+    logger.info("YAML config loaded successfully.")
 
     # generate the yaml files per split
-    split_configs: list[YamlSplitConfigDict] = generate_split_configs(yaml_config_dict)
+    split_configs = data_config_parser.generate_split_configs(yaml_config_dict)
+
+    logger.info("Splits generated successfully.")
 
     # dump all the YAML configs into files
-    dump_yaml_list_into_files(split_configs, out_dir_path, "test_split")
+    data_config_parser.dump_yaml_list_into_files(split_configs, out_dir_path, "test_split")
 
-
-def run() -> None:
-    """Run the split_yaml CLI."""
-    args = get_args()
-    main(args.yaml, args.out_dir)
-
-
-if __name__ == "__main__":
-    run()
+    logger.info("YAML files saved successfully.")
