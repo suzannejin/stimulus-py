@@ -6,46 +6,14 @@ YAML files, each containing a unique transform associated to a unique split.
 The resulting YAML files can be used as input configurations for the stimulus package.
 """
 
-import argparse
 from typing import Any
 
 import yaml
 
-from stimulus.utils.yaml_data import (
-    YamlSplitConfigDict,
-    YamlSplitTransformDict,
-    dump_yaml_list_into_files,
-    generate_split_transform_configs,
-)
+from stimulus.data.interface import data_config_parser
 
 
-def get_args() -> argparse.Namespace:
-    """Get the arguments when using the command line."""
-    parser = argparse.ArgumentParser(description="")
-    parser.add_argument(
-        "-j",
-        "--yaml",
-        type=str,
-        required=True,
-        metavar="FILE",
-        help="The YAML config file that hold all the transform per split parameter info",
-    )
-    parser.add_argument(
-        "-d",
-        "--out-dir",
-        type=str,
-        required=False,
-        nargs="?",
-        const="./",
-        default="./",
-        metavar="DIR",
-        help="The output dir where all the YAMLs are written to. Output YAML will be called split_transform-#[number].yaml. Default -> ./",
-    )
-
-    return parser.parse_args()
-
-
-def main(config_yaml: str, out_dir_path: str) -> None:
+def split_transforms(config_yaml: str, out_dir_path: str) -> None:
     """Reads a YAML config and generates files for all split - transform possible combinations.
 
     This script reads a YAML with a defined structure and creates all the YAML files ready to be passed to the stimulus package.
@@ -60,15 +28,10 @@ def main(config_yaml: str, out_dir_path: str) -> None:
     with open(config_yaml) as conf_file:
         yaml_config = yaml.safe_load(conf_file)
 
-    yaml_config_dict: YamlSplitConfigDict = YamlSplitConfigDict(**yaml_config)
+    yaml_config_dict = data_config_parser.SplitConfigDict(**yaml_config)
 
     # Generate the yaml files for each transform
-    split_transform_configs: list[YamlSplitTransformDict] = generate_split_transform_configs(yaml_config_dict)
+    split_transform_configs = data_config_parser.generate_split_transform_configs(yaml_config_dict)
 
     # Dump all the YAML configs into files
-    dump_yaml_list_into_files(split_transform_configs, out_dir_path, "test_transforms")
-
-
-if __name__ == "__main__":
-    args = get_args()
-    main(args.yaml, args.out_dir)
+    data_config_parser.dump_yaml_list_into_files(split_transform_configs, out_dir_path, "test_transforms")
