@@ -43,11 +43,12 @@ def test_split_split_main(
     yaml_type: str,
     error: Optional[Exception],
     request: Any,
-    snapshot: Any
+    snapshot: Any,
+    tmp_path: Path,
 ) -> None:
     """Tests the CLI command with correct and wrong YAML files."""
     yaml_path = request.getfixturevalue(yaml_type)
-    tmpdir = tempfile.gettempdir()
+    tmpdir = str(tmp_path)
     if error:
         with pytest.raises(error):  # type: ignore[call-overload]
             split_split.split_split(yaml_path, tmpdir)
@@ -64,7 +65,7 @@ def test_split_split_main(
 
 
 def test_cli_invocation(
-    correct_yaml_path: str
+    correct_yaml_path: str,
 ) -> None:
     """Test the CLI invocation of split-split command.
     Args:
