@@ -34,7 +34,7 @@ def split_split(config_yaml: str, out_dir_path: str) -> None:
     with open(config_yaml) as conf_file:
         yaml_config = yaml.safe_load(conf_file)
 
-    yaml_config_dict = data_config_parser.YamlConfigDict(**yaml_config)
+    yaml_config_dict = data_config_parser.ConfigDict(**yaml_config)
 
     logger.info("YAML config loaded successfully.")
 

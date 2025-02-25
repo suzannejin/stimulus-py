@@ -11,14 +11,14 @@ def cli() -> None:
 @cli.command()
 @click.option(
     "-y",
-    "--yaml",
+    "--config-yaml",
     type=click.Path(exists=True),
     required=True,
     help="The YAML config file that hold all transform - split - parameter info",
 )
 @click.option(
     "-d",
-    "--out_dir",
+    "--out-dir",
     type=click.Path(),
     required=False,
     default="./",
@@ -26,9 +26,9 @@ def cli() -> None:
 )
 def split_split(
     config_yaml: str,
-    out_dir_path: str,
+    out_dir: str,
 ) -> None:
     """Split a YAML configuration file into multiple YAML files, each containing a unique split."""
     from stimulus.cli.split_split import split_split as split_split_func
 
-    split_split_func(config_yaml, out_dir_path)
+    split_split_func(config_yaml=config_yaml, out_dir_path=out_dir)
