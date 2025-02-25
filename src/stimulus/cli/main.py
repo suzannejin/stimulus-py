@@ -3,10 +3,12 @@
 import click
 from importlib_metadata import version
 
+
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(version("stimulus-py"), "-v", "--version")
 def cli() -> None:
     """Stimulus is an open-science framework for data processing and model training."""
+
 
 @cli.command()
 @click.option(

@@ -13,7 +13,6 @@ import yaml
 
 from stimulus.data.interface import data_config_parser
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -2,15 +2,15 @@
 
 import hashlib
 import os
-from pathlib import Path
 import tempfile
+from pathlib import Path
 from typing import Any, Optional
 
 import pytest
 from click.testing import CliRunner
 
-from stimulus.cli.main import cli
 from stimulus.cli import split_split
+from stimulus.cli.main import cli
 
 
 # Fixtures
@@ -68,6 +68,7 @@ def test_cli_invocation(
     correct_yaml_path: str,
 ) -> None:
     """Test the CLI invocation of split-split command.
+
     Args:
         config_yaml: Path to the YAML config file.
         out_dir: Path to the output directory.
