@@ -222,3 +222,40 @@ def split_transforms(
     from stimulus.cli.split_transforms import split_transforms as split_transforms_func
 
     split_transforms_func(config_yaml=yaml, out_dir_path=out_dir)
+
+
+@cli.command()
+@click.option(
+    "-c",
+    "--csv",
+    type=click.Path(exists=True),
+    required=True,
+    help="The file path for the csv containing the data to transform",
+)
+@click.option(
+    "-y",
+    "--yaml",
+    type=click.Path(exists=True),
+    required=True,
+    help="The YAML config file that holds transformation parameters",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    required=True,
+    help="The output file path to write the transformed csv",
+)
+def transform_csv(
+    csv: str,
+    yaml: str,
+    output: str,
+) -> None:
+    """Transform data in a CSV file according to configuration."""
+    from stimulus.cli.transform_csv import main as transform_csv_func
+
+    transform_csv_func(
+        data_csv=csv,
+        config_yaml=yaml,
+        out_path=output,
+    )
