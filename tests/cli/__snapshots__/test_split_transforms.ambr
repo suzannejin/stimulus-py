@@ -1,7 +1,8 @@
 # serializer version: 1
 # name: test_split_transforms[correct_yaml_path-None]
   list([
-    '26d921a1580fb16ef597e91f4defec5607c11a7e822590f39e9ca456cc29819b',
-    'db0c550bfe6027c91981423afdc6115c9dcfba61409f961b98831db9e664fd57',
+    '3a4b035c71d6ef1a46cea25c318634f2331df8993876b71849de80f8c8d0db70',
+    '7b03cb09d862e4fb884dc0cf4da93ac7efe8068b72a4b086f532a93befb925f1',
+    'd9013844e136dfeb3969eefb6fb9787e6bf6886c796c3bca5ed1e0dd3400dd29',
   ])
 # ---
