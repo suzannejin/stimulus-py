@@ -86,6 +86,10 @@ def check_model(
         ray_results_dirpath=ray_results_dirpath,
         debug_mode=debug_mode,
     )
+
+
+@cli.command()
+@click.option(
     "-y",
     "--yaml",
     type=click.Path(exists=True),

@@ -77,7 +77,7 @@ def test_cli_invocation(
             cli,
             [
                 "split-transforms",
-                "-j",
+                "-y",
                 correct_yaml_path,
                 "-d",
                 output_path,
