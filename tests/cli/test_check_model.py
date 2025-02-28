@@ -45,21 +45,22 @@ def setup_teardown():
     """Setup and teardown Ray for all tests in this module."""
     # Filter ResourceWarning during Ray operations
     warnings.filterwarnings("ignore", category=ResourceWarning)
-    
+
     # Initialize Ray with minimal resources for testing
     ray.init(ignore_reinit_error=True)
-    
+
     yield
-    
+
     # Ensure Ray is shut down properly after all tests
     if ray.is_initialized():
         ray.shutdown()
-        
+
     # Clean up any ray files/directories that may have been created
     ray_results_dir = os.path.expanduser("~/ray_results")
     if os.path.exists(ray_results_dir):
         try:
             import shutil
+
             shutil.rmtree(ray_results_dir)
         except (PermissionError, OSError) as e:
             warnings.warn(f"Could not remove Ray results directory: {e}")

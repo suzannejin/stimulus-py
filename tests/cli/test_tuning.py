@@ -13,7 +13,30 @@ import ray
 import yaml
 
 from src.stimulus.cli import tuning
-from src.stimulus.utils.yaml_data import YamlSplitTransformDict
+
+
+@pytest.fixture(scope="module", autouse=True)
+def setup_teardown():
+    """Setup and teardown Ray for all tests in this module."""
+    # Filter ResourceWarning during Ray operations
+    warnings.filterwarnings("ignore", category=ResourceWarning)
+
+    # Initialize Ray with minimal resources for testing
+    ray.init(ignore_reinit_error=True)
+
+    yield
+
+    # Ensure Ray is shut down properly after all tests
+    if ray.is_initialized():
+        ray.shutdown()
+
+    # Clean up any ray files/directories that may have been created
+    ray_results_dir = os.path.expanduser("~/ray_results")
+    if os.path.exists(ray_results_dir):
+        try:
+            shutil.rmtree(ray_results_dir)
+        except (PermissionError, OSError) as e:
+            warnings.warn(f"Could not remove Ray results directory: {e}")
 
 
 @pytest.fixture
@@ -28,7 +51,7 @@ def data_path() -> str:
 def data_config() -> str:
     """Get path to test data config YAML."""
     return str(
-        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_sub_config.yaml",
+        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_unique_transform.yaml",
     )
 
 
@@ -104,11 +127,6 @@ def test_tuning_main(
         model_path: Path to model implementation
         model_config: Path to model config YAML
     """
-    # Filter ResourceWarning during Ray shutdown
-    warnings.filterwarnings("ignore", category=ResourceWarning)
-
-    # Initialize Ray with minimal resources for testing
-    ray.init(ignore_reinit_error=True)
     # Verify all required files exist
     assert os.path.exists(data_path), f"Data file not found at {data_path}"
     assert os.path.exists(data_config), f"Data config not found at {data_config}"
@@ -116,10 +134,6 @@ def test_tuning_main(
     assert os.path.exists(model_config), f"Model config not found at {model_config}"
 
     try:
-        config_dict: YamlSplitTransformDict
-        with open(data_config) as f:
-            config_dict = YamlSplitTransformDict(**yaml.safe_load(f))
-
         results_dir = Path("tests/test_data/titanic/test_results/").resolve()
         results_dir.mkdir(parents=True, exist_ok=True)
 
@@ -127,7 +141,7 @@ def test_tuning_main(
         tuning.main(
             model_path=model_path,
             data_path=data_path,
-            data_config=config_dict,
+            data_config_path=data_config,
             model_config_path=model_config,
             initial_weights=None,
             # Directory path without URI scheme
@@ -145,18 +159,12 @@ def test_tuning_main(
             pytest.skip(f"Skipping test due to known metric issue: {error}")
         raise
     finally:
-        # Get the number of runs executed
-
-        # Ensure Ray is shut down properly
-        if ray.is_initialized():
-            ray.shutdown()
-
-            # Clean up any ray files/directories that may have been created
-            ray_results_dir = os.path.expanduser(
-                "tests/test_data/titanic/test_results/",
-            )
-            # Check that the theoritical numbers of run corresponds to the real number of runs
-            n_files: int = _get_number_of_generated_files(ray_results_dir)
-            n_runs: int = _get_number_of_theoritical_runs(model_config)
-            assert n_files == n_runs
-            shutil.rmtree(ray_results_dir)
+        # Clean up any ray files/directories that may have been created
+        ray_results_dir = os.path.expanduser(
+            "tests/test_data/titanic/test_results/",
+        )
+        # Check that the theoretical numbers of run corresponds to the real number of runs
+        n_files: int = _get_number_of_generated_files(ray_results_dir)
+        n_runs: int = _get_number_of_theoritical_runs(model_config)
+        assert n_files == n_runs
+        shutil.rmtree(ray_results_dir)
