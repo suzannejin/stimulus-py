@@ -4,6 +4,7 @@ import operator
 import os
 import shutil
 import warnings
+from collections.abc import Generator
 from functools import reduce
 from pathlib import Path
 from typing import Any
@@ -11,12 +12,14 @@ from typing import Any
 import pytest
 import ray
 import yaml
+from click.testing import CliRunner
 
 from src.stimulus.cli import tuning
+from src.stimulus.cli.main import cli  # Import the CLI for testing
 
 
 @pytest.fixture(scope="module", autouse=True)
-def setup_teardown():
+def _setup_teardown() -> Generator[None, None, None]:
     """Setup and teardown Ray for all tests in this module."""
     # Filter ResourceWarning during Ray operations
     warnings.filterwarnings("ignore", category=ResourceWarning)
@@ -36,7 +39,10 @@ def setup_teardown():
         try:
             shutil.rmtree(ray_results_dir)
         except (PermissionError, OSError) as e:
-            warnings.warn(f"Could not remove Ray results directory: {e}")
+            warnings.warn(
+                f"Could not remove Ray results directory: {e}",
+                stacklevel=2,
+            )
 
 
 @pytest.fixture
@@ -119,7 +125,7 @@ def test_tuning_main(
     model_path: str,
     model_config: str,
 ) -> None:
-    """Test that tuning.main runs without errors.
+    """Test that tuning.tune runs without errors.
 
     Args:
         data_path: Path to test CSV data
@@ -133,12 +139,13 @@ def test_tuning_main(
     assert os.path.exists(model_path), f"Model file not found at {model_path}"
     assert os.path.exists(model_config), f"Model config not found at {model_config}"
 
-    try:
-        results_dir = Path("tests/test_data/titanic/test_results/").resolve()
-        results_dir.mkdir(parents=True, exist_ok=True)
+    results_dir = Path("tests/test_data/titanic/test_results/").resolve()
+    results_dir.mkdir(parents=True, exist_ok=True)
+    assert os.path.exists(results_dir), f"Results directory not found at {results_dir}"
 
+    try:
         # Use directory path for Ray results and file paths for outputs
-        tuning.main(
+        tuning.tune(
             model_path=model_path,
             data_path=data_path,
             data_config_path=data_config,
@@ -151,6 +158,7 @@ def test_tuning_main(
             best_metrics_path=str(results_dir / "best_metrics.csv"),
             best_config_path=str(results_dir / "best_config.yaml"),
             debug_mode=True,
+            clean_ray_results=False,
         )
 
     except RuntimeError as error:
@@ -168,3 +176,41 @@ def test_tuning_main(
         n_runs: int = _get_number_of_theoritical_runs(model_config)
         assert n_files == n_runs
         shutil.rmtree(ray_results_dir)
+
+
+def test_cli_invocation(
+    data_path: str,
+    data_config: str,
+    model_path: str,
+    model_config: str,
+) -> None:
+    """Test the CLI invocation of tune command.
+
+    Args:
+        data_path: Path to test CSV data.
+        data_config: Path to data config YAML.
+        model_path: Path to model implementation.
+        model_config: Path to model config YAML.
+    """
+    try:
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "tune",
+                "-d",
+                data_path,
+                "-m",
+                model_path,
+                "-e",
+                data_config,
+                "-c",
+                model_config,
+            ],
+        )
+        assert result.exit_code == 0
+    finally:
+        # Clean up any files that may have been created in the root directory
+        for file_name in ["best_model.pt", "best_optimizer.pt", "best_metrics.csv", "best_config.yaml"]:
+            if os.path.exists(file_name):
+                os.remove(file_name)

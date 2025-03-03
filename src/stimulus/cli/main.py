@@ -259,3 +259,114 @@ def transform_csv(
         config_yaml=yaml,
         out_path=output,
     )
+
+
+@cli.command()
+@click.option(
+    "-d",
+    "--data",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to input csv file",
+)
+@click.option(
+    "-m",
+    "--model",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to model file",
+)
+@click.option(
+    "-e",
+    "--data-config",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to data config file",
+)
+@click.option(
+    "-c",
+    "--model-config",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to yaml config training file",
+)
+@click.option(
+    "-w",
+    "--initial-weights",
+    type=click.Path(exists=True),
+    help="Path to initial weights",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    default="best_model.pt",
+    help="Path to save the best model [default: best_model.pt]",
+)
+@click.option(
+    "-bm",
+    "--best-metrics",
+    type=click.Path(),
+    default="best_metrics.csv",
+    help="Path to save the best metrics [default: best_metrics.csv]",
+)
+@click.option(
+    "-bc",
+    "--best-config",
+    type=click.Path(),
+    default="best_config.yaml",
+    help="Path to save the best config [default: best_config.yaml]",
+)
+@click.option(
+    "-bo",
+    "--best-optimizer",
+    type=click.Path(),
+    default="best_optimizer.pt",
+    help="Path to save the best optimizer [default: best_optimizer.pt]",
+)
+@click.option(
+    "--ray-results-dirpath",
+    type=click.Path(),
+    help="Location for ray_results output dir",
+)
+@click.option(
+    "--tune-run-name",
+    type=str,
+    help="Custom name for the Ray Tune experiment",
+)
+@click.option(
+    "--debug-mode",
+    is_flag=True,
+    help="Activate debug mode for tuning",
+)
+def tune(
+    data: str,
+    model: str,
+    data_config: str,
+    model_config: str,
+    initial_weights: str | None,
+    output: str,
+    best_metrics: str,
+    best_config: str,
+    best_optimizer: str,
+    ray_results_dirpath: str | None,
+    tune_run_name: str | None,  # noqa: ARG001
+    *,
+    debug_mode: bool,
+) -> None:
+    """Run hyperparameter tuning for a model."""
+    from stimulus.cli.tuning import tune as tune_func
+
+    tune_func(
+        data_path=data,
+        model_path=model,
+        data_config_path=data_config,
+        model_config_path=model_config,
+        initial_weights=initial_weights,
+        ray_results_dirpath=ray_results_dirpath,
+        output_path=output,
+        best_metrics_path=best_metrics,
+        best_config_path=best_config,
+        best_optimizer_path=best_optimizer,
+        debug_mode=debug_mode,
+    )

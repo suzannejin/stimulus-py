@@ -180,9 +180,9 @@ def load_data_config_from_path(data_path: str, data_config_path: str, split: int
     )
 
 
-def main(
-    model_path: str,
+def tune(
     data_path: str,
+    model_path: str,
     data_config_path: str,
     model_config_path: str,
     initial_weights: str | None = None,  # noqa: ARG001
@@ -193,8 +193,9 @@ def main(
     best_config_path: str | None = None,
     *,
     debug_mode: bool = False,
+    clean_ray_results: bool = False,
 ) -> None:
-    """Run the main model checking pipeline.
+    """Run model hyperparameter tuning.
 
     Args:
         data_path: Path to input data file.
@@ -204,6 +205,7 @@ def main(
         initial_weights: Optional path to initial weights.
         ray_results_dirpath: Directory for ray results.
         debug_mode: Whether to run in debug mode.
+        clean_ray_results: Whether to clean the ray results directory.
         output_path: Path to write the best model to.
         best_optimizer_path: Path to write the best optimizer to.
         best_metrics_path: Path to write the best metrics to.
@@ -229,6 +231,16 @@ def main(
     if output_path is None:
         raise ValueError("output_path must not be None")
 
+    # Ensure ray_results_dirpath is absolute
+    storage_path = None
+    if ray_results_dirpath:
+        storage_path = str(Path(ray_results_dirpath).resolve())
+        # Ensure directory exists
+        Path(ray_results_dirpath).mkdir(parents=True, exist_ok=True)
+
+        # Don't set environment variable as it's deprecated
+        # Instead, we'll pass storage_path to the TuneWrapper
+
     try:
         # Initialize tuner with datasets
         tuner = raytune_learner.TuneWrapper(
@@ -237,7 +249,7 @@ def main(
             train_dataset=train_dataset,
             validation_dataset=validation_dataset,
             seed=42,
-            ray_results_dir=ray_results_dirpath,
+            ray_results_dir=storage_path,  # Pass the path here
             debug=debug_mode,
         )
 
@@ -265,17 +277,15 @@ def main(
         logger.exception("Missing expected result key")
         raise
     finally:
-        if debug_mode:
-            logger.info("Debug mode - preserving Ray results directory")
-        elif ray_results_dirpath:
-            shutil.rmtree(ray_results_dirpath, ignore_errors=True)
+        if clean_ray_results and storage_path is not None:
+            shutil.rmtree(Path(storage_path).resolve(), ignore_errors=True)
 
 
 def run() -> None:
-    """Run the model checking script."""
+    """Run the model tuning script from command line."""
     ray.init(address="auto", ignore_reinit_error=True)
     args = get_args()
-    main(
+    tune(
         data_path=args.data,
         model_path=args.model,
         data_config_path=args.data_config,

@@ -2,6 +2,7 @@
 
 import os
 import warnings
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -41,7 +42,7 @@ def model_config() -> str:
 
 
 @pytest.fixture(scope="module", autouse=True)
-def setup_teardown():
+def _setup_teardown() -> Generator[None, None, None]:
     """Setup and teardown Ray for all tests in this module."""
     # Filter ResourceWarning during Ray operations
     warnings.filterwarnings("ignore", category=ResourceWarning)
@@ -63,7 +64,10 @@ def setup_teardown():
 
             shutil.rmtree(ray_results_dir)
         except (PermissionError, OSError) as e:
-            warnings.warn(f"Could not remove Ray results directory: {e}")
+            warnings.warn(
+                f"Could not remove Ray results directory: {e}",
+                stacklevel=2,
+            )
 
 
 def test_check_model_main(
