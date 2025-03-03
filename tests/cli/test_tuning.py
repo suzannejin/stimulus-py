@@ -4,6 +4,7 @@ import logging
 import operator
 import os
 import shutil
+import time
 import warnings
 from collections.abc import Generator
 from functools import reduce
@@ -124,6 +125,7 @@ def _get_number_of_theoritical_runs(params_path: str) -> int:
     return num_samples * reduce(operator.mul, grid_searches_len)
 
 
+@pytest.mark.dependency(name="test_tuning_main")
 def test_tuning_main(
     data_path: str,
     data_config: str,
@@ -182,8 +184,10 @@ def test_tuning_main(
         n_runs: int = _get_number_of_theoritical_runs(model_config)
         assert n_files == n_runs
         shutil.rmtree(ray_results_dir, ignore_errors=True)
+        time.sleep(1)
 
 
+@pytest.mark.dependency(depends=["test_tuning_main"])
 def test_cli_invocation(
     data_path: str,
     data_config: str,
