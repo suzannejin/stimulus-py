@@ -75,14 +75,18 @@ def model_config() -> str:
 
 def _get_number_of_generated_files(ray_results_dir: str) -> int:
     # Get the number of generated run files
+    logger.debug(f"Ray results dir: {ray_results_dir}")
     number_of_files: int = 0
-    for dir in os.listdir(ray_results_dir):
-        for file in os.listdir(ray_results_dir + "/" + dir):
-            if "trial_" in file:
-                number_of_files += 1
-                logger.debug(f"File: {file}")
+    for dir in Path(ray_results_dir).iterdir():
+        logger.debug(f"Dir: {dir.name}")
+        if dir.is_dir():
+            logger.debug(f"Dir: {dir.name}")
+            for file in dir.iterdir():
+                if "trial_" in file.name:
+                    number_of_files += 1
+                logger.debug(f"File: {file.name}")
                 logger.debug(f"Number of files: {number_of_files}")
-        break
+            break
     return number_of_files
 
 
