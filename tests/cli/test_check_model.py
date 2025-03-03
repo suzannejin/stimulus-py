@@ -42,30 +42,27 @@ def model_config() -> str:
     return str(Path(__file__).parent.parent / "test_model" / "titanic_model_cpu.yaml")
 
 
-@pytest.fixture(scope="module", autouse=True)
-def _setup_teardown() -> Generator[None, None, None]:
-    """Setup and teardown Ray for all tests in this module."""
+@pytest.fixture(autouse=True)
+def _ray_cleanup() -> Generator[None, None, None]:
+    """Per-test Ray management with parallel execution safety."""
     # Filter ResourceWarning during Ray operations
     warnings.filterwarnings("ignore", category=ResourceWarning)
 
+    # Initialize fresh Ray instance for each test
+    ray.init(ignore_reinit_error=True)
+
     yield
 
-    # Ensure Ray is shut down properly after all tests
+    # Forceful cleanup for CI environments
     if ray.is_initialized():
         ray.shutdown()
+        import time
 
-    # Clean up any ray files/directories that may have been created
+        time.sleep(0.5)  # Allow background processes to exit
+
+    # Clean any residual files
     ray_results_dir = os.path.expanduser("~/ray_results")
-    if os.path.exists(ray_results_dir):
-        try:
-            import shutil
-
-            shutil.rmtree(ray_results_dir)
-        except (PermissionError, OSError) as e:
-            warnings.warn(
-                f"Could not remove Ray results directory: {e}",
-                stacklevel=2,
-            )
+    shutil.rmtree(ray_results_dir, ignore_errors=True)
 
 
 def test_check_model_main(
@@ -74,14 +71,7 @@ def test_check_model_main(
     model_path: str,
     model_config: str,
 ) -> None:
-    """Test that check_model.main runs without errors.
-
-    Args:
-        data_path: Path to test CSV data
-        data_config: Path to data config YAML
-        model_path: Path to model implementation
-        model_config: Path to model config YAML
-    """
+    """Test that check_model.main runs without errors."""
     # Verify all required files exist
     assert os.path.exists(data_path), f"Data file not found at {data_path}"
     assert os.path.exists(data_config), f"Data config not found at {data_config}"
@@ -89,7 +79,6 @@ def test_check_model_main(
     assert os.path.exists(model_config), f"Model config not found at {model_config}"
 
     # Run main function - should complete without errors
-    ray.init(ignore_reinit_error=True)
     try:
         check_model.check_model(
             model_path=model_path,
@@ -100,21 +89,8 @@ def test_check_model_main(
             num_samples=1,
             ray_results_dirpath=None,
         )
-
-    finally:
-        if ray.is_initialized():
-            ray.shutdown()
-
-        # Clean up any ray files/directories that may have been created
-        ray_results_dir = os.path.expanduser("~/ray_results")
-        if os.path.exists(ray_results_dir):
-            try:
-                shutil.rmtree(ray_results_dir)
-            except (PermissionError, OSError) as e:
-                warnings.warn(
-                    f"Could not remove Ray results directory: {e}",
-                    stacklevel=2,
-                )
+    except RuntimeError as e:
+        pytest.fail(f"check_model.check_model raised {type(e).__name__}: {e}")
 
 
 def test_cli_invocation(
@@ -131,37 +107,21 @@ def test_cli_invocation(
         model_path: Path to model implementation.
         model_config: Path to model config YAML.
     """
-    ray.init(ignore_reinit_error=True)
-    try:
-        runner = CliRunner()
-        result = runner.invoke(
-            cli,
-            [
-                "check-model",
-                "-d",
-                data_path,
-                "-m",
-                model_path,
-                "-e",
-                data_config,
-                "-c",
-                model_config,
-                "-n",
-                "1",
-            ],
-        )
-        assert result.exit_code == 0
-    finally:
-        if ray.is_initialized():
-            ray.shutdown()
-
-        # Clean up any ray files/directories that may have been created
-        ray_results_dir = os.path.expanduser("~/ray_results")
-        if os.path.exists(ray_results_dir):
-            try:
-                shutil.rmtree(ray_results_dir)
-            except (PermissionError, OSError) as e:
-                warnings.warn(
-                    f"Could not remove Ray results directory: {e}",
-                    stacklevel=2,
-                )
+    runner = CliRunner()
+    result = runner.invoke(
+        cli,
+        [
+            "check-model",
+            "-d",
+            data_path,
+            "-m",
+            model_path,
+            "-e",
+            data_config,
+            "-c",
+            model_config,
+            "-n",
+            "1",
+        ],
+    )
+    assert result.exit_code == 0
