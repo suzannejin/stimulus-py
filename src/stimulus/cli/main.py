@@ -1,6 +1,9 @@
 """Main entry point for stimulus-py cli."""
 
-from importlib.metadata import version
+try:
+    from importlib.metadata import version
+except ImportError:
+    from importlib_metadata import version
 
 import click
 
