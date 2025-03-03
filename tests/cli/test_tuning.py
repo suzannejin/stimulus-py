@@ -1,5 +1,6 @@
 """Test the tuning CLI."""
 
+import logging
 import operator
 import os
 import shutil
@@ -14,8 +15,11 @@ import ray
 import yaml
 from click.testing import CliRunner
 
-from src.stimulus.cli import tuning
-from src.stimulus.cli.main import cli  # Import the CLI for testing
+from stimulus.cli import tuning
+from stimulus.cli.main import cli
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture(autouse=True)
@@ -69,15 +73,18 @@ def model_config() -> str:
     return str(Path(__file__).parent.parent / "test_model" / "titanic_model_cpu.yaml")
 
 
-def _get_number_of_generated_files(save_dir_path: str) -> int:
-    """Each run generates a file in the result dir."""
+def _get_number_of_generated_files(ray_results_dir: str) -> int:
     # Get the number of generated run files
     number_of_files: int = 0
-    for file in os.listdir(save_dir_path):
-        if "TuneModel" in file:
-            number_of_files = len(
-                [f for f in os.listdir(save_dir_path + "/" + file) if "TuneModel" in f],
-            )
+    for dir in os.listdir(ray_results_dir):
+        logger.debug(f"Checking for files in: {ray_results_dir + "/" + dir}")
+        logger.debug(f"Absolute path: {os.path.abspath(ray_results_dir + "/" + dir)}")
+        for file in os.listdir(ray_results_dir + "/" + dir):
+            if "trial_" in file:
+                number_of_files += 1
+                logger.debug(f"File: {file}")
+                logger.debug(f"Number of files: {number_of_files}")
+        break
     return number_of_files
 
 

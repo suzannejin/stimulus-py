@@ -45,6 +45,11 @@ class TuneWrapper:
         autoscaler: bool = False,
     ) -> None:
         """Initialize the TuneWrapper with the paths to the config, model, and data."""
+        NB_HASH_TRIAL_LEN = 6
+        NB_HASH_TRIAL_DIR_START = 0
+        NB_HASH_TRIAL_NAME_START = 0
+        NB_HASH_TRIAL_NAME_LEN = 4
+
         self.config = model_config.model_dump()
 
         # set all general seeds: python, numpy and torch.
@@ -61,12 +66,22 @@ class TuneWrapper:
                 f"Invalid scheduler: {model_config.tune.scheduler.name}, check Ray Tune for documentation on available schedulers",
             ) from err
 
+        def short_trial_dirname_creator(trial: tune.experiment.trial.Trial) -> str:
+            """Create shorter trial directory names with just trial_id and first few chars of hash."""
+            return f"trial_{trial.trial_id[NB_HASH_TRIAL_DIR_START:NB_HASH_TRIAL_DIR_START+NB_HASH_TRIAL_LEN]}"
+
+        def short_trial_name_creator(trial: tune.experiment.trial.Trial) -> str:
+            """Create shorter trial names with just trial_id and first few chars of hash."""
+            return f"trial_{trial.trial_id[NB_HASH_TRIAL_NAME_START:NB_HASH_TRIAL_NAME_START+NB_HASH_TRIAL_NAME_LEN]}"
+
         scheduler = scheduler_class(**model_config.tune.scheduler.params)
         self.tune_config = tune.TuneConfig(
             metric=model_config.tune.tune_params.metric,
             mode=model_config.tune.tune_params.mode,
             num_samples=model_config.tune.tune_params.num_samples,
             scheduler=scheduler,
+            trial_dirname_creator=short_trial_dirname_creator,
+            trial_name_creator=short_trial_name_creator,
         )
 
         # build the run config
