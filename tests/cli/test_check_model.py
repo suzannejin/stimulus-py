@@ -1,6 +1,7 @@
 """Test the check_model CLI."""
 
 import os
+import shutil
 import warnings
 from collections.abc import Generator
 from pathlib import Path
@@ -47,9 +48,6 @@ def _setup_teardown() -> Generator[None, None, None]:
     # Filter ResourceWarning during Ray operations
     warnings.filterwarnings("ignore", category=ResourceWarning)
 
-    # Initialize Ray with minimal resources for testing
-    ray.init(ignore_reinit_error=True)
-
     yield
 
     # Ensure Ray is shut down properly after all tests
@@ -91,15 +89,32 @@ def test_check_model_main(
     assert os.path.exists(model_config), f"Model config not found at {model_config}"
 
     # Run main function - should complete without errors
-    check_model.check_model(
-        model_path=model_path,
-        data_path=data_path,
-        data_config_path=data_config,
-        model_config_path=model_config,
-        initial_weights=None,
-        num_samples=1,
-        ray_results_dirpath=None,
-    )
+    ray.init(ignore_reinit_error=True)
+    try:
+        check_model.check_model(
+            model_path=model_path,
+            data_path=data_path,
+            data_config_path=data_config,
+            model_config_path=model_config,
+            initial_weights=None,
+            num_samples=1,
+            ray_results_dirpath=None,
+        )
+
+    finally:
+        if ray.is_initialized():
+            ray.shutdown()
+
+        # Clean up any ray files/directories that may have been created
+        ray_results_dir = os.path.expanduser("~/ray_results")
+        if os.path.exists(ray_results_dir):
+            try:
+                shutil.rmtree(ray_results_dir)
+            except (PermissionError, OSError) as e:
+                warnings.warn(
+                    f"Could not remove Ray results directory: {e}",
+                    stacklevel=2,
+                )
 
 
 def test_cli_invocation(
@@ -116,21 +131,37 @@ def test_cli_invocation(
         model_path: Path to model implementation.
         model_config: Path to model config YAML.
     """
-    runner = CliRunner()
-    result = runner.invoke(
-        cli,
-        [
-            "check-model",
-            "-d",
-            data_path,
-            "-m",
-            model_path,
-            "-e",
-            data_config,
-            "-c",
-            model_config,
-            "-n",
-            "1",
-        ],
-    )
-    assert result.exit_code == 0
+    ray.init(ignore_reinit_error=True)
+    try:
+        runner = CliRunner()
+        result = runner.invoke(
+            cli,
+            [
+                "check-model",
+                "-d",
+                data_path,
+                "-m",
+                model_path,
+                "-e",
+                data_config,
+                "-c",
+                model_config,
+                "-n",
+                "1",
+            ],
+        )
+        assert result.exit_code == 0
+    finally:
+        if ray.is_initialized():
+            ray.shutdown()
+
+        # Clean up any ray files/directories that may have been created
+        ray_results_dir = os.path.expanduser("~/ray_results")
+        if os.path.exists(ray_results_dir):
+            try:
+                shutil.rmtree(ray_results_dir)
+            except (PermissionError, OSError) as e:
+                warnings.warn(
+                    f"Could not remove Ray results directory: {e}",
+                    stacklevel=2,
+                )
