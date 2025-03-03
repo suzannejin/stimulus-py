@@ -45,10 +45,10 @@ class TuneWrapper:
         autoscaler: bool = False,
     ) -> None:
         """Initialize the TuneWrapper with the paths to the config, model, and data."""
-        NB_HASH_TRIAL_LEN = 6
-        NB_HASH_TRIAL_DIR_START = 0
-        NB_HASH_TRIAL_NAME_START = 0
-        NB_HASH_TRIAL_NAME_LEN = 4
+        nb_hash_trial_dir_len = 6
+        nb_hash_trial_dir_start = 0
+        nb_hash_trial_name_start = 0
+        nb_hash_trial_name_len = 4
 
         self.config = model_config.model_dump()
 
@@ -68,11 +68,11 @@ class TuneWrapper:
 
         def short_trial_dirname_creator(trial: tune.experiment.trial.Trial) -> str:
             """Create shorter trial directory names with just trial_id and first few chars of hash."""
-            return f"trial_{trial.trial_id[NB_HASH_TRIAL_DIR_START:NB_HASH_TRIAL_DIR_START+NB_HASH_TRIAL_LEN]}"
+            return f"trial_{trial.trial_id[nb_hash_trial_dir_start:nb_hash_trial_dir_start+nb_hash_trial_dir_len]}"
 
         def short_trial_name_creator(trial: tune.experiment.trial.Trial) -> str:
             """Create shorter trial names with just trial_id and first few chars of hash."""
-            return f"trial_{trial.trial_id[NB_HASH_TRIAL_NAME_START:NB_HASH_TRIAL_NAME_START+NB_HASH_TRIAL_NAME_LEN]}"
+            return f"trial_{trial.trial_id[nb_hash_trial_name_start:nb_hash_trial_name_start+nb_hash_trial_name_len]}"
 
         scheduler = scheduler_class(**model_config.tune.scheduler.params)
         self.tune_config = tune.TuneConfig(

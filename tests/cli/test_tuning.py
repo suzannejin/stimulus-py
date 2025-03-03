@@ -77,8 +77,6 @@ def _get_number_of_generated_files(ray_results_dir: str) -> int:
     # Get the number of generated run files
     number_of_files: int = 0
     for dir in os.listdir(ray_results_dir):
-        logger.debug(f"Checking for files in: {ray_results_dir + "/" + dir}")
-        logger.debug(f"Absolute path: {os.path.abspath(ray_results_dir + "/" + dir)}")
         for file in os.listdir(ray_results_dir + "/" + dir):
             if "trial_" in file:
                 number_of_files += 1
