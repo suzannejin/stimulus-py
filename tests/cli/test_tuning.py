@@ -37,8 +37,6 @@ def _ray_cleanup() -> Generator[None, None, None]:
     # Forceful cleanup for CI environments
     if ray.is_initialized():
         ray.shutdown()
-        import time
-
         time.sleep(0.5)  # Allow background processes to exit
 
     # Clean any residual files
