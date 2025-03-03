@@ -1,7 +1,8 @@
 """Main entry point for stimulus-py cli."""
 
+from importlib.metadata import version
+
 import click
-from importlib_metadata import version
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})

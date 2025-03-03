@@ -44,7 +44,8 @@ dependencies = [
     "syrupy>=4.8.0",
     "torch>=2.2.2",
     "torch==2.2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'",
-    "click>=8.1.0"
+    "click>=8.1.0",
+    "importlib_metadata",
 ]
 
 [project.scripts]
