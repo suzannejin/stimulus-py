@@ -18,31 +18,27 @@ from src.stimulus.cli import tuning
 from src.stimulus.cli.main import cli  # Import the CLI for testing
 
 
-@pytest.fixture(scope="module", autouse=True)
-def _setup_teardown() -> Generator[None, None, None]:
-    """Setup and teardown Ray for all tests in this module."""
+@pytest.fixture(autouse=True)
+def _ray_cleanup() -> Generator[None, None, None]:
+    """Per-test Ray management with parallel execution safety."""
     # Filter ResourceWarning during Ray operations
     warnings.filterwarnings("ignore", category=ResourceWarning)
 
-    # Initialize Ray with minimal resources for testing
+    # Initialize fresh Ray instance for each test
     ray.init(ignore_reinit_error=True)
 
     yield
 
-    # Ensure Ray is shut down properly after all tests
+    # Forceful cleanup for CI environments
     if ray.is_initialized():
         ray.shutdown()
+        import time
 
-    # Clean up any ray files/directories that may have been created
+        time.sleep(0.5)  # Allow background processes to exit
+
+    # Clean any residual files
     ray_results_dir = os.path.expanduser("~/ray_results")
-    if os.path.exists(ray_results_dir):
-        try:
-            shutil.rmtree(ray_results_dir)
-        except (PermissionError, OSError) as e:
-            warnings.warn(
-                f"Could not remove Ray results directory: {e}",
-                stacklevel=2,
-            )
+    shutil.rmtree(ray_results_dir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -167,15 +163,16 @@ def test_tuning_main(
             pytest.skip(f"Skipping test due to known metric issue: {error}")
         raise
     finally:
-        # Clean up any ray files/directories that may have been created
-        ray_results_dir = os.path.expanduser(
-            "tests/test_data/titanic/test_results/",
-        )
-        # Check that the theoretical numbers of run corresponds to the real number of runs
+        # Add explicit Ray shutdown before cleanup
+        if ray.is_initialized():
+            ray.shutdown()
+
+        # Existing cleanup code
+        ray_results_dir = os.path.expanduser("tests/test_data/titanic/test_results/")
         n_files: int = _get_number_of_generated_files(ray_results_dir)
         n_runs: int = _get_number_of_theoritical_runs(model_config)
         assert n_files == n_runs
-        shutil.rmtree(ray_results_dir)
+        shutil.rmtree(ray_results_dir, ignore_errors=True)
 
 
 def test_cli_invocation(
@@ -210,7 +207,11 @@ def test_cli_invocation(
         )
         assert result.exit_code == 0
     finally:
-        # Clean up any files that may have been created in the root directory
+        # Add explicit Ray shutdown before cleanup
+        if ray.is_initialized():
+            ray.shutdown()
+
+        # Existing file cleanup
         for file_name in ["best_model.pt", "best_optimizer.pt", "best_metrics.csv", "best_config.yaml"]:
             if os.path.exists(file_name):
                 os.remove(file_name)
