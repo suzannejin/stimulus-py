@@ -23,7 +23,8 @@ optimizer_params:
     params:
       low: 0.0001
       high: 0.1
-    mode: loguniform
+      log: true
+    mode: float
 
 loss_params:
   loss_fn:

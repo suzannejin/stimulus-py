@@ -1,22 +1,23 @@
 """Parse the model config."""
 
-import optuna
-from src.stimulus.learner.interface import model_schema
 import logging
+
+import optuna
+
+from src.stimulus.learner.interface import model_schema
+
 logger = logging.getLogger(__name__)
+
 
 def get_pruner(pruner_config: model_schema.Pruner) -> optuna.pruners.BasePruner:
     """Get the pruner from the config."""
-
-    available_pruners = [attr for attr in dir(optuna.pruners) 
-                        if not attr.startswith('_') and attr != 'TYPE_CHECKING']
+    available_pruners = [attr for attr in dir(optuna.pruners) if not attr.startswith("_") and attr != "TYPE_CHECKING"]
     logger.info(f"Available pruners in Optuna: {available_pruners}")
-    
+
     # Check if the pruner exists with correct case
     if not hasattr(optuna.pruners, pruner_config.name):
         # Try to find a case-insensitive match
-        case_matches = [attr for attr in available_pruners 
-                        if attr.lower() == pruner_config.name.lower()]
+        case_matches = [attr for attr in available_pruners if attr.lower() == pruner_config.name.lower()]
         if case_matches:
             logger.info(f"Found matching pruner with different case: {case_matches[0]}")
             pruner_config.name = case_matches[0]  # Use the correct case
@@ -28,17 +29,15 @@ def get_pruner(pruner_config: model_schema.Pruner) -> optuna.pruners.BasePruner:
     pruner_class = getattr(optuna.pruners, pruner_config.name)
     return pruner_class(**pruner_config.params)
 
+
 def get_sampler(sampler_config: model_schema.Sampler) -> optuna.samplers.BaseSampler:
     """Get the sampler from the config."""
-
-    available_samplers = [attr for attr in dir(optuna.samplers) 
-                         if not attr.startswith('_') and attr != 'TYPE_CHECKING']
+    available_samplers = [attr for attr in dir(optuna.samplers) if not attr.startswith("_") and attr != "TYPE_CHECKING"]
     logger.info(f"Available samplers in Optuna: {available_samplers}")
 
     if not hasattr(optuna.samplers, sampler_config.name):
         # Try to find a case-insensitive match
-        case_matches = [attr for attr in available_samplers 
-                        if attr.lower() == sampler_config.name.lower()]
+        case_matches = [attr for attr in available_samplers if attr.lower() == sampler_config.name.lower()]
         if case_matches:
             logger.info(f"Found matching sampler with different case: {case_matches[0]}")
             sampler_config.name = case_matches[0]  # Use the correct case
@@ -50,9 +49,11 @@ def get_sampler(sampler_config: model_schema.Sampler) -> optuna.samplers.BaseSam
     sampler_class = getattr(optuna.samplers, sampler_config.name)
     return sampler_class(**sampler_config.params)
 
-def get_suggestion(name: str, suggestion_method_config: model_schema.TunableParameter, trial: optuna.trial.Trial) -> optuna.trial.Trial:
-    """Get the suggestion method from the config."""
 
+def get_suggestion(
+    name: str, suggestion_method_config: model_schema.TunableParameter, trial: optuna.trial.Trial
+) -> optuna.trial.Trial:
+    """Get the suggestion method from the config."""
     trial_methods = {
         "categorical": trial.suggest_categorical,
         "discrete_uniform": trial.suggest_discrete_uniform,
@@ -68,6 +69,3 @@ def get_suggestion(name: str, suggestion_method_config: model_schema.TunablePara
         )
 
     return trial_methods[suggestion_method_config.mode](name=name, **suggestion_method_config.params)
-    
-
-

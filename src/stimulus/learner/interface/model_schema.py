@@ -1,12 +1,12 @@
 """Module for validating YAML configuration files."""
 
 import inspect
+import logging
 from typing import Any, Optional
 
-import torch
 import optuna
 import pydantic
-import logging
+
 logger = logging.getLogger(__name__)
 
 
@@ -71,15 +71,15 @@ class Pruner(pydantic.BaseModel):
     def validate_pruner(self) -> "Pruner":
         """Validate that pruner is supported by Optuna."""
         # Get available pruners, filtering out internal ones that start with _
-        available_pruners = [attr for attr in dir(optuna.pruners) 
-                          if not attr.startswith('_') and attr != 'TYPE_CHECKING']
+        available_pruners = [
+            attr for attr in dir(optuna.pruners) if not attr.startswith("_") and attr != "TYPE_CHECKING"
+        ]
         logger.info(f"Available pruners in Optuna: {available_pruners}")
-        
+
         # Check if the pruner exists with correct case
         if not hasattr(optuna.pruners, self.name):
             # Try to find a case-insensitive match
-            case_matches = [attr for attr in available_pruners 
-                         if attr.lower() == self.name.lower()]
+            case_matches = [attr for attr in available_pruners if attr.lower() == self.name.lower()]
             if case_matches:
                 logger.info(f"Found matching pruner with different case: {case_matches[0]}")
                 self.name = case_matches[0]  # Use the correct case
@@ -115,14 +115,14 @@ class Sampler(pydantic.BaseModel):
     def validate_sampler(self) -> "Sampler":
         """Validate that sampler is supported by Optuna."""
         # Get available samplers, filtering out internal ones that start with _
-        available_samplers = [attr for attr in dir(optuna.samplers) 
-                           if not attr.startswith('_') and attr != 'TYPE_CHECKING']
+        available_samplers = [
+            attr for attr in dir(optuna.samplers) if not attr.startswith("_") and attr != "TYPE_CHECKING"
+        ]
         logger.info(f"Available samplers in Optuna: {available_samplers}")
-        
+
         if not hasattr(optuna.samplers, self.name):
             # Try to find a case-insensitive match
-            case_matches = [attr for attr in available_samplers 
-                         if attr.lower() == self.name.lower()]
+            case_matches = [attr for attr in available_samplers if attr.lower() == self.name.lower()]
             if case_matches:
                 logger.info(f"Found matching sampler with different case: {case_matches[0]}")
                 self.name = case_matches[0]  # Use the correct case
@@ -150,15 +150,15 @@ class Model(pydantic.BaseModel):
 
     network_params: dict[str, TunableParameter]
     optimizer_params: dict[str, TunableParameter]
-    loss_params: Loss
+    loss_params: dict[str, TunableParameter]
     data_params: Data
     pruner: Pruner
     sampler: Sampler
     objective: Objective
     seed: int = 42
-    
+
     # Add a model validator to debug the input data
-    @pydantic.model_validator(mode='before')
+    @pydantic.model_validator(mode="before")
     @classmethod
     def validate_input(cls, data):
         """Print input data for debugging."""

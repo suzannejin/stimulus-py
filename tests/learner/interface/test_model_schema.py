@@ -1,21 +1,25 @@
 """Test the model schema."""
 
-import pytest
-import os
-import yaml
 import logging
+import os
+
+import pytest
+import yaml
+
 from src.stimulus.learner.interface.model_schema import Model
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 @pytest.fixture
 def get_config():
     """Get the config."""
     config_path = os.path.join("tests", "test_model", "titanic_model_cpu.yaml")
-    with open(config_path, "r") as f:
+    with open(config_path) as f:
         config = yaml.safe_load(f)
     return config
+
 
 def test_model_schema(get_config):
     """Test the model schema."""
