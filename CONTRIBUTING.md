@@ -77,7 +77,7 @@ Now that you understand the codebase a bit better, helping others understanding 
 
 - Adding Encoders/Transforms/Splitters
 
-This librairy lives and dies by the number of encoders/transforms/splitters offered, so adding those will always improve the software.
+This library lives and dies by the number of encoders/transforms/splitters offered, so adding those will always improve the software.
 
 - Quality of life improvements
 
