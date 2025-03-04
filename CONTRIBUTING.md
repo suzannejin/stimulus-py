@@ -45,7 +45,7 @@ To activate it, run:
 source .venvs/<python_version>/bin/activate
 ```
 
-stimulus should now be installed as a librairy!
+stimulus should now be installed as a library!
 
 Then, you can install extra dependencies (for instance jupyter) using `uv pip install <package>`.
 
