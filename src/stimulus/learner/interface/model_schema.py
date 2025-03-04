@@ -1,0 +1,166 @@
+"""Module for validating YAML configuration files."""
+
+import inspect
+from typing import Any, Optional
+
+import torch
+import optuna
+import pydantic
+import logging
+logger = logging.getLogger(__name__)
+
+
+class TunableParameter(pydantic.BaseModel):
+    """Tunable parameter."""
+
+    params: dict[str, Any]
+    mode: str
+
+    @pydantic.model_validator(mode="after")
+    def validate_mode(self) -> "TunableParameter":
+        """Validate that mode is supported by Optuna."""
+        if self.mode not in [
+            "categorical",
+            "discrete_uniform",
+            "float",
+            "int",
+            "loguniform",
+            "uniform",
+        ]:
+            raise NotImplementedError(
+                f"Mode {self.mode} not available for Optuna, please use one of the following: categorical, discrete_uniform, float, int, loguniform, uniform",
+            )
+
+        return self
+
+    @pydantic.model_validator(mode="after")
+    def validate_params(self) -> "TunableParameter":
+        trial_methods = {
+            "categorical": optuna.trial.Trial.suggest_categorical,
+            "discrete_uniform": optuna.trial.Trial.suggest_discrete_uniform,
+            "float": optuna.trial.Trial.suggest_float,
+            "int": optuna.trial.Trial.suggest_int,
+            "loguniform": optuna.trial.Trial.suggest_loguniform,
+            "uniform": optuna.trial.Trial.suggest_uniform,
+        }
+        if self.mode in trial_methods:
+            sig = inspect.signature(trial_methods[self.mode])
+            required_params = {
+                param.name
+                for param in sig.parameters.values()
+                if param.default is inspect.Parameter.empty
+                and param.kind != inspect.Parameter.VAR_KEYWORD
+                and param.kind != inspect.Parameter.VAR_POSITIONAL
+                and param.name != "self"
+                and param.name != "trial"
+                and param.name != "name"
+            }
+            missing_params = required_params - set(self.params.keys())
+            if missing_params:
+                raise ValueError(f"Missing required params for mode '{self.mode}': {missing_params}")
+        return self
+
+
+class Pruner(pydantic.BaseModel):
+    """Pruner parameters."""
+
+    name: str
+    params: dict[str, Any]
+
+    @pydantic.model_validator(mode="after")
+    def validate_pruner(self) -> "Pruner":
+        """Validate that pruner is supported by Optuna."""
+        # Get available pruners, filtering out internal ones that start with _
+        available_pruners = [attr for attr in dir(optuna.pruners) 
+                          if not attr.startswith('_') and attr != 'TYPE_CHECKING']
+        logger.info(f"Available pruners in Optuna: {available_pruners}")
+        
+        # Check if the pruner exists with correct case
+        if not hasattr(optuna.pruners, self.name):
+            # Try to find a case-insensitive match
+            case_matches = [attr for attr in available_pruners 
+                         if attr.lower() == self.name.lower()]
+            if case_matches:
+                logger.info(f"Found matching pruner with different case: {case_matches[0]}")
+                self.name = case_matches[0]  # Use the correct case
+            else:
+                raise ValueError(
+                    f"Pruner '{self.name}' not available in Optuna. Available pruners: {available_pruners}",
+                )
+        return self
+
+
+class Objective(pydantic.BaseModel):
+    """Objective parameters."""
+
+    metric: str
+    mode: str
+
+    @pydantic.model_validator(mode="after")
+    def validate_mode(self) -> "Objective":
+        """Validate that mode is supported by Optuna."""
+        if self.mode not in ["min", "max"]:
+            raise NotImplementedError(
+                f"Mode {self.mode} not available for Optuna, please use one of the following: min, max",
+            )
+
+
+class Sampler(pydantic.BaseModel):
+    """Sampler parameters."""
+
+    name: str
+    params: Optional[dict[str, Any]] = None
+
+    @pydantic.model_validator(mode="after")
+    def validate_sampler(self) -> "Sampler":
+        """Validate that sampler is supported by Optuna."""
+        # Get available samplers, filtering out internal ones that start with _
+        available_samplers = [attr for attr in dir(optuna.samplers) 
+                           if not attr.startswith('_') and attr != 'TYPE_CHECKING']
+        logger.info(f"Available samplers in Optuna: {available_samplers}")
+        
+        if not hasattr(optuna.samplers, self.name):
+            # Try to find a case-insensitive match
+            case_matches = [attr for attr in available_samplers 
+                         if attr.lower() == self.name.lower()]
+            if case_matches:
+                logger.info(f"Found matching sampler with different case: {case_matches[0]}")
+                self.name = case_matches[0]  # Use the correct case
+            else:
+                raise ValueError(
+                    f"Sampler '{self.name}' not available in Optuna. Available samplers: {available_samplers}",
+                )
+        return self
+
+
+class Loss(pydantic.BaseModel):
+    """Loss parameters."""
+
+    loss_fn: TunableParameter
+
+
+class Data(pydantic.BaseModel):
+    """Data parameters."""
+
+    batch_size: TunableParameter
+
+
+class Model(pydantic.BaseModel):
+    """Model configuration."""
+
+    network_params: dict[str, TunableParameter]
+    optimizer_params: dict[str, TunableParameter]
+    loss_params: Loss
+    data_params: Data
+    pruner: Pruner
+    sampler: Sampler
+    objective: Objective
+    seed: int = 42
+    
+    # Add a model validator to debug the input data
+    @pydantic.model_validator(mode='before')
+    @classmethod
+    def validate_input(cls, data):
+        """Print input data for debugging."""
+        logger.info(f"Input data for Model: {data}")
+        return data

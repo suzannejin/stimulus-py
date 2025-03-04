@@ -43,7 +43,8 @@ dependencies = [
     "scipy==1.14.1",
     "syrupy>=4.8.0",
     "torch>=2.2.2",
-    "torch==2.2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'"
+    "torch==2.2.2; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "optuna>=4.0.0"
 ]
 
 [project.scripts]
