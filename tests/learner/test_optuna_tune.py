@@ -28,7 +28,7 @@ def get_model_class():
 @pytest.fixture
 def get_model_config():
     """Get the model config."""
-    model_path = os.path.join("tests", "test_model", "titanic_model_cpu.yaml")
+    model_path = os.path.join("tests", "test_model", "titanic_model.yaml")
     with open(model_path) as f:
         model_config = yaml.safe_load(f)
     model_config_obj = model_schema.Model(**model_config)
