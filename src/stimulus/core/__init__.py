@@ -3,4 +3,3 @@
 from stimulus.core.registry import BaseRegistry
 
 __all__ = ["BaseRegistry"]
-
