@@ -11,6 +11,7 @@ Example:
     from abc import ABC, abstractmethod
     from stimulus.core.registry import BaseRegistry
 
+
     # Define your component interface
     class BaseEncoder(ABC):
         @abstractmethod
@@ -21,23 +22,28 @@ Example:
         def decode(self, data: bytes) -> str:
             pass
 
+
     # Create a registry
     encoder_registry = BaseRegistry("stimulus.encoders", BaseEncoder)
+
 
     # Register a component
     @encoder_registry.register("base64")
     class Base64Encoder(BaseEncoder):
         def encode(self, data: str) -> bytes:
             import base64
+
             return base64.b64encode(data.encode())
 
         def decode(self, data: bytes) -> str:
             import base64
+
             return base64.b64decode(data).decode()
+
 
     # Use the registered component
     encoder = encoder_registry.get("base64")
-    encoded = encoder.encode("Hello World")
+    encoded = encoder.encode("Hello World")regi
     decoded = encoder.decode(encoded)
     ```
 
@@ -51,7 +57,7 @@ my_encoder = "mypackage.encoders:CustomEncoder"
 """
 
 from importlib.metadata import entry_points
-from typing import Dict, Generic, Type, TypeVar
+from typing import Any, Callable, Generic, TypeVar
 
 T = TypeVar("T")
 
@@ -65,7 +71,7 @@ class BaseRegistry(Generic[T]):
 
     Args:
         entry_point_group (str): The entry point group name for plugin discovery
-        base_class (Type[T]): The base class that all components must inherit from
+        base_class (type[T]): The base class that all components must inherit from
 
     Example:
         ```python
@@ -82,57 +88,56 @@ class BaseRegistry(Generic[T]):
         ```
     """
 
-    def __init__(self, entry_point_group: str, base_class: Type[T]):
-        self._components: Dict[str, Type[T]] = {}
+    def __init__(self, entry_point_group: str, base_class: type[T]):
+        """Initialize BaseRegistry class."""
+        self._components: dict[str, type[T]] = {}
         self.entry_point_group = entry_point_group
         self.base_class = base_class
         self.load_builtins()
         self.load_plugins()
 
-    def register(self, name: str) -> callable:
+    def register(self, name: str) -> Callable:
         """Decorator factory for component registration.
 
         Args:
             name (str): The name to register the component under
 
         Returns:
-            callable: A decorator that registers the component
+            Callable: A decorator that registers the component
 
         Raises:
             TypeError: If the decorated class doesn't inherit from the base class
         """
 
-        def decorator(component_class: Type[T]):
+        def decorator(component_class: type[T]) -> type[T]:
             if not issubclass(component_class, self.base_class):
                 raise TypeError(
-                    f"{component_class.__name__} must subclass {self.base_class.__name__}"
+                    f"{component_class.__name__} must subclass {self.base_class.__name__}",
                 )
             self._components[name] = component_class
             return component_class
 
         return decorator
 
-    def load_builtins(self):
+    def load_builtins(self) -> None:
         """Override in child classes to register built-in components."""
 
-    def load_plugins(self):
+    def load_plugins(self) -> None:
         """Load external components from entry points."""
         try:
             eps = entry_points()
             if hasattr(eps, "select"):  # Python 3.10+ API
                 plugins = eps.select(group=self.entry_point_group)
-            else:  # Legacy API
-                plugins = eps.get(self.entry_point_group, [])
 
             for ep in plugins:
                 self._components[ep.name] = ep.load()
-        except Exception as e:
+        except ValueError as e:
             # Log warning but don't fail if plugin loading fails
             import warnings
 
-            warnings.warn(f"Failed to load plugins: {e!s}")
+            warnings.warn(f"Failed to load plugins: {e!s}", stacklevel=2)
 
-    def get(self, name: str, **params: dict[str, any]) -> T:
+    def get(self, name: str, **params: dict[str, Any]) -> T:
         """Instantiate a component with parameters.
 
         Args:
