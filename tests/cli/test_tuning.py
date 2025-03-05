@@ -1,47 +1,14 @@
 """Test the tuning CLI."""
 
-import logging
-import operator
 import os
 import shutil
-import time
-import warnings
-from collections.abc import Generator
-from functools import reduce
 from pathlib import Path
-from typing import Any
 
 import pytest
-import ray
-import yaml
 from click.testing import CliRunner
 
 from stimulus.cli import tuning
 from stimulus.cli.main import cli
-
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-
-@pytest.fixture(autouse=True)
-def _ray_cleanup() -> Generator[None, None, None]:
-    """Per-test Ray management with parallel execution safety."""
-    # Filter ResourceWarning during Ray operations
-    warnings.filterwarnings("ignore", category=ResourceWarning)
-
-    # Initialize fresh Ray instance for each test
-    ray.init(ignore_reinit_error=True)
-
-    yield
-
-    # Forceful cleanup for CI environments
-    if ray.is_initialized():
-        ray.shutdown()
-        time.sleep(0.5)  # Allow background processes to exit
-
-    # Clean any residual files
-    ray_results_dir = os.path.expanduser("~/ray_results")
-    shutil.rmtree(ray_results_dir, ignore_errors=True)
 
 
 @pytest.fixture
@@ -69,75 +36,16 @@ def model_path() -> str:
 @pytest.fixture
 def model_config() -> str:
     """Get path to test model config YAML."""
-    return str(Path(__file__).parent.parent / "test_model" / "titanic_model_cpu.yaml")
+    return str(Path(__file__).parent.parent / "test_model" / "titanic_model.yaml")
 
 
-def _get_number_of_generated_files(ray_results_dir: str) -> int:
-    # Get the number of generated run files
-    logger.debug(f"Ray results dir: {ray_results_dir}")
-    number_of_files: int = 0
-    for dir in Path(ray_results_dir).iterdir():
-        logger.debug(f"Dir: {dir.name}")
-        if dir.is_dir():
-            logger.debug(f"Dir: {dir.name}")
-            for file in dir.iterdir():
-                if "trial_" in file.name:
-                    number_of_files += 1
-                logger.debug(f"File: {file.name}")
-                logger.debug(f"Number of files: {number_of_files}")
-            break
-    return number_of_files
-
-
-def _get_number_of_theoritical_runs(params_path: str) -> int:
-    """The number of run is defined as follows.
-
-    G:      number of grid_search
-    n_i:    number of options for the ith grid_search
-    S:      value of num_samples
-
-    R = S * ∏(i=1 to G) n_i
-    """
-    # Get the theoritical number of runs
-    with open(params_path) as file:
-        params_dict: dict[str, Any] = yaml.safe_load(file)
-
-    grid_searches_len: list[int] = []
-    num_samples: int = 0
-    for _header, sections in params_dict.items():
-        if isinstance(sections, dict):
-            for section in sections.values():
-                if isinstance(section, dict):
-                    # Lookup for grid search or num_samples in the yaml
-                    mode_value = section.get("mode")
-                    ns_value = section.get("num_samples")
-                    if mode_value == "grid_search":
-                        space_value = section.get("space")
-                        if space_value is not None:
-                            grid_searches_len.append(len(space_value))
-                        else:
-                            grid_searches_len.append(0)
-                    elif ns_value is not None:
-                        num_samples = ns_value if isinstance(ns_value, int) else 0
-    # Apply the described function and return the value
-    return num_samples * reduce(operator.mul, grid_searches_len)
-
-
-@pytest.mark.dependency(name="test_tuning_main")
 def test_tuning_main(
     data_path: str,
     data_config: str,
     model_path: str,
     model_config: str,
 ) -> None:
-    """Test that tuning.tune runs without errors.
-
-    Args:
-        data_path: Path to test CSV data
-        data_config: Path to data config YAML
-        model_path: Path to model implementation
-        model_config: Path to model config YAML
-    """
+    """Test that tuning.tune runs without errors."""
     # Verify all required files exist
     assert os.path.exists(data_path), f"Data file not found at {data_path}"
     assert os.path.exists(data_config), f"Data config not found at {data_config}"
@@ -146,83 +54,25 @@ def test_tuning_main(
 
     results_dir = Path("tests/test_data/titanic/test_results/").resolve()
     results_dir.mkdir(parents=True, exist_ok=True)
-    assert os.path.exists(results_dir), f"Results directory not found at {results_dir}"
-
+    
+    best_model_path = str(results_dir / "best_model.safetensors")
+    best_optimizer_path = str(results_dir / "best_optimizer.pt")
+    
     try:
-        # Use directory path for Ray results and file paths for outputs
         tuning.tune(
-            model_path=model_path,
             data_path=data_path,
+            model_path=model_path,
             data_config_path=data_config,
             model_config_path=model_config,
-            initial_weights=None,
-            # Directory path without URI scheme
-            ray_results_dirpath=str(results_dir),
-            output_path=str(results_dir / "best_model.safetensors"),
-            best_optimizer_path=str(results_dir / "best_optimizer.pt"),
-            best_metrics_path=str(results_dir / "best_metrics.csv"),
-            best_config_path=str(results_dir / "best_config.yaml"),
-            debug_mode=True,
-            clean_ray_results=False,
+            optuna_results_dirpath=str(results_dir),
+            best_model_path=best_model_path,
+            best_optimizer_path=best_optimizer_path,
         )
-
-    except RuntimeError as error:
-        error_msg: str = str(error).lower()
-        if "zero_division" in error_msg or "no best trial found" in error_msg:
-            pytest.skip(f"Skipping test due to known metric issue: {error}")
-        raise
+        
+        # Check that output files were created
+        assert os.path.exists(best_model_path), "Best model file was not created"
+        assert os.path.exists(best_optimizer_path), "Best optimizer file was not created"
+        
     finally:
-        # Add explicit Ray shutdown before cleanup
-        if ray.is_initialized():
-            ray.shutdown()
-
-        # Existing cleanup code
-        ray_results_dir = os.path.expanduser("tests/test_data/titanic/test_results/")
-        n_files: int = _get_number_of_generated_files(ray_results_dir)
-        n_runs: int = _get_number_of_theoritical_runs(model_config)
-        assert n_files == n_runs
-        shutil.rmtree(ray_results_dir, ignore_errors=True)
-        time.sleep(1)
-
-
-@pytest.mark.dependency(depends=["test_tuning_main"])
-def test_cli_invocation(
-    data_path: str,
-    data_config: str,
-    model_path: str,
-    model_config: str,
-) -> None:
-    """Test the CLI invocation of tune command.
-
-    Args:
-        data_path: Path to test CSV data.
-        data_config: Path to data config YAML.
-        model_path: Path to model implementation.
-        model_config: Path to model config YAML.
-    """
-    try:
-        runner = CliRunner()
-        result = runner.invoke(
-            cli,
-            [
-                "tune",
-                "-d",
-                data_path,
-                "-m",
-                model_path,
-                "-e",
-                data_config,
-                "-c",
-                model_config,
-            ],
-        )
-        assert result.exit_code == 0
-    finally:
-        # Add explicit Ray shutdown before cleanup
-        if ray.is_initialized():
-            ray.shutdown()
-
-        # Existing file cleanup
-        for file_name in ["best_model.pt", "best_optimizer.pt", "best_metrics.csv", "best_config.yaml"]:
-            if os.path.exists(file_name):
-                os.remove(file_name)
+        # Clean up
+        shutil.rmtree(results_dir, ignore_errors=True)

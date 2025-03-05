@@ -54,6 +54,6 @@ sampler:
 
 objective:
   metric: val_rocauc
-  mode: maximize
+  direction: maximize
 
 

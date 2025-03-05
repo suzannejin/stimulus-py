@@ -95,14 +95,14 @@ class Objective(pydantic.BaseModel):
     """Objective parameters."""
 
     metric: str
-    mode: str
+    direction: str
 
     @pydantic.model_validator(mode="after")
-    def validate_mode(self) -> "Objective":
-        """Validate that mode is supported by Optuna."""
-        if self.mode not in ["minimize", "maximize"]:
+    def validate_direction(self) -> "Objective":
+        """Validate that direction is supported by Optuna."""
+        if self.direction not in ["minimize", "maximize"]:
             raise NotImplementedError(
-                f"Mode {self.mode} not available for Optuna, please use one of the following: minimize, maximize",
+                f"Direction {self.direction} not available for Optuna, please use one of the following: minimize, maximize",
             )
         return self
 

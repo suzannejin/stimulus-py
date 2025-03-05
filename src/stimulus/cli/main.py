@@ -309,6 +309,7 @@ def transform_csv(
     help="Path to save the best optimizer [default: best_optimizer.pt]",
 )
 @click.option(
+    "-r",
     "--optuna-results-dirpath",
     type=click.Path(),
     default="./optuna_results",

@@ -4,7 +4,7 @@ import logging
 
 import optuna
 
-from src.stimulus.learner.interface import model_schema
+from stimulus.learner.interface import model_schema
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +27,13 @@ def get_pruner(pruner_config: model_schema.Pruner) -> optuna.pruners.BasePruner:
             )
 
     pruner_class = getattr(optuna.pruners, pruner_config.name)
-    return pruner_class(**pruner_config.params)
+    try:
+        return pruner_class(**pruner_config.params)
+    except TypeError as e:
+        if "argument after ** must be a mapping" in str(e) and pruner_config.params is None:
+            return pruner_class()
+        else:
+            raise
 
 
 def get_sampler(sampler_config: model_schema.Sampler) -> optuna.samplers.BaseSampler:
@@ -47,7 +53,13 @@ def get_sampler(sampler_config: model_schema.Sampler) -> optuna.samplers.BaseSam
             )
 
     sampler_class = getattr(optuna.samplers, sampler_config.name)
-    return sampler_class(**sampler_config.params)
+    try:
+        return sampler_class(**sampler_config.params)
+    except TypeError as e:
+        if "argument after ** must be a mapping" in str(e) and sampler_config.params is None:
+            return sampler_class()
+        else:
+            raise
 
 
 def get_suggestion(
