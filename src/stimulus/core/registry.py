@@ -30,7 +30,7 @@ Example:
         def encode(self, data: str) -> bytes:
             import base64
             return base64.b64encode(data.encode())
-            
+
         def decode(self, data: bytes) -> str:
             import base64
             return base64.b64decode(data).decode()
@@ -102,11 +102,13 @@ class BaseRegistry(Generic[T]):
             TypeError: If the decorated class doesn't inherit from the base class
         """
 
-        def decorator(cls: Type[T]):
-            if not issubclass(cls, self.base_class):
-                raise TypeError(f"{cls.__name__} must subclass {self.base_class.__name__}")
-            self._components[name] = cls
-            return cls
+        def decorator(component_class: Type[T]):
+            if not issubclass(component_class, self.base_class):
+                raise TypeError(
+                    f"{component_class.__name__} must subclass {self.base_class.__name__}"
+                )
+            self._components[name] = component_class
+            return component_class
 
         return decorator
 
@@ -130,7 +132,7 @@ class BaseRegistry(Generic[T]):
 
             warnings.warn(f"Failed to load plugins: {e!s}")
 
-    def get(self, name: str, **params) -> T:
+    def get(self, name: str, **params: dict[str, any]) -> T:
         """Instantiate a component with parameters.
 
         Args:
@@ -143,13 +145,13 @@ class BaseRegistry(Generic[T]):
         Raises:
             ValueError: If the component name is not registered
         """
-        cls = self._components.get(name)
-        if not cls:
+        component_class = self._components.get(name)
+        if not component_class:
             available = ", ".join(sorted(self._components.keys()))
             raise ValueError(
                 f"Unknown {self.base_class.__name__} '{name}'. Available: {available}",
             )
-        return cls(**params)
+        return component_class(**params)
 
     @property
     def component_names(self) -> list[str]:
