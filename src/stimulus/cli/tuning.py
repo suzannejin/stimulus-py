@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """CLI module for running raytune tuning experiment."""
 
-import argparse
 import logging
 import os
 import shutil
-from pathlib import Path
 from typing import Any
 
-import ray
 import yaml
 import torch
 import optuna
@@ -147,21 +144,3 @@ def tune(
         os.makedirs(os.path.dirname(best_optimizer_path), exist_ok=True)
         shutil.move(best_model_file_path, best_model_path)
         shutil.move(best_optimizer_file_path, best_optimizer_path)
-
-def run() -> None:
-    """Run the model tuning script from command line."""
-    ray.init(address="auto", ignore_reinit_error=True)
-    args = get_args()
-    tune(
-        data_path=args.data,
-        model_path=args.model,
-        data_config_path=args.data_config,
-        model_config_path=args.model_config,
-        optuna_results_dirpath=args.optuna_results_dirpath,
-        best_model_path=args.best_model,
-        best_optimizer_path=args.best_optimizer,
-    )
-
-
-if __name__ == "__main__":
-    run()
