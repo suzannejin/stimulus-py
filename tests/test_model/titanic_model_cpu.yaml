@@ -1,3 +1,7 @@
+max_batches: 10
+compute_objective_every_n_batches: 1
+n_trials: 5
+
 network_params:
   nb_neurons_intermediate_layer:
     params:
@@ -49,7 +53,7 @@ sampler:
   params:
 
 objective:
-  metric: val_loss
-  mode: min
+  metric: val_rocauc
+  mode: maximize
 
-seed: 123
+

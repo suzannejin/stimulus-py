@@ -51,7 +51,9 @@ def get_sampler(sampler_config: model_schema.Sampler) -> optuna.samplers.BaseSam
 
 
 def get_suggestion(
-    name: str, suggestion_method_config: model_schema.TunableParameter, trial: optuna.trial.Trial
+    name: str,
+    suggestion_method_config: model_schema.TunableParameter,
+    trial: optuna.trial.Trial,
 ) -> optuna.trial.Trial:
     """Get the suggestion method from the config."""
     trial_methods = {

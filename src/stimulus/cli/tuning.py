@@ -9,10 +9,11 @@ from typing import Any
 
 import ray
 import yaml
+import torch
 
 from stimulus.data import data_handlers
 from stimulus.data.interface import data_config_parser
-from stimulus.learner import raytune_learner, raytune_parser
+from stimulus.learner import optuna_tune
 from stimulus.utils import model_file_interface, yaml_model_schema
 
 logger = logging.getLogger(__name__)
@@ -149,7 +150,7 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_data_config_from_path(data_path: str, data_config_path: str, split: int) -> data_handlers.TorchDataset:
+def load_data_config_from_path(data_path: str, data_config_path: str, split: int) -> torch.utils.data.Dataset:
     """Load the data config from a path.
 
     Args:
@@ -186,8 +187,8 @@ def tune(
     data_config_path: str,
     model_config_path: str,
     initial_weights: str | None = None,  # noqa: ARG001
-    ray_results_dirpath: str | None = None,
-    output_path: str | None = None,
+    optuna_results_dirpath: str | None = None,
+    best_model_path: str | None = None,
     best_optimizer_path: str | None = None,
     best_metrics_path: str | None = None,
     best_config_path: str | None = None,

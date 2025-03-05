@@ -16,17 +16,25 @@ class PredictWrapper:
     It also provides the functionalities to measure the performance of the model.
     """
 
-    def __init__(self, model: nn.Module, dataloader: DataLoader, loss_dict: Optional[dict[str, Any]] = None) -> None:
+    def __init__(
+        self,
+        model: nn.Module,
+        dataloader: DataLoader,
+        loss_dict: Optional[dict[str, Any]] = None,
+        device: torch.device = torch.device("cpu"),
+    ) -> None:
         """Initialize the PredictWrapper.
 
         Args:
             model: The PyTorch model to make predictions with
             dataloader: DataLoader containing the evaluation data
             loss_dict: Optional dictionary of loss functions
+            device: The device to run the model on
         """
-        self.model = model
+        self.model = model.to(device)
         self.dataloader = dataloader
         self.loss_dict = loss_dict
+        self.device = device
         try:
             self.model.eval()
         except RuntimeError as e:
@@ -66,6 +74,8 @@ class PredictWrapper:
         # get the predictions (and labels) for each batch
         with torch.no_grad():
             for x, y, _ in self.dataloader:
+                x = {key: value.to(self.device) for key, value in x.items()}
+                y = {key: value.to(self.device) for key, value in y.items()}
                 current_predictions = self.model(**x)
                 current_predictions = self.handle_predictions(current_predictions, y)
                 for k in keys:

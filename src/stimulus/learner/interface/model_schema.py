@@ -35,6 +35,7 @@ class TunableParameter(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="after")
     def validate_params(self) -> "TunableParameter":
+        """Validate that the params are supported by Optuna."""
         trial_methods = {
             "categorical": optuna.trial.Trial.suggest_categorical,
             "discrete_uniform": optuna.trial.Trial.suggest_discrete_uniform,
@@ -99,10 +100,11 @@ class Objective(pydantic.BaseModel):
     @pydantic.model_validator(mode="after")
     def validate_mode(self) -> "Objective":
         """Validate that mode is supported by Optuna."""
-        if self.mode not in ["min", "max"]:
+        if self.mode not in ["minimize", "maximize"]:
             raise NotImplementedError(
-                f"Mode {self.mode} not available for Optuna, please use one of the following: min, max",
+                f"Mode {self.mode} not available for Optuna, please use one of the following: minimize, maximize",
             )
+        return self
 
 
 class Sampler(pydantic.BaseModel):
@@ -139,23 +141,20 @@ class Loss(pydantic.BaseModel):
     loss_fn: TunableParameter
 
 
-class Data(pydantic.BaseModel):
-    """Data parameters."""
-
-    batch_size: TunableParameter
-
-
 class Model(pydantic.BaseModel):
     """Model configuration."""
 
     network_params: dict[str, TunableParameter]
     optimizer_params: dict[str, TunableParameter]
     loss_params: dict[str, TunableParameter]
-    data_params: Data
+    data_params: dict[str, TunableParameter]
     pruner: Pruner
     sampler: Sampler
     objective: Objective
     seed: int = 42
+    max_batches: int = 1000
+    compute_objective_every_n_batches: int = 50
+    n_trials: int = 10
 
     # Add a model validator to debug the input data
     @pydantic.model_validator(mode="before")
@@ -164,3 +163,10 @@ class Model(pydantic.BaseModel):
         """Print input data for debugging."""
         logger.info(f"Input data for Model: {data}")
         return data
+
+    @pydantic.model_validator(mode="after")
+    def validate_data_params(self) -> "Model":
+        """Validate that data_params contains batch_size."""
+        if "batch_size" not in self.data_params:
+            raise ValueError("data_params must contain batch_size")
+        return self
