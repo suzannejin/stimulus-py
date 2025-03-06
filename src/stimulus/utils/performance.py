@@ -143,7 +143,7 @@ class Performance:
     def precision(self, labels: NDArray[np.float64], predictions: NDArray[np.float64]) -> float:
         """Compute precision score."""
         predictions_binary = np.array([1 if p > BINARY_THRESHOLD else 0 for p in predictions])
-        return float(precision_score(labels, predictions_binary))
+        return float(precision_score(labels, predictions_binary, zero_division=0))
 
     def recall(self, labels: NDArray[np.float64], predictions: NDArray[np.float64]) -> float:
         """Compute recall score."""
