@@ -1,5 +1,6 @@
 """Utility module for computing various performance metrics for machine learning models."""
 
+import logging
 from typing import Any
 
 import numpy as np
@@ -19,6 +20,8 @@ from sklearn.metrics import (
 BINARY_THRESHOLD = 0.5
 BINARY_CLASS_COUNT = 2
 NON_SQUEEZED_SHAPE_LENGTH = 2
+
+logger = logging.getLogger(__name__)
 
 
 class Performance:
@@ -152,4 +155,7 @@ class Performance:
 
     def spearmanr(self, labels: NDArray[np.float64], predictions: NDArray[np.float64]) -> float:
         """Compute Spearman correlation coefficient."""
+        if np.allclose(labels, labels[0]) or np.allclose(predictions, predictions[0]):
+            logger.info("Labels or predictions are constant. Returning 0.0.")
+            return 0.0
         return float(spearmanr(labels, predictions)[0])
