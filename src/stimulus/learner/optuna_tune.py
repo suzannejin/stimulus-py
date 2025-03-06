@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 
 class Objective:
+    """Objective class for Optuna tuning."""
+
     def __init__(
         self,
         model_class: torch.nn.Module,
@@ -29,8 +31,24 @@ class Objective:
         max_batches: int = 1000,
         compute_objective_every_n_batches: int = 50,
         target_metric: str = "val_loss",
-        device: torch.device = torch.device("cpu"),
+        device: torch.device | None = None,
     ):
+        """Initialize the Objective class.
+
+        Args:
+            model_class: The model class to be tuned.
+            network_params: The network parameters to be tuned.
+            optimizer_params: The optimizer parameters to be tuned.
+            data_params: The data parameters to be tuned.
+            loss_params: The loss parameters to be tuned.
+            train_torch_dataset: The training dataset.
+            val_torch_dataset: The validation dataset.
+            artifact_store: The artifact store to save the model and optimizer.
+            max_batches: The maximum number of batches to train.
+            compute_objective_every_n_batches: The number of batches to compute the objective.
+            target_metric: The target metric to optimize.
+            device: The device to run the training on.
+        """
         self.model_class = model_class
         self.network_params = network_params
         self.optimizer_params = optimizer_params
@@ -42,9 +60,12 @@ class Objective:
         self.target_metric = target_metric
         self.max_batches = max_batches
         self.compute_objective_every_n_batches = compute_objective_every_n_batches
-        self.device = device
+        if device is None:
+            self.device = torch.device("cpu")
+        else:
+            self.device = device
 
-    def _get_optimizer(self, optimizer_name: str) -> torch.optim.Optimizer:
+    def _get_optimizer(self, optimizer_name: str) -> type[torch.optim.Optimizer]:
         """Get the optimizer from the name."""
         try:
             return getattr(torch.optim, optimizer_name)
@@ -78,11 +99,11 @@ class Objective:
         while batch_idx < self.max_batches:
             for x, y, _meta in train_loader:
                 try:
-                    x = {key: value.to(self.device, non_blocking=True) for key, value in x.items()}
-                    y = {key: value.to(self.device, non_blocking=True) for key, value in y.items()}
+                    device_x = {key: value.to(self.device, non_blocking=True) for key, value in x.items()}
+                    device_y = {key: value.to(self.device, non_blocking=True) for key, value in y.items()}
 
                     # Perform a batch update
-                    model_instance.batch(x=x, y=y, optimizer=optimizer, **loss_dict)
+                    model_instance.batch(x=device_x, y=device_y, optimizer=optimizer, **loss_dict)
 
                 except RuntimeError as e:
                     if "CUDA out of memory" in str(e) and self.device.type == "cuda":
@@ -91,10 +112,10 @@ class Objective:
                         cpu_device = torch.device("cpu")
                         model_instance = model_instance.to(cpu_device)
                         # Consider adjusting batch size or other parameters
-                        x = {key: value.to(cpu_device) for key, value in x.items()}
-                        y = {key: value.to(cpu_device) for key, value in y.items()}
+                        device_x = {key: value.to(cpu_device) for key, value in x.items()}
+                        device_y = {key: value.to(cpu_device) for key, value in y.items()}
                         # Retry the batch
-                        model_instance.batch(x=x, y=y, optimizer=optimizer, **loss_dict)
+                        model_instance.batch(x=device_x, y=device_y, optimizer=optimizer, **loss_dict)
                     else:
                         raise
 
@@ -113,7 +134,7 @@ class Objective:
                     # Check if trial should be pruned
                     if trial.should_prune():
                         self.save_checkpoint(trial, model_instance, optimizer)
-                        raise optuna.TrialPruned()
+                        raise optuna.TrialPruned()  # noqa: RSE102
 
                 if batch_idx >= self.max_batches:
                     break
@@ -122,7 +143,8 @@ class Objective:
         self.save_checkpoint(trial, model_instance, optimizer)
         return metric_dict[self.target_metric]
 
-    def _setup_model(self, trial):
+    def _setup_model(self, trial: optuna.Trial) -> torch.nn.Module:
+        """Setup the model for the trial."""
         model_suggestions = self.suggest_parameters(trial, self.network_params)
         logger.info(f"Model suggestions: {model_suggestions}")
         model_instance = self.model_class(**model_suggestions)
@@ -140,7 +162,8 @@ class Objective:
                 raise
         return model_instance
 
-    def _setup_optimizer(self, trial, model_instance):
+    def _setup_optimizer(self, trial: optuna.Trial, model_instance: torch.nn.Module) -> torch.optim.Optimizer:
+        """Setup the optimizer for the trial."""
         optimizer_suggestions = self.suggest_parameters(trial, self.optimizer_params)
         logger.info(f"Optimizer suggestions: {optimizer_suggestions}")
 
@@ -155,7 +178,11 @@ class Objective:
 
         return optimizer_class(model_instance.parameters(), **optimizer_kwargs)
 
-    def _setup_data_loaders(self, trial):
+    def _setup_data_loaders(
+        self,
+        trial: optuna.Trial,
+    ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+        """Setup the data loaders for the trial."""
         batch_size = self.suggest_parameters(trial, self.data_params)["batch_size"]
         logger.info(f"Batch size: {batch_size}")
 
@@ -171,7 +198,8 @@ class Objective:
         )
         return train_loader, val_loader
 
-    def _setup_loss_functions(self, trial):
+    def _setup_loss_functions(self, trial: optuna.Trial) -> dict[str, torch.nn.Module]:
+        """Setup the loss functions for the trial."""
         loss_dict = self.suggest_parameters(trial, self.loss_params)
         for key, loss_fn in loss_dict.items():
             loss_dict[key] = getattr(torch.nn, loss_fn)()
@@ -244,10 +272,6 @@ class Objective:
 def get_device() -> torch.device:
     """Get the appropriate device (CPU/GPU) for computation.
 
-    Args:
-        use_gpu: Whether to try using GPU if available
-        verbose: Whether to log device selection details
-
     Returns:
         torch.device: The selected computation device
     """
@@ -268,7 +292,20 @@ def tune_loop(
     n_trials: int,
     direction: str,
     storage: optuna.storages.BaseStorage | None = None,
-):
+) -> optuna.Study:
+    """Run the tuning loop.
+
+    Args:
+        objective: The objective function to optimize.
+        pruner: The pruner to use.
+        sampler: The sampler to use.
+        n_trials: The number of trials to run.
+        direction: The direction to optimize.
+        storage: The storage to use.
+
+    Returns:
+        The study object.
+    """
     if storage is None:
         study = optuna.create_study(direction=direction, sampler=sampler, pruner=pruner)
     else:

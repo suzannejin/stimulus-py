@@ -18,25 +18,23 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def get_model_class():
+def get_model_class() -> torch.nn.Module:
     """Get the model class."""
     model_path = os.path.join("tests", "test_model", "titanic_model.py")
-    model_class = model_file_interface.import_class_from_file(model_path)
-    return model_class
+    return model_file_interface.import_class_from_file(model_path)
 
 
 @pytest.fixture
-def get_model_config():
+def get_model_config() -> model_schema.Model:
     """Get the model config."""
     model_path = os.path.join("tests", "test_model", "titanic_model.yaml")
     with open(model_path) as f:
         model_config = yaml.safe_load(f)
-    model_config_obj = model_schema.Model(**model_config)
-    return model_config_obj
+    return model_schema.Model(**model_config)
 
 
 @pytest.fixture
-def get_train_val_datasets():
+def get_train_val_datasets() -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
     """Get the train and val datasets."""
     train_data = load_data_config_from_path(
         data_path=os.path.join("tests", "test_data", "titanic", "titanic_stimulus_split.csv"),
@@ -51,7 +49,11 @@ def get_train_val_datasets():
     return train_data, val_data
 
 
-def test_parameter_suggestions(get_model_config, get_model_class, get_train_val_datasets):
+def test_parameter_suggestions(
+    get_model_config: model_schema.Model,
+    get_model_class: torch.nn.Module,
+    get_train_val_datasets: tuple[torch.utils.data.Dataset, torch.utils.data.Dataset],
+) -> None:
     """Test parameter suggestions directly without running a full study."""
     train_data, val_data = get_train_val_datasets
 
@@ -94,7 +96,11 @@ def test_parameter_suggestions(get_model_config, get_model_class, get_train_val_
     assert optimizer is not None
 
 
-def test_tune_loop(get_model_class, get_model_config, get_train_val_datasets):
+def test_tune_loop(
+    get_model_class: torch.nn.Module,
+    get_model_config: model_schema.Model,
+    get_train_val_datasets: tuple[torch.utils.data.Dataset, torch.utils.data.Dataset],
+) -> None:
     """Test the tune loop."""
     train_data, val_data = get_train_val_datasets
     base_path = "./artifacts"

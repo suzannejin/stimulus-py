@@ -1,6 +1,7 @@
 """Parse the model config."""
 
 import logging
+from typing import Callable
 
 import optuna
 
@@ -66,7 +67,7 @@ def get_suggestion(
     trial: optuna.trial.Trial,
 ) -> optuna.trial.Trial:
     """Get the suggestion method from the config."""
-    trial_methods = {
+    trial_methods: dict[str, Callable] = {
         "categorical": trial.suggest_categorical,
         "discrete_uniform": trial.suggest_discrete_uniform,
         "float": trial.suggest_float,

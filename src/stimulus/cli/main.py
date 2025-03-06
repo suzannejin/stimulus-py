@@ -44,38 +44,18 @@ def cli() -> None:
     help="Path to yaml config training file",
 )
 @click.option(
-    "-w",
-    "--initial-weights",
-    type=click.Path(exists=True),
-    help="Path to initial weights",
-)
-@click.option(
-    "-n",
-    "--num-samples",
-    type=int,
-    default=3,
-    help="Number of samples for tuning [default: 3]",
-)
-@click.option(
-    "--ray-results-dirpath",
+    "-r",
+    "--optuna-results-dirpath",
     type=click.Path(),
-    help="Location for ray_results output dir",
-)
-@click.option(
-    "--debug-mode",
-    is_flag=True,
-    help="Activate debug mode for tuning",
+    default="./optuna_results",
+    help="Location for optuna results output directory [default: ./optuna_results]",
 )
 def check_model(
     data: str,
     model: str,
     data_config: str,
     model_config: str,
-    initial_weights: str | None,
-    num_samples: int,
-    ray_results_dirpath: str | None,
-    *,
-    debug_mode: bool,
+    optuna_results_dirpath: str,
 ) -> None:
     """Check model configuration and run initial tests."""
     from stimulus.cli.check_model import check_model as check_model_func
@@ -85,10 +65,7 @@ def check_model(
         model_path=model,
         data_config_path=data_config,
         model_config_path=model_config,
-        initial_weights=initial_weights,
-        num_samples=num_samples,
-        ray_results_dirpath=ray_results_dirpath,
-        debug_mode=debug_mode,
+        optuna_results_dirpath=optuna_results_dirpath,
     )
 
 

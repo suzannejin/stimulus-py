@@ -2,6 +2,7 @@
 
 import logging
 import os
+from typing import Any
 
 import pytest
 import yaml
@@ -13,15 +14,14 @@ logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
-def get_config():
+def get_config() -> dict[str, Any]:
     """Get the config."""
     config_path = os.path.join("tests", "test_model", "titanic_model.yaml")
     with open(config_path) as f:
-        config = yaml.safe_load(f)
-    return config
+        return yaml.safe_load(f)
 
 
-def test_model_schema(get_config):
+def test_model_schema(get_config: dict[str, Any]) -> None:
     """Test the model schema."""
     model = Model(**get_config)
     assert model.network_params["nb_neurons_intermediate_layer"].params["low"] == 7

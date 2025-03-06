@@ -2,7 +2,7 @@
 
 import inspect
 import logging
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import optuna
 import pydantic
@@ -36,7 +36,7 @@ class TunableParameter(pydantic.BaseModel):
     @pydantic.model_validator(mode="after")
     def validate_params(self) -> "TunableParameter":
         """Validate that the params are supported by Optuna."""
-        trial_methods = {
+        trial_methods: dict[str, Callable] = {
             "categorical": optuna.trial.Trial.suggest_categorical,
             "discrete_uniform": optuna.trial.Trial.suggest_discrete_uniform,
             "float": optuna.trial.Trial.suggest_float,
@@ -50,11 +50,8 @@ class TunableParameter(pydantic.BaseModel):
                 param.name
                 for param in sig.parameters.values()
                 if param.default is inspect.Parameter.empty
-                and param.kind != inspect.Parameter.VAR_KEYWORD
-                and param.kind != inspect.Parameter.VAR_POSITIONAL
-                and param.name != "self"
-                and param.name != "trial"
-                and param.name != "name"
+                and param.kind not in (inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL)
+                and param.name not in ("self", "trial", "name")
             }
             missing_params = required_params - set(self.params.keys())
             if missing_params:
@@ -159,7 +156,7 @@ class Model(pydantic.BaseModel):
     # Add a model validator to debug the input data
     @pydantic.model_validator(mode="before")
     @classmethod
-    def validate_input(cls, data):
+    def validate_input(cls, data: dict[str, Any]) -> dict[str, Any]:
         """Print input data for debugging."""
         logger.info(f"Input data for Model: {data}")
         return data

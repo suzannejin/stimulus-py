@@ -111,7 +111,8 @@ def check_model(
         direction=model_config.objective.direction,
         storage=storage,
     )
-    assert study is not None
+    if study is None:
+        raise ValueError("Study is None")
     logger.info(f"Study: {study}")
     logger.info(f"Study best trial: {study.best_trial}")
     logger.info(f"Study direction: {study.direction}")
