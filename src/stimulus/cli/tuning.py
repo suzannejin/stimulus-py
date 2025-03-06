@@ -129,6 +129,10 @@ def tune(
     best_optimizer_artifact_id = best_trial.user_attrs["optimizer_id"]
     best_model_file_path = str(best_trial.number) + "_model.safetensors"
     best_optimizer_file_path = str(best_trial.number) + "_optimizer.pt"
+    if os.path.exists(best_model_file_path):
+        os.remove(best_model_file_path)
+    if os.path.exists(best_optimizer_file_path):
+        os.remove(best_optimizer_file_path)
     optuna.artifacts.download_artifact(
         artifact_store=artifact_store,
         file_path=best_model_file_path,
