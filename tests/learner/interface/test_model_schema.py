@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 @pytest.fixture
 def get_config():
     """Get the config."""
-    config_path = os.path.join("tests", "test_model", "titanic_model_cpu.yaml")
+    config_path = os.path.join("tests", "test_model", "titanic_model.yaml")
     with open(config_path) as f:
         config = yaml.safe_load(f)
     return config
@@ -36,11 +36,11 @@ def test_model_schema(get_config):
     assert model.optimizer_params["method"].mode == "categorical"
     assert model.optimizer_params["lr"].params["low"] == 0.0001
     assert model.optimizer_params["lr"].params["high"] == 0.1
-    assert model.optimizer_params["lr"].mode == "loguniform"
-    assert model.loss_params.loss_fn.params["choices"] == ["CrossEntropyLoss"]
-    assert model.loss_params.loss_fn.mode == "categorical"
-    assert model.data_params.batch_size.params["choices"] == [16, 32, 64, 128, 256]
-    assert model.data_params.batch_size.mode == "categorical"
+    assert model.optimizer_params["lr"].mode == "float"
+    assert model.loss_params["loss_fn"].params["choices"] == ["CrossEntropyLoss"]
+    assert model.loss_params["loss_fn"].mode == "categorical"
+    assert model.data_params["batch_size"].params["choices"] == [16, 32, 64, 128, 256]
+    assert model.data_params["batch_size"].mode == "categorical"
     assert model.pruner.params["n_warmup_steps"] == 10
     assert model.pruner.params["n_startup_trials"] == 2
     assert model.sampler.name == "TPESampler"

@@ -126,7 +126,7 @@ def test_tune_loop(get_model_class, get_model_config, get_train_val_datasets):
         pruner=pruner,
         sampler=optuna.samplers.TPESampler(),
         n_trials=get_model_config.n_trials,
-        direction=get_model_config.objective.mode,
+        direction=get_model_config.objective.direction,
         storage=storage,
     )
     assert study is not None
