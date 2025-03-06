@@ -32,8 +32,7 @@ def get_pruner(pruner_config: model_schema.Pruner) -> optuna.pruners.BasePruner:
     except TypeError as e:
         if "argument after ** must be a mapping" in str(e) and pruner_config.params is None:
             return pruner_class()
-        else:
-            raise
+        raise
 
 
 def get_sampler(sampler_config: model_schema.Sampler) -> optuna.samplers.BaseSampler:
@@ -58,8 +57,7 @@ def get_sampler(sampler_config: model_schema.Sampler) -> optuna.samplers.BaseSam
     except TypeError as e:
         if "argument after ** must be a mapping" in str(e) and sampler_config.params is None:
             return sampler_class()
-        else:
-            raise
+        raise
 
 
 def get_suggestion(

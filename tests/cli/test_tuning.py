@@ -5,10 +5,8 @@ import shutil
 from pathlib import Path
 
 import pytest
-from click.testing import CliRunner
 
 from stimulus.cli import tuning
-from stimulus.cli.main import cli
 
 
 @pytest.fixture
@@ -54,10 +52,10 @@ def test_tuning_main(
 
     results_dir = Path("tests/test_data/titanic/test_results/").resolve()
     results_dir.mkdir(parents=True, exist_ok=True)
-    
+
     best_model_path = str(results_dir / "best_model.safetensors")
     best_optimizer_path = str(results_dir / "best_optimizer.pt")
-    
+
     try:
         tuning.tune(
             data_path=data_path,
@@ -68,11 +66,11 @@ def test_tuning_main(
             best_model_path=best_model_path,
             best_optimizer_path=best_optimizer_path,
         )
-        
+
         # Check that output files were created
         assert os.path.exists(best_model_path), "Best model file was not created"
         assert os.path.exists(best_optimizer_path), "Best optimizer file was not created"
-        
+
     finally:
         # Clean up
         shutil.rmtree(results_dir, ignore_errors=True)

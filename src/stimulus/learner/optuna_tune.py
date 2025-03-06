@@ -1,6 +1,4 @@
-"""
-Optuna tuning module.
-"""
+"""Optuna tuning module."""
 
 import inspect
 import logging

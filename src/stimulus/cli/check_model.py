@@ -2,18 +2,16 @@
 """CLI module for checking model configuration and running initial tests."""
 
 import logging
-
-import yaml
-import optuna
 import os
-import shutil
-from torch.utils.data import DataLoader
+
+import optuna
+import yaml
 
 from stimulus.data import data_handlers
 from stimulus.data.interface import data_config_parser
-from stimulus.utils import model_file_interface
-from stimulus.learner.interface import model_schema
 from stimulus.learner import optuna_tune
+from stimulus.learner.interface import model_schema
+from stimulus.utils import model_file_interface
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +84,7 @@ def check_model(
     os.makedirs(f"{base_path}/artifacts/", exist_ok=True)
     artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=f"{base_path}/artifacts/")
     storage = optuna.storages.JournalStorage(
-    optuna.storages.journal.JournalFileBackend(f"{base_path}/optuna_journal_storage.log")
+        optuna.storages.journal.JournalFileBackend(f"{base_path}/optuna_journal_storage.log"),
     )
     device = optuna_tune.get_device()
     objective = optuna_tune.Objective(
@@ -120,7 +118,7 @@ def check_model(
     logger.info(f"Study best value: {study.best_value}")
     logger.info(f"Study best params: {study.best_params}")
     logger.info(f"Study trials count: {len(study.trials)}")
-    
+
     for artifact_meta in optuna.artifacts.get_all_artifact_meta(study_or_trial=study):
         logger.info(artifact_meta)
     # Download the best model

@@ -101,7 +101,7 @@ def test_tune_loop(get_model_class, get_model_config, get_train_val_datasets):
     os.makedirs(base_path, exist_ok=True)
     artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=base_path)
     storage = optuna.storages.JournalStorage(
-    optuna.storages.journal.JournalFileBackend("./optuna_journal_storage.log")
+        optuna.storages.journal.JournalFileBackend("./optuna_journal_storage.log"),
     )
     pruner = optuna.pruners.MedianPruner(n_warmup_steps=50, n_startup_trials=2)
     device = optuna_tune.get_device()

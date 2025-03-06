@@ -57,7 +57,7 @@ def test_check_model_main(
             model_path=model_path,
             data_config_path=data_config,
             model_config_path=model_config,
-            optuna_results_dirpath="./test_optuna_results"
+            optuna_results_dirpath="./test_optuna_results",
         )
     except RuntimeError as e:
         pytest.fail(f"check_model.check_model raised {type(e).__name__}: {e}")

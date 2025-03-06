@@ -6,16 +6,18 @@ import os
 import shutil
 from typing import Any
 
-import yaml
-import torch
 import optuna
+import torch
+import yaml
+
 from stimulus.data import data_handlers
 from stimulus.data.interface import data_config_parser
 from stimulus.learner import optuna_tune
-from stimulus.learner.interface import model_schema, model_config_parser
+from stimulus.learner.interface import model_config_parser, model_schema
 from stimulus.utils import model_file_interface
 
 logger = logging.getLogger(__name__)
+
 
 def load_data_config_from_path(data_path: str, data_config_path: str, split: int) -> torch.utils.data.Dataset:
     """Load the data config from a path.
@@ -93,7 +95,7 @@ def tune(
     os.makedirs(artifact_path, exist_ok=True)
     artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=artifact_path)
     storage = optuna.storages.JournalStorage(
-        optuna.storages.journal.JournalFileBackend(f"{base_path}/optuna_journal_storage.log")
+        optuna.storages.journal.JournalFileBackend(f"{base_path}/optuna_journal_storage.log"),
     )
 
     device = optuna_tune.get_device()
