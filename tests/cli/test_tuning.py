@@ -50,7 +50,7 @@ def test_tuning_main(
     assert os.path.exists(model_path), f"Model file not found at {model_path}"
     assert os.path.exists(model_config), f"Model config not found at {model_config}"
 
-    results_dir = Path("tests/test_data/titanic/test_results/").resolve()
+    results_dir = Path("tests/test_data/titanic/test_results/test_tuning/").resolve()
     results_dir.mkdir(parents=True, exist_ok=True)
 
     best_model_path = str(results_dir / "best_model.safetensors")
