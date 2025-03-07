@@ -45,7 +45,7 @@ To activate it, run:
 source .venvs/<python_version>/bin/activate
 ```
 
-stimulus should now be installed as a librairy!
+stimulus should now be installed as a library!
 
 Then, you can install extra dependencies (for instance jupyter) using `uv pip install <package>`.
 
@@ -77,7 +77,7 @@ Now that you understand the codebase a bit better, helping others understanding 
 
 - Adding Encoders/Transforms/Splitters
 
-This librairy lives and dies by the number of encoders/transforms/splitters offered, so adding those will always improve the software.
+This library lives and dies by the number of encoders/transforms/splitters offered, so adding those will always improve the software.
 
 - Quality of life improvements
 

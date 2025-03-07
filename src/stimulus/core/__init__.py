@@ -1,5 +1,5 @@
 """Core components of the Stimulus library."""
 
-from .registry import BaseRegistry
+from stimulus.core.registry import BaseRegistry
 
-__all__ = ["BaseRegistry"] 
+__all__ = ["BaseRegistry"]

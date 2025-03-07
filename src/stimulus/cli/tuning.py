@@ -10,9 +10,10 @@ from typing import Any
 import ray
 import yaml
 
-from stimulus.data import loaders
+from stimulus.data import data_handlers
+from stimulus.data.interface import data_config_parser
 from stimulus.learner import raytune_learner, raytune_parser
-from stimulus.utils import model_file_interface, yaml_data, yaml_model_schema
+from stimulus.utils import model_file_interface, yaml_model_schema
 
 logger = logging.getLogger(__name__)
 
@@ -148,10 +149,41 @@ def get_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def main(
-    model_path: str,
+def load_data_config_from_path(data_path: str, data_config_path: str, split: int) -> data_handlers.TorchDataset:
+    """Load the data config from a path.
+
+    Args:
+        data_path: Path to the input data file.
+        data_config_path: Path to the data config file.
+        split: Split index to use (0=train, 1=validation, 2=test).
+
+    Returns:
+        A TorchDataset with the configured data.
+    """
+    with open(data_config_path) as file:
+        data_config_dict = yaml.safe_load(file)
+        data_config_obj = data_config_parser.SplitTransformDict(**data_config_dict)
+
+    encoders, input_columns, label_columns, meta_columns = data_config_parser.parse_split_transform_config(
+        data_config_obj,
+    )
+
+    return data_handlers.TorchDataset(
+        loader=data_handlers.DatasetLoader(
+            encoders=encoders,
+            input_columns=input_columns,
+            label_columns=label_columns,
+            meta_columns=meta_columns,
+            csv_path=data_path,
+            split=split,
+        ),
+    )
+
+
+def tune(
     data_path: str,
-    data_config: yaml_data.YamlSplitTransformDict,
+    model_path: str,
+    data_config_path: str,
     model_config_path: str,
     initial_weights: str | None = None,  # noqa: ARG001
     ray_results_dirpath: str | None = None,
@@ -161,51 +193,67 @@ def main(
     best_config_path: str | None = None,
     *,
     debug_mode: bool = False,
+    clean_ray_results: bool = False,
 ) -> None:
-    """Run the main model checking pipeline.
+    """Run model hyperparameter tuning.
 
     Args:
         data_path: Path to input data file.
         model_path: Path to model file.
-        data_config: A YamlSplitTransformObject
+        data_config_path: Path to data config file.
         model_config_path: Path to model config file.
         initial_weights: Optional path to initial weights.
         ray_results_dirpath: Directory for ray results.
         debug_mode: Whether to run in debug mode.
+        clean_ray_results: Whether to clean the ray results directory.
         output_path: Path to write the best model to.
         best_optimizer_path: Path to write the best optimizer to.
         best_metrics_path: Path to write the best metrics to.
         best_config_path: Path to write the best config to.
     """
+    # Load train and validation datasets
+    train_dataset = load_data_config_from_path(data_path, data_config_path, split=0)
+    validation_dataset = load_data_config_from_path(data_path, data_config_path, split=1)
+
+    # Load model class
+    model_class = model_file_interface.import_class_from_file(model_path)
+
+    # Load model config
     with open(model_config_path) as file:
         model_config_dict: dict[str, Any] = yaml.safe_load(file)
     model_config: yaml_model_schema.Model = yaml_model_schema.Model(**model_config_dict)
 
-    encoder_loader = loaders.EncoderLoader()
-    encoder_loader.initialize_column_encoders_from_config(
-        column_config=data_config.columns,
-    )
-
-    model_class = model_file_interface.import_class_from_file(model_path)
-
-    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(model=model_config)
+    # Parse Ray configuration
+    ray_config_loader = yaml_model_schema.RayConfigLoader(model=model_config)
     ray_config_model = ray_config_loader.get_config()
-
-    tuner = raytune_learner.TuneWrapper(
-        model_config=ray_config_model,
-        data_config=data_config,
-        model_class=model_class,
-        data_path=data_path,
-        encoder_loader=encoder_loader,
-        seed=42,
-        ray_results_dir=ray_results_dirpath,
-        debug=debug_mode,
-    )
 
     # Ensure output_path is provided
     if output_path is None:
         raise ValueError("output_path must not be None")
+
+    # Ensure ray_results_dirpath is absolute
+    storage_path = None
+    if ray_results_dirpath:
+        storage_path = str(Path(ray_results_dirpath).resolve())
+        # Ensure directory exists
+        Path(ray_results_dirpath).mkdir(parents=True, exist_ok=True)
+
+        # Don't set environment variable as it's deprecated
+        # Instead, we'll pass storage_path to the TuneWrapper
+
     try:
+        # Initialize tuner with datasets
+        tuner = raytune_learner.TuneWrapper(
+            model_config=ray_config_model,
+            model_class=model_class,
+            train_dataset=train_dataset,
+            validation_dataset=validation_dataset,
+            seed=42,
+            ray_results_dir=storage_path,  # Pass the path here
+            debug=debug_mode,
+        )
+
+        # Run tuning
         grid_results = tuner.tune()
         if not grid_results:
             _raise_empty_grid()
@@ -229,24 +277,18 @@ def main(
         logger.exception("Missing expected result key")
         raise
     finally:
-        if debug_mode:
-            logger.info("Debug mode - preserving Ray results directory")
-        elif ray_results_dirpath:
-            shutil.rmtree(ray_results_dirpath, ignore_errors=True)
+        if clean_ray_results and storage_path is not None:
+            shutil.rmtree(Path(storage_path).resolve(), ignore_errors=True)
 
 
 def run() -> None:
-    """Run the model checking script."""
+    """Run the model tuning script from command line."""
     ray.init(address="auto", ignore_reinit_error=True)
     args = get_args()
-    # Try to convert the configuration file to a YamlSplitTransformDict
-    config_dict: yaml_data.YamlSplitTransformDict
-    with open(args.data_config) as f:
-        config_dict = yaml_data.YamlSplitTransformDict(**yaml.safe_load(f))
-    main(
+    tune(
         data_path=args.data,
         model_path=args.model,
-        data_config=config_dict,
+        data_config_path=args.data_config,
         model_config_path=args.model_config,
         initial_weights=args.initial_weights,
         ray_results_dirpath=args.ray_results_dirpath,
