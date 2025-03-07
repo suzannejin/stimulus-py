@@ -20,23 +20,6 @@ def test_data_handlers_types() -> None:
         pytest.fail("Failed to import Data Handlers types")
 
 
-def test_learner_types() -> None:
-    """Test the learner types."""
-    try:
-        from stimulus.typing import (
-            CheckpointDict,
-            PredictWrapper,
-            RayTuneMetrics,
-            RayTuneOptimizer,
-            RayTuneResult,
-            TuneModel,
-            TuneParser,
-            TuneWrapper,
-        )
-    except ImportError:
-        pytest.fail("Failed to import Learner types")
-
-
 def test_data_config_schema_types() -> None:
     """Test the data config schema types."""
     try:
@@ -65,8 +48,6 @@ def test_yaml_model_schema_types() -> None:
             Data,
             Loss,
             Model,
-            RayConfigLoader,
-            RayTuneModel,
             RunParams,
             Scheduler,
             TunableParameter,
@@ -80,6 +61,6 @@ def test_yaml_model_schema_types() -> None:
 def test_type_aliases() -> None:
     """Test the type aliases."""
     try:
-        from stimulus.typing import Data, RayTuneData
+        from stimulus.typing import Data
     except ImportError:
         pytest.fail("Failed to import Type Aliases")

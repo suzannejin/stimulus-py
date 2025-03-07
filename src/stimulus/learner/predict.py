@@ -1,5 +1,6 @@
 """A module for making predictions with PyTorch models using DataLoaders."""
 
+import logging
 from typing import Any, Optional, Union
 
 import torch
@@ -9,6 +10,8 @@ from torch.utils.data import DataLoader
 from stimulus.utils.generic_utils import ensure_at_least_1d
 from stimulus.utils.performance import Performance
 
+logger = logging.getLogger(__name__)
+
 
 class PredictWrapper:
     """A wrapper to predict the output of a model on a datset loaded into a torch DataLoader.
@@ -16,24 +19,32 @@ class PredictWrapper:
     It also provides the functionalities to measure the performance of the model.
     """
 
-    def __init__(self, model: nn.Module, dataloader: DataLoader, loss_dict: Optional[dict[str, Any]] = None) -> None:
+    def __init__(
+        self,
+        model: nn.Module,
+        dataloader: DataLoader,
+        loss_dict: Optional[dict[str, Any]] = None,
+        device: torch.device | None = None,
+    ) -> None:
         """Initialize the PredictWrapper.
 
         Args:
             model: The PyTorch model to make predictions with
             dataloader: DataLoader containing the evaluation data
             loss_dict: Optional dictionary of loss functions
+            device: The device to run the model on
         """
-        self.model = model
+        self.model = model.to(device)
         self.dataloader = dataloader
         self.loss_dict = loss_dict
+        if device is None:
+            self.device = torch.device("cpu")
+        else:
+            self.device = device
         try:
             self.model.eval()
         except RuntimeError as e:
-            # Using logging instead of print
-            import logging
-
-            logging.warning("Not able to run model.eval: %s", str(e))
+            logger.warning("Not able to run model.eval: %s", str(e))
 
     def predict(
         self,
@@ -66,7 +77,8 @@ class PredictWrapper:
         # get the predictions (and labels) for each batch
         with torch.no_grad():
             for x, y, _ in self.dataloader:
-                current_predictions = self.model(**x)
+                x_device = {key: value.to(self.device) for key, value in x.items()}
+                current_predictions = self.model(**x_device).detach().cpu()
                 current_predictions = self.handle_predictions(current_predictions, y)
                 for k in keys:
                     # it might happen that the batch consists of one element only so the torch.cat will fail. To prevent this the function to ensure at least one dimensionality is called.

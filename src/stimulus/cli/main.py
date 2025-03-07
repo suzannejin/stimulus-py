@@ -44,38 +44,18 @@ def cli() -> None:
     help="Path to yaml config training file",
 )
 @click.option(
-    "-w",
-    "--initial-weights",
-    type=click.Path(exists=True),
-    help="Path to initial weights",
-)
-@click.option(
-    "-n",
-    "--num-samples",
-    type=int,
-    default=3,
-    help="Number of samples for tuning [default: 3]",
-)
-@click.option(
-    "--ray-results-dirpath",
+    "-r",
+    "--optuna-results-dirpath",
     type=click.Path(),
-    help="Location for ray_results output dir",
-)
-@click.option(
-    "--debug-mode",
-    is_flag=True,
-    help="Activate debug mode for tuning",
+    default="./optuna_results",
+    help="Location for optuna results output directory [default: ./optuna_results]",
 )
 def check_model(
     data: str,
     model: str,
     data_config: str,
     model_config: str,
-    initial_weights: str | None,
-    num_samples: int,
-    ray_results_dirpath: str | None,
-    *,
-    debug_mode: bool,
+    optuna_results_dirpath: str,
 ) -> None:
     """Check model configuration and run initial tests."""
     from stimulus.cli.check_model import check_model as check_model_func
@@ -85,10 +65,7 @@ def check_model(
         model_path=model,
         data_config_path=data_config,
         model_config_path=model_config,
-        initial_weights=initial_weights,
-        num_samples=num_samples,
-        ray_results_dirpath=ray_results_dirpath,
-        debug_mode=debug_mode,
+        optuna_results_dirpath=optuna_results_dirpath,
     )
 
 
@@ -295,31 +272,11 @@ def transform_csv(
     help="Path to yaml config training file",
 )
 @click.option(
-    "-w",
-    "--initial-weights",
-    type=click.Path(exists=True),
-    help="Path to initial weights",
-)
-@click.option(
     "-o",
     "--output",
     type=click.Path(),
-    default="best_model.pt",
-    help="Path to save the best model [default: best_model.pt]",
-)
-@click.option(
-    "-bm",
-    "--best-metrics",
-    type=click.Path(),
-    default="best_metrics.csv",
-    help="Path to save the best metrics [default: best_metrics.csv]",
-)
-@click.option(
-    "-bc",
-    "--best-config",
-    type=click.Path(),
-    default="best_config.yaml",
-    help="Path to save the best config [default: best_config.yaml]",
+    default="best_model.safetensors",
+    help="Path to save the best model [default: best_model.safetensors]",
 )
 @click.option(
     "-bo",
@@ -329,34 +286,20 @@ def transform_csv(
     help="Path to save the best optimizer [default: best_optimizer.pt]",
 )
 @click.option(
-    "--ray-results-dirpath",
+    "-r",
+    "--optuna-results-dirpath",
     type=click.Path(),
-    help="Location for ray_results output dir",
-)
-@click.option(
-    "--tune-run-name",
-    type=str,
-    help="Custom name for the Ray Tune experiment",
-)
-@click.option(
-    "--debug-mode",
-    is_flag=True,
-    help="Activate debug mode for tuning",
+    default="./optuna_results",
+    help="Location for optuna results output directory",
 )
 def tune(
     data: str,
     model: str,
     data_config: str,
     model_config: str,
-    initial_weights: str | None,
     output: str,
-    best_metrics: str,
-    best_config: str,
     best_optimizer: str,
-    ray_results_dirpath: str | None,
-    tune_run_name: str | None,  # noqa: ARG001
-    *,
-    debug_mode: bool,
+    optuna_results_dirpath: str,
 ) -> None:
     """Run hyperparameter tuning for a model."""
     from stimulus.cli.tuning import tune as tune_func
@@ -366,11 +309,7 @@ def tune(
         model_path=model,
         data_config_path=data_config,
         model_config_path=model_config,
-        initial_weights=initial_weights,
-        ray_results_dirpath=ray_results_dirpath,
-        output_path=output,
-        best_metrics_path=best_metrics,
-        best_config_path=best_config,
+        optuna_results_dirpath=optuna_results_dirpath,
+        best_model_path=output,
         best_optimizer_path=best_optimizer,
-        debug_mode=debug_mode,
     )

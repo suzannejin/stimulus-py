@@ -39,12 +39,6 @@ from stimulus.data.interface.data_config_schema import (
 from stimulus.data.splitting import AbstractSplitter as Splitter
 from stimulus.data.transforming.transforms import AbstractTransform as Transform
 from stimulus.learner.predict import PredictWrapper
-from stimulus.learner.raytune_parser import (
-    RayTuneMetrics,
-    RayTuneOptimizer,
-    RayTuneResult,
-    TuneParser,
-)
 from stimulus.utils.performance import Performance
 from stimulus.utils.yaml_model_schema import (
     CustomTunableParameter,
@@ -59,10 +53,6 @@ from stimulus.utils.yaml_model_schema import (
     Tune,
     TuneParams,
 )
-
-# learner/raytune_parser.py
-
-RayTuneData: TypeAlias = RayTuneMetrics | RayTuneOptimizer | RayTuneResult
 
 # data/interface/data_config_schema.py
 
