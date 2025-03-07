@@ -3,6 +3,7 @@
 import inspect
 import logging
 import os
+import uuid
 from typing import Any
 
 import optuna
@@ -213,8 +214,9 @@ class Objective:
         optimizer: torch.optim.Optimizer,
     ) -> None:
         """Save the model and optimizer to the trial."""
-        model_path = str(trial.number) + str(trial.datetime_start) + "_model.safetensors"
-        optimizer_path = str(trial.number) + str(trial.datetime_start) + "_optimizer.pt"
+        unique_id = str(uuid.uuid4())[:8]
+        model_path = f"{trial.number}_{unique_id}_model.safetensors"
+        optimizer_path = f"{trial.number}_{unique_id}_optimizer.pt"
         safe_save_model(model_instance, model_path)
         torch.save(optimizer.state_dict(), optimizer_path)
         artifact_id_model = optuna.artifacts.upload_artifact(
