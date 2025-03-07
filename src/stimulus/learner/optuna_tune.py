@@ -228,8 +228,11 @@ class Objective:
             study_or_trial=trial.study,
         )
         # delete the files from the local filesystem
-        os.remove(model_path)
-        os.remove(optimizer_path)
+        try:
+            os.remove(model_path)
+            os.remove(optimizer_path)
+        except FileNotFoundError:
+            logger.info(f"File was already deleted: {model_path} or {optimizer_path}, most likely due to pruning")
         trial.set_user_attr("model_id", artifact_id_model)
         trial.set_user_attr("optimizer_id", artifact_id_optimizer)
 
