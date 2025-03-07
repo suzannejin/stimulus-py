@@ -80,9 +80,10 @@ def check_model(
     logger.info("Model config loaded successfully.")
 
     base_path = optuna_results_dirpath
+    artifact_path = optuna_results_dirpath + "/artifacts"
     os.makedirs(base_path, exist_ok=True)
-    os.makedirs(f"{base_path}/artifacts/", exist_ok=True)
-    artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=f"{base_path}/artifacts/")
+    os.makedirs(artifact_path, exist_ok=True)
+    artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=artifact_path)
     storage = optuna.storages.JournalStorage(
         optuna.storages.journal.JournalFileBackend(f"{base_path}/optuna_journal_storage.log"),
     )
