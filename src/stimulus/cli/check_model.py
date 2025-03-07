@@ -126,7 +126,7 @@ def check_model(
     # Download the best model
     trial = study.best_trial
     best_artifact_id = trial.user_attrs["model_id"]
-    file_path = str(trial.number) + "_model.safetensors"
+    file_path = trial.user_attrs["model_path"]
     optuna.artifacts.download_artifact(
         artifact_store=artifact_store,
         file_path=file_path,

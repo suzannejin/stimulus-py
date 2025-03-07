@@ -3,6 +3,8 @@
 import inspect
 import logging
 import os
+import shutil
+import tempfile
 
 import optuna
 import pytest
@@ -102,54 +104,55 @@ def test_tune_loop(
     get_train_val_datasets: tuple[torch.utils.data.Dataset, torch.utils.data.Dataset],
 ) -> None:
     """Test the tune loop."""
-    train_data, val_data = get_train_val_datasets
-    base_path = "./artifacts"
-    os.makedirs(base_path, exist_ok=True)
-    artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=base_path)
-    storage = optuna.storages.JournalStorage(
-        optuna.storages.journal.JournalFileBackend("./optuna_journal_storage.log"),
-    )
-    pruner = optuna.pruners.MedianPruner(n_warmup_steps=50, n_startup_trials=2)
-    device = optuna_tune.get_device()
-    objective = optuna_tune.Objective(
-        model_class=get_model_class,
-        network_params=get_model_config.network_params,
-        optimizer_params=get_model_config.optimizer_params,
-        data_params=get_model_config.data_params,
-        loss_params=get_model_config.loss_params,
-        train_torch_dataset=train_data,
-        val_torch_dataset=val_data,
-        artifact_store=artifact_store,
-        max_batches=get_model_config.max_batches,
-        compute_objective_every_n_batches=get_model_config.compute_objective_every_n_batches,
-        target_metric=get_model_config.objective.metric,
-        device=device,
-    )
+    with tempfile.TemporaryDirectory() as temp_dir:
+        train_data, val_data = get_train_val_datasets
+        artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=temp_dir)
+        storage = optuna.storages.JournalStorage(
+            optuna.storages.journal.JournalFileBackend(os.path.join(temp_dir, "optuna_journal_storage.log")),
+        )
+        pruner = optuna.pruners.MedianPruner(n_warmup_steps=50, n_startup_trials=2)
+        device = optuna_tune.get_device()
+        objective = optuna_tune.Objective(
+            model_class=get_model_class,
+            network_params=get_model_config.network_params,
+            optimizer_params=get_model_config.optimizer_params,
+            data_params=get_model_config.data_params,
+            loss_params=get_model_config.loss_params,
+            train_torch_dataset=train_data,
+            val_torch_dataset=val_data,
+            artifact_store=artifact_store,
+            max_batches=get_model_config.max_batches,
+            compute_objective_every_n_batches=get_model_config.compute_objective_every_n_batches,
+            target_metric=get_model_config.objective.metric,
+            device=device,
+        )
 
-    logger.info(f"Objective: {objective}")
-    study = optuna_tune.tune_loop(
-        objective=objective,
-        pruner=pruner,
-        sampler=optuna.samplers.TPESampler(),
-        n_trials=get_model_config.n_trials,
-        direction=get_model_config.objective.direction,
-        storage=storage,
-    )
-    assert study is not None
-    logger.debug(f"Study: {study}")
-    logger.debug(f"Study best trial: {study.best_trial}")
-    logger.debug(f"Study direction: {study.direction}")
-    logger.debug(f"Study best value: {study.best_value}")
-    logger.debug(f"Study best params: {study.best_params}")
-    logger.debug(f"Study trials count: {len(study.trials)}")
-    for artifact_meta in optuna.artifacts.get_all_artifact_meta(study_or_trial=study):
-        logger.debug(artifact_meta)
-    # Download the best model
-    trial = study.best_trial
-    best_artifact_id = trial.user_attrs["model_id"]
-    file_path = str(trial.number) + "_model.safetensors"
-    optuna.artifacts.download_artifact(
-        artifact_store=artifact_store,
-        file_path=file_path,
-        artifact_id=best_artifact_id,
-    )
+        logger.info(f"Objective: {objective}")
+        study = optuna_tune.tune_loop(
+            objective=objective,
+            pruner=pruner,
+            sampler=optuna.samplers.TPESampler(),
+            n_trials=get_model_config.n_trials,
+            direction=get_model_config.objective.direction,
+            storage=storage,
+        )
+        assert study is not None
+        logger.debug(f"Study: {study}")
+        logger.debug(f"Study best trial: {study.best_trial}")
+        logger.debug(f"Study direction: {study.direction}")
+        logger.debug(f"Study best value: {study.best_value}")
+        logger.debug(f"Study best params: {study.best_params}")
+        logger.debug(f"Study trials count: {len(study.trials)}")
+        for artifact_meta in optuna.artifacts.get_all_artifact_meta(study_or_trial=study):
+            logger.debug(artifact_meta)
+        # Download the best model
+        trial = study.best_trial
+        best_artifact_id = trial.user_attrs["model_id"]
+        # Use the stored path if available, otherwise fall back to old format
+        file_path = trial.user_attrs["model_path"]
+        optuna.artifacts.download_artifact(
+            artifact_store=artifact_store,
+            file_path=file_path,
+            artifact_id=best_artifact_id,
+        )
+        shutil.rmtree(temp_dir)

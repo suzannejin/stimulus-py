@@ -236,7 +236,9 @@ class Objective:
         except FileNotFoundError:
             logger.info(f"File was already deleted: {model_path} or {optimizer_path}, most likely due to pruning")
         trial.set_user_attr("model_id", artifact_id_model)
+        trial.set_user_attr("model_path", model_path)
         trial.set_user_attr("optimizer_id", artifact_id_optimizer)
+        trial.set_user_attr("optimizer_path", optimizer_path)
 
     def objective(
         self,
