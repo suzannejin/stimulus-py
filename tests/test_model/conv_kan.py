@@ -1,8 +1,9 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import math
-from typing import Callable, List, Tuple, Optional
+from typing import Callable, List, Optional, Tuple
+
+import torch
+import torch.nn.functional as F
+from torch import nn
 
 
 class KANLinear(torch.nn.Module):
@@ -28,10 +29,7 @@ class KANLinear(torch.nn.Module):
 
         h = (grid_range[1] - grid_range[0]) / grid_size
         grid = (
-            (
-                torch.arange(-spline_order, grid_size + spline_order + 1) * h
-                + grid_range[0]
-            )
+            (torch.arange(-spline_order, grid_size + spline_order + 1) * h + grid_range[0])
             .expand(in_features, -1)
             .contiguous()
         )
@@ -39,11 +37,11 @@ class KANLinear(torch.nn.Module):
 
         self.base_weight = torch.nn.Parameter(torch.Tensor(out_features, in_features))
         self.spline_weight = torch.nn.Parameter(
-            torch.Tensor(out_features, in_features, grid_size + spline_order)
+            torch.Tensor(out_features, in_features, grid_size + spline_order),
         )
         if enable_standalone_scale_spline:
             self.spline_scaler = torch.nn.Parameter(
-                torch.Tensor(out_features, in_features)
+                torch.Tensor(out_features, in_features),
             )
 
         self.scale_noise = scale_noise
@@ -59,10 +57,7 @@ class KANLinear(torch.nn.Module):
         torch.nn.init.kaiming_uniform_(self.base_weight, a=math.sqrt(5) * self.scale_base)
         with torch.no_grad():
             noise = (
-                (
-                    torch.rand(self.grid_size + 1, self.in_features, self.out_features)
-                    - 1 / 2
-                )
+                (torch.rand(self.grid_size + 1, self.in_features, self.out_features) - 1 / 2)
                 * self.scale_noise
                 / self.grid_size
             )
@@ -71,15 +66,14 @@ class KANLinear(torch.nn.Module):
                 * self.curve2coeff(
                     self.grid.T[self.spline_order : -self.spline_order],
                     noise,
-                )
+                ),
             )
             if self.enable_standalone_scale_spline:
                 # torch.nn.init.constant_(self.spline_scaler, self.scale_spline)
                 torch.nn.init.kaiming_uniform_(self.spline_scaler, a=math.sqrt(5) * self.scale_spline)
 
     def b_splines(self, x: torch.Tensor):
-        """
-        Compute the B-spline bases for the given input tensor.
+        """Compute the B-spline bases for the given input tensor.
 
         Args:
             x (torch.Tensor): Input tensor of shape (batch_size, in_features).
@@ -89,20 +83,12 @@ class KANLinear(torch.nn.Module):
         """
         assert x.dim() == 2 and x.size(1) == self.in_features
 
-        grid: torch.Tensor = (
-            self.grid
-        )  # (in_features, grid_size + 2 * spline_order + 1)
+        grid: torch.Tensor = self.grid  # (in_features, grid_size + 2 * spline_order + 1)
         x = x.unsqueeze(-1)
         bases = ((x >= grid[:, :-1]) & (x < grid[:, 1:])).to(x.dtype)
         for k in range(1, self.spline_order + 1):
-            bases = (
-                (x - grid[:, : -(k + 1)])
-                / (grid[:, k:-1] - grid[:, : -(k + 1)])
-                * bases[:, :, :-1]
-            ) + (
-                (grid[:, k + 1 :] - x)
-                / (grid[:, k + 1 :] - grid[:, 1:(-k)])
-                * bases[:, :, 1:]
+            bases = ((x - grid[:, : -(k + 1)]) / (grid[:, k:-1] - grid[:, : -(k + 1)]) * bases[:, :, :-1]) + (
+                (grid[:, k + 1 :] - x) / (grid[:, k + 1 :] - grid[:, 1:(-k)]) * bases[:, :, 1:]
             )
 
         assert bases.size() == (
@@ -113,8 +99,7 @@ class KANLinear(torch.nn.Module):
         return bases.contiguous()
 
     def curve2coeff(self, x: torch.Tensor, y: torch.Tensor):
-        """
-        Compute the coefficients of the curve that interpolates the given points.
+        """Compute the coefficients of the curve that interpolates the given points.
 
         Args:
             x (torch.Tensor): Input tensor of shape (batch_size, in_features).
@@ -127,14 +112,18 @@ class KANLinear(torch.nn.Module):
         assert y.size() == (x.size(0), self.in_features, self.out_features)
 
         A = self.b_splines(x).transpose(
-            0, 1
+            0,
+            1,
         )  # (in_features, batch_size, grid_size + spline_order)
         B = y.transpose(0, 1)  # (in_features, batch_size, out_features)
         solution = torch.linalg.lstsq(
-            A, B
+            A,
+            B,
         ).solution  # (in_features, grid_size + spline_order, out_features)
         result = solution.permute(
-            2, 0, 1
+            2,
+            0,
+            1,
         )  # (out_features, in_features, grid_size + spline_order)
 
         assert result.size() == (
@@ -146,11 +135,7 @@ class KANLinear(torch.nn.Module):
 
     @property
     def scaled_spline_weight(self):
-        return self.spline_weight * (
-            self.spline_scaler.unsqueeze(-1)
-            if self.enable_standalone_scale_spline
-            else 1.0
-        )
+        return self.spline_weight * (self.spline_scaler.unsqueeze(-1) if self.enable_standalone_scale_spline else 1.0)
 
     def forward(self, x: torch.Tensor):
         assert x.size(-1) == self.in_features
@@ -178,21 +163,29 @@ class KANLinear(torch.nn.Module):
         orig_coeff = orig_coeff.permute(1, 2, 0)  # (in, coeff, out)
         unreduced_spline_output = torch.bmm(splines, orig_coeff)  # (in, batch, out)
         unreduced_spline_output = unreduced_spline_output.permute(
-            1, 0, 2
+            1,
+            0,
+            2,
         )  # (batch, in, out)
 
         # sort each channel individually to collect data distribution
         x_sorted = torch.sort(x, dim=0)[0]
         grid_adaptive = x_sorted[
             torch.linspace(
-                0, batch - 1, self.grid_size + 1, dtype=torch.int64, device=x.device
+                0,
+                batch - 1,
+                self.grid_size + 1,
+                dtype=torch.int64,
+                device=x.device,
             )
         ]
 
         uniform_step = (x_sorted[-1] - x_sorted[0] + 2 * margin) / self.grid_size
         grid_uniform = (
             torch.arange(
-                self.grid_size + 1, dtype=torch.float64, device=x.device
+                self.grid_size + 1,
+                dtype=torch.float64,
+                device=x.device,
             ).unsqueeze(1)
             * uniform_step
             + x_sorted[0]
@@ -202,13 +195,9 @@ class KANLinear(torch.nn.Module):
         grid = self.grid_eps * grid_uniform + (1 - self.grid_eps) * grid_adaptive
         grid = torch.concatenate(
             [
-                grid[:1]
-                - uniform_step
-                * torch.arange(self.spline_order, 0, -1, device=x.device).unsqueeze(1),
+                grid[:1] - uniform_step * torch.arange(self.spline_order, 0, -1, device=x.device).unsqueeze(1),
                 grid,
-                grid[-1:]
-                + uniform_step
-                * torch.arange(1, self.spline_order + 1, device=x.device).unsqueeze(1),
+                grid[-1:] + uniform_step * torch.arange(1, self.spline_order + 1, device=x.device).unsqueeze(1),
             ],
             dim=0,
         )
@@ -217,8 +206,7 @@ class KANLinear(torch.nn.Module):
         self.spline_weight.data.copy_(self.curve2coeff(x, unreduced_spline_output))
 
     def regularization_loss(self, regularize_activation=1.0, regularize_entropy=1.0):
-        """
-        Compute the regularization loss.
+        """Compute the regularization loss.
 
         This is a dumb simulation of the original L1 regularization as stated in the
         paper, since the original one requires computing absolutes and entropy from the
@@ -233,10 +221,7 @@ class KANLinear(torch.nn.Module):
         regularization_loss_activation = l1_fake.sum()
         p = l1_fake / regularization_loss_activation
         regularization_loss_entropy = -torch.sum(p * p.log())
-        return (
-            regularize_activation * regularization_loss_activation
-            + regularize_entropy * regularization_loss_entropy
-        )
+        return regularize_activation * regularization_loss_activation + regularize_entropy * regularization_loss_entropy
 
 
 class KAN(torch.nn.Module):
@@ -270,7 +255,7 @@ class KAN(torch.nn.Module):
                     base_activation=base_activation,
                     grid_eps=grid_eps,
                     grid_range=grid_range,
-                )
+                ),
             )
 
     def forward(self, x: torch.Tensor, update_grid=False):
@@ -281,31 +266,30 @@ class KAN(torch.nn.Module):
         return x
 
     def regularization_loss(self, regularize_activation=1.0, regularize_entropy=1.0):
-        return sum(
-            layer.regularization_loss(regularize_activation, regularize_entropy)
-            for layer in self.layers
-        )
+        return sum(layer.regularization_loss(regularize_activation, regularize_entropy) for layer in self.layers)
+
 
 class Model_ConvBasic_withEfficientKAN(nn.Module):
-    def __init__(self,
+    def __init__(
+        self,
         sequence_length: int = 40,
         conv_kernel_size: int = 5,
         conv_kernel_number: int = 4,
-        kan_layers_hidden: List[int] = [10,1],
-        kan_grid_size: int = 5
+        kan_layers_hidden: List[int] = [10, 1],
+        kan_grid_size: int = 5,
     ) -> None:
         super(Model_ConvBasic_withEfficientKAN, self).__init__()
 
         self.conv1d = nn.Conv1d(
-                in_channels=4,
-                out_channels=conv_kernel_number,
-                kernel_size=conv_kernel_size,
-                bias=False
+            in_channels=4,
+            out_channels=conv_kernel_number,
+            kernel_size=conv_kernel_size,
+            bias=False,
         )
         self.relu = nn.ReLU()
         self.kan = KAN(
             [(sequence_length - (conv_kernel_size - 1)) * conv_kernel_number] + kan_layers_hidden + [1],
-            grid_size = kan_grid_size
+            grid_size=kan_grid_size,
         )
         self.sigmoid = nn.Sigmoid()
 
@@ -324,10 +308,12 @@ class Model_ConvBasic_withEfficientKAN(nn.Module):
     def compute_loss(self, output: torch.Tensor, binding: torch.Tensor, loss_fn: Callable) -> torch.Tensor:
         return loss_fn(output, binding)
 
-    def batch(self, x: dict, y:dict, loss_fn: Callable, optimizer: Optional[Callable] = None) -> Tuple[torch.Tensor, dict]:
+    def batch(
+        self, x: dict, y: dict, loss_fn: Callable, optimizer: Optional[Callable] = None
+    ) -> Tuple[torch.Tensor, dict]:
         # get input dna sequences, and binding label
-        dna = x['dna'].float()
-        binding = y['binding'].float()
+        dna = x["dna"].float()
+        binding = y["binding"].float()
 
         # predict
         output = self(**dna)
@@ -339,4 +325,4 @@ class Model_ConvBasic_withEfficientKAN(nn.Module):
             loss.backward()
             optimizer.step()
 
-        return loss, {'binding': output}
+        return loss, {"binding": output}
