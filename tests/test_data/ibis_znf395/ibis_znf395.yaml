@@ -17,6 +17,14 @@ columns:
       - name: NumericEncoder
         params:
 
+  - column_name : "binding"
+    column_type : "label"
+    data_type : str
+    encoder:
+      - name: NumericEncoder
+        params:
+
+
 transforms:
   - transformation_name: 'reverse_complement'
     columns:
