@@ -1,5 +1,6 @@
 """Tests for CSV data loading and processing functionality."""
 
+import logging
 from typing import Any
 
 import pytest
@@ -13,6 +14,8 @@ from stimulus.data.data_handlers import (
 from stimulus.data.encoding import encoders as encoders_module
 from stimulus.data.splitting import splitters as splitters_module
 from stimulus.data.transforming import transforms as transforms_module
+
+logger = logging.getLogger(__name__)
 
 
 # Fixtures
@@ -36,6 +39,7 @@ def ibis_znf395_csv_path() -> str:
     """
     return "tests/test_data/ibis_znf395/ibis_znf395.csv"
 
+
 # Updated component fixtures
 @pytest.fixture
 def dummy_encoders() -> dict[str, Any]:
@@ -58,6 +62,7 @@ def dummy_transforms() -> dict[str, list]:
         ],
         "fare": [transforms_module.GaussianNoise(std=0.1)],
     }
+
 
 @pytest.fixture
 def ibis_znf395_transforms() -> dict[str, list]:
@@ -168,11 +173,8 @@ def test_dataset_processor_apply_transformation_group_ibis_znf395(
 
     # Transformed columns should differ
     assert processor.data["dna"].to_list() != control.data["dna"].to_list()
-    
-    
-    
-    
-    
+    assert len(processor.data) == len(control.data) * 2
+
 
 def test_dataset_processor_shuffle_labels(
     titanic_csv_path: str,
