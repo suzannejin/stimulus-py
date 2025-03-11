@@ -27,6 +27,15 @@ def titanic_csv_path() -> str:
     return "tests/test_data/titanic/titanic_stimulus.csv"
 
 
+@pytest.fixture
+def ibis_znf395_csv_path() -> str:
+    """Get path to test ibis_znf395 CSV file.
+
+    Returns:
+        str: Path to test CSV file
+    """
+    return "tests/test_data/ibis_znf395/ibis_znf395.csv"
+
 # Updated component fixtures
 @pytest.fixture
 def dummy_encoders() -> dict[str, Any]:
@@ -48,6 +57,13 @@ def dummy_transforms() -> dict[str, list]:
             transforms_module.GaussianNoise(std=0.3),
         ],
         "fare": [transforms_module.GaussianNoise(std=0.1)],
+    }
+
+@pytest.fixture
+def ibis_znf395_transforms() -> dict[str, list]:
+    """Create test transforms."""
+    return {
+        "dna": [transforms_module.ReverseComplement()],
     }
 
 
@@ -127,6 +143,36 @@ def test_dataset_processor_apply_transformation_group(
     # Untransformed columns should match
     assert processor.data["survived"].to_list() == control.data["survived"].to_list()
 
+
+def test_dataset_processor_apply_transformation_group_ibis_znf395(
+    ibis_znf395_csv_path: str,
+    ibis_znf395_transforms: dict,
+    dummy_splitter: Any,
+) -> None:
+    """Test applying transformation groups."""
+    processor = DatasetProcessor(
+        csv_path=ibis_znf395_csv_path,
+        transforms=ibis_znf395_transforms,
+        splitter=dummy_splitter,
+        split_columns=["dna"],
+    )
+
+    control = DatasetProcessor(
+        csv_path=ibis_znf395_csv_path,
+        transforms={},
+        splitter=dummy_splitter,
+        split_columns=["dna"],
+    )
+
+    processor.apply_transformations()
+
+    # Transformed columns should differ
+    assert processor.data["dna"].to_list() != control.data["dna"].to_list()
+    
+    
+    
+    
+    
 
 def test_dataset_processor_shuffle_labels(
     titanic_csv_path: str,
