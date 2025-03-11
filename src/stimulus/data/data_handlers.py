@@ -154,7 +154,7 @@ class DatasetProcessor(DatasetHandler):
         """
         for column_name, transforms_list in self.transforms.items():
             for transform in transforms_list:
-                transformed_data = transform.transform(self.data[column_name])
+                transformed_data = transform.transform_all(self.data[column_name].to_list())
 
                 if transform.add_row:
                     new_rows = self.data.with_columns(
