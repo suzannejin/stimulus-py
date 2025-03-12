@@ -1,7 +1,7 @@
 """Parse the model config."""
 
 import logging
-from typing import Callable
+from typing import Any, Callable
 
 import optuna
 
@@ -65,7 +65,7 @@ def get_suggestion(
     name: str,
     suggestion_method_config: model_schema.TunableParameter,
     trial: optuna.trial.Trial,
-) -> optuna.trial.Trial:
+) -> Any:
     """Get the suggestion method from the config."""
     trial_methods: dict[str, Callable] = {
         "categorical": trial.suggest_categorical,
@@ -77,22 +77,36 @@ def get_suggestion(
     }
 
     if suggestion_method_config.mode not in trial_methods:
-        if suggestion_method_config.mode == "variable_list":
-            output = []
-            nb_values = trial_methods[suggestion_method_config.length.mode](
-                name=name,
-                **suggestion_method_config.length.params,
-            )
-            for _ in range(nb_values):
-                output.append(
-                    trial_methods[suggestion_method_config.values.mode](
-                        name=name,
-                        **suggestion_method_config.values.params,
-                    ),
-                )
-            return output
         raise ValueError(
             f"Suggestion method '{suggestion_method_config.mode}' not available in Optuna/Custom methods. Available suggestion methods: {trial_methods.keys()} or variable_list",
         )
 
     return trial_methods[suggestion_method_config.mode](name=name, **suggestion_method_config.params)
+
+
+def suggest_parameters(
+    trial: optuna.Trial,
+    params: dict[str, model_schema.TunableParameter | model_schema.VariableList],
+) -> dict[str, Any]:
+    """Suggest parameters for the model."""
+    suggestions = {}
+    for name, param in params.items():
+        logger.debug(f"Suggesting parameter: {name} with type: {type(param)}")
+        if isinstance(param, model_schema.VariableList):
+            logger.debug(f"VariableList parameter: {name}")
+            length = get_suggestion(f"{name}_length", param.length, trial)
+            suggestion = []
+            for i in range(length):
+                # Generate a unique parameter name for each list item
+                item_name = f"{name}_{i}"
+                suggestion.append(get_suggestion(item_name, param.values, trial))
+        elif isinstance(param, model_schema.TunableParameter):
+            logger.debug(f"TunableParameter parameter: {name}")
+            suggestion = get_suggestion(name, param, trial)
+        else:
+            logger.error(
+                f"Unsupported parameter type: {type(param)}, available types: {model_schema.TunableParameter, model_schema.VariableList}",
+            )
+            raise TypeError(f"Unsupported parameter type: {type(param)}")
+        suggestions[name] = suggestion
+    return suggestions

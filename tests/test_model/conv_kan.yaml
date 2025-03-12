@@ -2,7 +2,7 @@ max_batches: 10
 compute_objective_every_n_batches: 1
 n_trials: 5
 
-model_params:
+network_params:
   conv_kernel_number:
     params:
       low: 3
