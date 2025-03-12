@@ -30,7 +30,7 @@ def yaml_path() -> str:
     )
 
 
-@pytest.skip(reason="Non deterministic snapshot based on platform")
+@pytest.mark.skip(reason="Non deterministic snapshot based on platform")
 def test_transform_csv(
     csv_path: str,
     yaml_path: str,
