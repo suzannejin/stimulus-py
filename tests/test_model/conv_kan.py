@@ -1,3 +1,6 @@
+# ruff: noqa
+# mypy: ignore-errors
+"""Efficient KAN model implementation."""
 import math
 from typing import Callable, List, Optional, Tuple
 
@@ -309,7 +312,11 @@ class Model_ConvBasic_withEfficientKAN(nn.Module):
         return loss_fn(output, binding)
 
     def batch(
-        self, x: dict, y: dict, loss_fn: Callable, optimizer: Optional[Callable] = None
+        self,
+        x: dict,
+        y: dict,
+        loss_fn: Callable,
+        optimizer: Optional[Callable] = None,
     ) -> Tuple[torch.Tensor, dict]:
         # get input dna sequences, and binding label
         dna = x["dna"].float()
