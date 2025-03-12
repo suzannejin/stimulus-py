@@ -154,13 +154,13 @@ class DatasetProcessor(DatasetHandler):
         """
         for column_name, transforms_list in self.transforms.items():
             for transform in transforms_list:
-                transformed_data = transform.transform(self.data[column_name])
+                transformed_data = transform.transform_all(self.data[column_name].to_list())
 
                 if transform.add_row:
                     new_rows = self.data.with_columns(
                         pl.Series(column_name, transformed_data),
                     )
-                    self.data = pl.vstack(self.data, new_rows)
+                    self.data = pl.concat([self.data, new_rows], how="vertical")
                 else:
                     self.data = self.data.with_columns(
                         pl.Series(column_name, transformed_data),
