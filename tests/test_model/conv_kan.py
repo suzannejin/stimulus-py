@@ -1,6 +1,7 @@
 # ruff: noqa
 # mypy: ignore-errors
 """Efficient KAN model implementation."""
+
 import math
 from typing import Callable, List, Optional, Tuple
 
