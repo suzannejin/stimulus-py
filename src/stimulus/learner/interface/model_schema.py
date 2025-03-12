@@ -2,7 +2,7 @@
 
 import inspect
 import logging
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Literal, Optional
 
 import optuna
 import pydantic
@@ -18,7 +18,7 @@ class TunableParameter(pydantic.BaseModel):
 
     @pydantic.model_validator(mode="after")
     def validate_mode(self) -> "TunableParameter":
-        """Validate that mode is supported by Optuna."""
+        """Validate that mode is supported by Optuna or custom methods."""
         if self.mode not in [
             "categorical",
             "discrete_uniform",
@@ -28,7 +28,7 @@ class TunableParameter(pydantic.BaseModel):
             "uniform",
         ]:
             raise NotImplementedError(
-                f"Mode {self.mode} not available for Optuna, please use one of the following: categorical, discrete_uniform, float, int, loguniform, uniform",
+                f"Mode {self.mode} not available for Optuna, please use one of the following: categorical, discrete_uniform, float, int, loguniform, uniform, variable_list",
             )
 
         return self
@@ -56,6 +56,22 @@ class TunableParameter(pydantic.BaseModel):
             missing_params = required_params - set(self.params.keys())
             if missing_params:
                 raise ValueError(f"Missing required params for mode '{self.mode}': {missing_params}")
+        return self
+
+
+class VariableList(pydantic.BaseModel):
+    """Variable list."""
+
+    length: TunableParameter
+    values: TunableParameter
+    mode: Literal["variable_list"]
+
+    def validate_length(self) -> "VariableList":
+        """Validate that length is supported by Optuna."""
+        if self.length.mode not in ["int"]:
+            raise ValueError(
+                f"length mode has to be set to int, got {self.length.mode}",
+            )
         return self
 
 
@@ -141,7 +157,7 @@ class Loss(pydantic.BaseModel):
 class Model(pydantic.BaseModel):
     """Model configuration."""
 
-    network_params: dict[str, TunableParameter]
+    network_params: dict[str, TunableParameter | VariableList]
     optimizer_params: dict[str, TunableParameter]
     loss_params: dict[str, TunableParameter]
     data_params: dict[str, TunableParameter]

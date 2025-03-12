@@ -77,8 +77,22 @@ def get_suggestion(
     }
 
     if suggestion_method_config.mode not in trial_methods:
+        if suggestion_method_config.mode == "variable_list":
+            output = []
+            nb_values = trial_methods[suggestion_method_config.length.mode](
+                name=name,
+                **suggestion_method_config.length.params,
+            )
+            for _ in range(nb_values):
+                output.append(
+                    trial_methods[suggestion_method_config.values.mode](
+                        name=name,
+                        **suggestion_method_config.values.params,
+                    ),
+                )
+            return output
         raise ValueError(
-            f"Suggestion method '{suggestion_method_config.mode}' not available in Optuna. Available suggestion methods: {trial_methods.keys()}",
+            f"Suggestion method '{suggestion_method_config.mode}' not available in Optuna/Custom methods. Available suggestion methods: {trial_methods.keys()} or variable_list",
         )
 
     return trial_methods[suggestion_method_config.mode](name=name, **suggestion_method_config.params)
