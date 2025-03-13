@@ -1,182 +1,66 @@
 """Tests for the BaseRegistry class."""
 
-import re
-from abc import ABC, abstractmethod
-
-import pytest
-
-from stimulus.core.registry import BaseRegistry
+from src.stimulus.core.registry import BaseRegistry
+from tests.core import mock  # noqa: F401
 
 
-# Test fixtures
-class MockComponent(ABC):
-    """Mock abstract base class for testing."""
+# Defining a meta class that will automatically be registered
+# as it inherits BaseRegistry as a metaclass.
+class BaseTestClass(metaclass=BaseRegistry):
+    """Base test class that is registered due to the metaclass."""
 
-    @abstractmethod
-    def do_something(self) -> str:
-        """Empty placeholder function."""
-        return "something"
+    def __init__(self) -> None:
+        """Initializes a base and a name attribute."""
+        self.base: str = "class"
+        self.name: str = "base"
 
-
-class ValidComponent(MockComponent):
-    """Valid component implementation."""
-
-    def __init__(self, param: None = None):
-        """Initialize a valid component with params."""
-        self.param = param
-
-    def do_something(self) -> str:
-        """Simulate the call of a component function."""
-        return "done"
+    def echo(self) -> str:
+        """Returns the base + _ + name attributes."""
+        return self.base + "_" + self.name
 
 
-class InvalidComponent:
-    """Component that doesn't inherit from base class."""
+# Defining a class that inherits from base_test_class.
+# It will also be added to the registry automatically due
+# to its inheritance
+class Class1(BaseTestClass):
+    """Child class of base_test_class, registered through it's inheritance."""
+
+    def __init__(self) -> None:
+        """Init the parent class to get its attributes and the child class."""
+        super().__init__()
+        self.name = "1"
 
 
-def test_registry_initialization() -> None:
-    """Test basic registry initialization."""
-    registry = BaseRegistry("test.group", MockComponent)
-    assert registry.entry_point_group == "test.group"
-    assert registry.base_class == MockComponent
-    assert len(registry.component_names) == 0
+# Register manually a class with the header
+@BaseRegistry.register("test_CLASS2")
+class Class2:
+    """A class that is manually registered in the registry with the header."""
+
+    def __init__(self) -> None:
+        """Defines only a name attribute."""
+        self.name: str = "class_2"
+
+    def echo(self) -> str:
+        """Returns the name attribute."""
+        return self.name
 
 
-def test_component_registration() -> None:
-    """Test component registration via decorator."""
-    registry = BaseRegistry("test.group", MockComponent)
-
-    @registry.register("valid")
-    class TestComponent(MockComponent):
-        def do_something(self) -> str:
-            return "test"
-
-    assert "valid" in registry.component_names
-    instance = registry.get("valid")
-    assert isinstance(instance, MockComponent)
-    assert instance.do_something() == "test"
+def test_num_class_in_registry() -> None:
+    """Checks that class1, class2 and mock.class3 are all correctly saved."""
+    registry_classes: dict[str, type[object]] = BaseRegistry.all()
+    assert len(registry_classes) == 4  # 3 in this file + mock
 
 
-def test_invalid_component_registration() -> None:
-    """Test registration of invalid component."""
-    registry = BaseRegistry("test.group", MockComponent)
-
-    with pytest.raises(TypeError, match=re.escape("must subclass")):
-
-        @registry.register("invalid")
-        class TestInvalid(InvalidComponent):
-            pass
+def test_name_is_lower_in_registry() -> None:
+    """Checks that all the names are saved to lowercase."""
+    registry_classes: dict[str, type[object]] = BaseRegistry.all()
+    for name, _associated_class in registry_classes.items():
+        assert name.lower() == name
 
 
-def test_component_instantiation_with_params() -> None:
-    """Test component instantiation with parameters."""
-    registry = BaseRegistry("test.group", MockComponent)
-
-    @registry.register("parameterized")
-    class TestComponent(ValidComponent):
-        pass
-
-    instance = registry.get("parameterized", param="test_value")
-    assert instance.param == "test_value"
-
-
-def test_unknown_component() -> None:
-    """Test error handling for unknown components."""
-    registry = BaseRegistry("test.group", MockComponent)
-
-    with pytest.raises(
-        # Matches: Unknown [any_char] Available
-        ValueError,
-        match=f"{re.escape('Unknown')}.*{re.escape('Available')}",
-    ) as exc:
-        registry.get("nonexistent")
-
-    assert "Unknown MockComponent 'nonexistent'" in str(exc.value)
-    assert "Available:" in str(exc.value)
-
-
-def test_component_names_sorted() -> None:
-    """Test that component_names returns sorted list."""
-    registry = BaseRegistry("test.group", MockComponent)
-
-    @registry.register("zebra")
-    class ZebraComponent(ValidComponent):
-        pass
-
-    @registry.register("alpha")
-    class AlphaComponent(ValidComponent):
-        pass
-
-    assert registry.component_names == ["alpha", "zebra"]
-
-
-def test_practical_encoder_registry_example() -> None:
-    """Demonstrates practical usage of the registry system for encoders.
-
-    This test shows how to:
-    1. Create a base encoder class
-    2. Create a registry for encoders
-    3. Register custom encoders
-    4. Use the registered encoders
-    """
-
-    # 1. Define a base encoder interface
-    class BaseEncoder(ABC):
-        @abstractmethod
-        def encode(self, data: str) -> bytes:
-            """Encode string data into bytes."""
-
-        @abstractmethod
-        def decode(self, data: bytes) -> str:
-            """Decode bytes back into string."""
-
-    # 2. Create an encoder registry
-    encoder_registry = BaseRegistry("stimulus.encoders", BaseEncoder)
-
-    # 3. Register a custom encoder
-    @encoder_registry.register("base64")
-    class Base64Encoder(BaseEncoder):
-        def encode(self, data: str) -> bytes:
-            import base64
-
-            return base64.b64encode(data.encode())
-
-        def decode(self, data: bytes) -> str:
-            import base64
-
-            return base64.b64decode(data).decode()
-
-    # 4. Register another encoder
-    @encoder_registry.register("rot13")
-    class Rot13Encoder(BaseEncoder):
-        def encode(self, data: str) -> bytes:
-            return data.encode("rot13")
-
-        def decode(self, data: bytes) -> str:
-            return data.decode().encode("rot13").decode()
-
-    # Test that encoders are registered
-    assert set(encoder_registry.component_names) == {"base64", "rot13"}
-
-    # Test using a registered encoder
-    base64_encoder = encoder_registry.get("base64")
-    test_data = "Hello, World!"
-    encoded = base64_encoder.encode(test_data)
-    decoded = base64_encoder.decode(encoded)
-    assert decoded == test_data
-
-    # Test getting an encoder with parameters
-    @encoder_registry.register("configurable")
-    class ConfigurableEncoder(BaseEncoder):
-        def __init__(self, encoding: str = "utf-8"):
-            self.encoding = encoding
-
-        def encode(self, data: str) -> bytes:
-            return data.encode(self.encoding)
-
-        def decode(self, data: bytes) -> str:
-            return data.decode(self.encoding)
-
-    # Get encoder with custom parameter
-    utf16_encoder = encoder_registry.get("configurable", encoding="utf-16")
-    assert utf16_encoder.encoding == "utf-16"
+def test_class_init_in_registry() -> None:
+    """Checks that all the class can be inited and print."""
+    registry_classes: dict[str, type[object]] = BaseRegistry.all()
+    for _name, associated_class in registry_classes.items():
+        name_class: object = associated_class()
+        assert "class" in name_class.echo()  # type: ignore[attr-defined]
