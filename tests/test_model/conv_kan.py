@@ -1,4 +1,5 @@
-# ruff: noqa
+# ruff: noqa: PGH004
+# ruff: noqa 
 # mypy: ignore-errors
 """Efficient KAN model implementation."""
 
