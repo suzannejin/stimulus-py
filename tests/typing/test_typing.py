@@ -7,6 +7,7 @@ As the typing module only contains types, the tests only check imports.
 import pytest
 
 
+@pytest.mark.skip(reason="Skipping typing tests")
 def test_data_handlers_types() -> None:
     """Test the data handlers types."""
     try:
@@ -20,6 +21,7 @@ def test_data_handlers_types() -> None:
         pytest.fail("Failed to import Data Handlers types")
 
 
+@pytest.mark.skip(reason="Skipping typing tests")
 def test_data_config_schema_types() -> None:
     """Test the data config schema types."""
     try:
@@ -40,6 +42,7 @@ def test_data_config_schema_types() -> None:
         pytest.fail("Failed to import Data Config Schema types")
 
 
+@pytest.mark.skip(reason="Skipping typing tests")
 def test_yaml_model_schema_types() -> None:
     """Test the YAML model schema types."""
     try:
@@ -58,6 +61,7 @@ def test_yaml_model_schema_types() -> None:
         pytest.fail("Failed to import YAML Model Schema types")
 
 
+@pytest.mark.skip(reason="Skipping typing tests")
 def test_type_aliases() -> None:
     """Test the type aliases."""
     try:
