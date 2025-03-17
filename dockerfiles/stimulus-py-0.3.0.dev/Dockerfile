@@ -3,7 +3,7 @@
 ############################
 # Stage 1: Builder         #
 ############################
-FROM python:3.12-slim AS builder
+FROM --platform=linux/amd64 python:3.12-slim AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y build-essential \
@@ -33,10 +33,13 @@ ENV PDM_BUILD_SCM_VERSION=0.3.0.dev
 # Build and install stimulus-py from local source using uv pip install
 RUN uv pip install --system --no-build-isolation --compile --no-cache .
 
+# List the created entry points to debug
+RUN ls -la /usr/local/bin/
+
 ############################
 # Stage 2: Final Image     #
 ############################
-FROM python:3.12-slim
+FROM --platform=linux/amd64 python:3.12-slim
 
 # Install minimal runtime dependency
 RUN apt-get update && apt-get install -y procps \
@@ -45,9 +48,8 @@ RUN apt-get update && apt-get install -y procps \
 # Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 
-# Copy stimulus CLI commands (stimulus-*) and the ray command
-COPY --from=builder /usr/local/bin/stimulus-* /usr/local/bin/
-COPY --from=builder /usr/local/bin/ray /usr/local/bin/ray
+# Copy only the stimulus command (created by entry points)
+COPY --from=builder /usr/local/bin/stimulus /usr/local/bin/
 
 # Create a non-root user for running the app
 RUN useradd -m -s /bin/bash app
