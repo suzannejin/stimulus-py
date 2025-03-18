@@ -1,98 +1,61 @@
 #!/usr/bin/env python3
 """CLI module for checking model configuration and running initial tests."""
 
-import argparse
 import logging
+import os
 
-import ray
+import optuna
 import yaml
-from torch.utils.data import DataLoader
 
-from stimulus.data import handlertorch, loaders
-from stimulus.learner import raytune_learner
-from stimulus.utils import launch_utils, yaml_data, yaml_model_schema
+from stimulus.data import data_handlers
+from stimulus.data.interface import data_config_parser
+from stimulus.learner import optuna_tune
+from stimulus.learner.interface import model_schema
+from stimulus.utils import model_file_interface
 
 logger = logging.getLogger(__name__)
 
+MAX_BATCHES = 10
+COMPUTE_OBJECTIVE_EVERY_N_BATCHES = 2
+N_TRIALS = 5
 
-def get_args() -> argparse.Namespace:
-    """Get the arguments when using from the commandline.
+
+def load_data_config_from_path(data_path: str, data_config_path: str, split: int) -> data_handlers.TorchDataset:
+    """Load the data config from a path.
+
+    Args:
+        data_config_path: Path to the data config file.
 
     Returns:
-        Parsed command line arguments.
+        A tuple of the parsed configuration.
     """
-    parser = argparse.ArgumentParser(description="Launch check_model.")
-    parser.add_argument("-d", "--data", type=str, required=True, metavar="FILE", help="Path to input csv file.")
-    parser.add_argument("-m", "--model", type=str, required=True, metavar="FILE", help="Path to model file.")
-    parser.add_argument(
-        "-e",
-        "--data_config",
-        type=str,
-        required=True,
-        metavar="FILE",
-        help="Path to data config file.",
-    )
-    parser.add_argument(
-        "-c",
-        "--model_config",
-        type=str,
-        required=True,
-        metavar="FILE",
-        help="Path to yaml config training file.",
-    )
-    parser.add_argument(
-        "-w",
-        "--initial_weights",
-        type=str,
-        required=False,
-        nargs="?",
-        const=None,
-        default=None,
-        metavar="FILE",
-        help="The path to the initial weights (optional).",
+    with open(data_config_path) as file:
+        data_config_dict = yaml.safe_load(file)
+        data_config_obj = data_config_parser.SplitTransformDict(**data_config_dict)
+
+    encoders, input_columns, label_columns, meta_columns = data_config_parser.parse_split_transform_config(
+        data_config_obj,
     )
 
-    parser.add_argument(
-        "-n",
-        "--num_samples",
-        type=int,
-        required=False,
-        nargs="?",
-        const=3,
-        default=3,
-        metavar="NUM_SAMPLES",
-        help="Number of samples for tuning. Overwrites tune.tune_params.num_samples in config.",
-    )
-    parser.add_argument(
-        "--ray_results_dirpath",
-        type=str,
-        required=False,
-        nargs="?",
-        const=None,
-        default=None,
-        metavar="DIR_PATH",
-        help="Location where ray_results output dir should be written. If None, uses ~/ray_results.",
-    )
-    parser.add_argument(
-        "--debug_mode",
-        action="store_true",
-        help="Activate debug mode for tuning. Default false, no debug.",
+    return data_handlers.TorchDataset(
+        loader=data_handlers.DatasetLoader(
+            encoders=encoders,
+            input_columns=input_columns,
+            label_columns=label_columns,
+            meta_columns=meta_columns,
+            csv_path=data_path,
+            split=split,
+        ),
     )
 
-    return parser.parse_args()
 
-
-def main(
-    model_path: str,
+def check_model(
     data_path: str,
+    model_path: str,
     data_config_path: str,
     model_config_path: str,
-    initial_weights: str | None = None,  # noqa: ARG001
-    num_samples: int = 3,
-    ray_results_dirpath: str | None = None,
-    *,
-    debug_mode: bool = False,
-) -> None:
+    optuna_results_dirpath: str = "./optuna_results",
+) -> tuple[str, str]:
     """Run the main model checking pipeline.
 
     Args:
@@ -100,109 +63,76 @@ def main(
         model_path: Path to model file.
         data_config_path: Path to data config file.
         model_config_path: Path to model config file.
-        initial_weights: Optional path to initial weights.
-        num_samples: Number of samples for tuning.
-        ray_results_dirpath: Directory for ray results.
-        debug_mode: Whether to run in debug mode.
+        optuna_results_dirpath: Directory for optuna results.
     """
-    with open(data_config_path) as file:
-        data_config = yaml.safe_load(file)
-        data_config = yaml_data.YamlSubConfigDict(**data_config)
-
-    with open(model_config_path) as file:
-        model_config = yaml.safe_load(file)
-        model_config = yaml_model_schema.Model(**model_config)
-
-    encoder_loader = loaders.EncoderLoader()
-    encoder_loader.initialize_column_encoders_from_config(column_config=data_config.columns)
-
+    train_data = load_data_config_from_path(data_path, data_config_path, split=0)
+    val_data = load_data_config_from_path(data_path, data_config_path, split=1)
     logger.info("Dataset loaded successfully.")
 
-    model_class = launch_utils.import_class_from_file(model_path)
+    model_class = model_file_interface.import_class_from_file(model_path)
 
     logger.info("Model class loaded successfully.")
 
-    ray_config_loader = yaml_model_schema.YamlRayConfigLoader(model=model_config)
-    ray_config_dict = ray_config_loader.get_config().model_dump()
-    ray_config_model = ray_config_loader.get_config()
+    with open(model_config_path) as file:
+        model_config_content = yaml.safe_load(file)
+        model_config = model_schema.Model(**model_config_content)
 
-    logger.info("Ray config loaded successfully.")
+    logger.info("Model config loaded successfully.")
 
-    sampled_model_params = {
-        key: domain.sample() if hasattr(domain, "sample") else domain
-        for key, domain in ray_config_dict["network_params"].items()
-    }
-
-    logger.info("Sampled model params loaded successfully.")
-
-    model_instance = model_class(**sampled_model_params)
-
-    logger.info("Model instance loaded successfully.")
-
-    torch_dataset = handlertorch.TorchDataset(
-        config_path=data_config_path,
-        csv_path=data_path,
-        encoder_loader=encoder_loader,
+    base_path = optuna_results_dirpath
+    artifact_path = optuna_results_dirpath + "/artifacts"
+    os.makedirs(base_path, exist_ok=True)
+    os.makedirs(artifact_path, exist_ok=True)
+    artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=artifact_path)
+    storage = optuna.storages.JournalStorage(
+        optuna.storages.journal.JournalFileBackend(f"{base_path}/optuna_journal_storage.log"),
     )
-
-    torch_dataloader = DataLoader(torch_dataset, batch_size=10, shuffle=True)
-
-    logger.info("Torch dataloader loaded successfully.")
-
-    # try to run the model on a single batch
-    for batch in torch_dataloader:
-        input_data, labels, metadata = batch
-        # Log shapes of tensors in each dictionary
-        for key, tensor in input_data.items():
-            logger.debug(f"Input tensor '{key}' shape: {tensor.shape}")
-        for key, tensor in labels.items():
-            logger.debug(f"Label tensor '{key}' shape: {tensor.shape}")
-        for key, list_object in metadata.items():
-            logger.debug(f"Metadata lists '{key}' length: {len(list_object)}")
-        output = model_instance(**input_data)
-        logger.info("model ran successfully on a single batch")
-        logger.debug(f"Output shape: {output.shape}")
-        break
-
-    logger.info("Model checking single pass completed successfully.")
-
-    # override num_samples
-    model_config.tune.tune_params.num_samples = num_samples
-
-    tuner = raytune_learner.TuneWrapper(
-        model_config=ray_config_model,
-        data_config_path=data_config_path,
+    device = optuna_tune.get_device()
+    objective = optuna_tune.Objective(
         model_class=model_class,
-        data_path=data_path,
-        encoder_loader=encoder_loader,
-        seed=42,
-        ray_results_dir=ray_results_dirpath,
-        debug=debug_mode,
+        network_params=model_config.network_params,
+        optimizer_params=model_config.optimizer_params,
+        data_params=model_config.data_params,
+        loss_params=model_config.loss_params,
+        train_torch_dataset=train_data,
+        val_torch_dataset=val_data,
+        artifact_store=artifact_store,
+        max_batches=model_config.max_batches,
+        compute_objective_every_n_batches=model_config.compute_objective_every_n_batches,
+        target_metric=model_config.objective.metric,
+        device=device,
     )
 
-    logger.info("Tuner initialized successfully.")
+    logger.info(f"Objective: {objective}")
+    study = optuna_tune.tune_loop(
+        objective=objective,
+        pruner=optuna.pruners.MedianPruner(n_warmup_steps=2, n_startup_trials=2),
+        sampler=optuna.samplers.TPESampler(),
+        n_trials=N_TRIALS,
+        direction=model_config.objective.direction,
+        storage=storage,
+    )
+    if study is None:
+        raise ValueError("Study is None")
+    logger.info(f"Study: {study}")
+    logger.info(f"Study best trial: {study.best_trial}")
+    logger.info(f"Study direction: {study.direction}")
+    logger.info(f"Study best value: {study.best_value}")
+    logger.info(f"Study best params: {study.best_params}")
+    logger.info(f"Study trials count: {len(study.trials)}")
 
-    tuner.tune()
-
-    logger.info("Tuning completed successfully.")
-    logger.info("Checks complete")
-
-
-def run() -> None:
-    """Run the model checking script."""
-    ray.init(address="auto", ignore_reinit_error=True)
-    args = get_args()
-    main(
-        data_path=args.data,
-        model_path=args.model,
-        data_config_path=args.data_config,
-        model_config_path=args.model_config,
-        initial_weights=args.initial_weights,
-        num_samples=args.num_samples,
-        ray_results_dirpath=args.ray_results_dirpath,
-        debug_mode=args.debug_mode,
+    for artifact_meta in optuna.artifacts.get_all_artifact_meta(study_or_trial=study):
+        logger.info(artifact_meta)
+    # Download the best model
+    trial = study.best_trial
+    best_artifact_id = trial.user_attrs["model_id"]
+    file_path = trial.user_attrs["model_path"]
+    optuna.artifacts.download_artifact(
+        artifact_store=artifact_store,
+        file_path=file_path,
+        artifact_id=best_artifact_id,
     )
 
+    logger.info(f"Best model downloaded successfully to {file_path}")
 
-if __name__ == "__main__":
-    run()
+    return base_path, file_path

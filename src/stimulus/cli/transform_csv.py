@@ -1,75 +1,58 @@
 #!/usr/bin/env python3
 """CLI module for transforming CSV data files."""
 
-import argparse
+import logging
 
 import yaml
 
-from stimulus.data.data_handlers import DatasetProcessor, TransformManager
-from stimulus.data.loaders import TransformLoader
-from stimulus.utils.yaml_data import YamlSubConfigDict
+from stimulus.data import data_handlers
+from stimulus.data.interface import data_config_parser
+
+logger = logging.getLogger(__name__)
 
 
-def get_args() -> argparse.Namespace:
-    """Get the arguments when using from the commandline."""
-    parser = argparse.ArgumentParser(description="CLI for transforming CSV data files using YAML configuration.")
-    parser.add_argument(
-        "-c",
-        "--csv",
-        type=str,
-        required=True,
-        metavar="FILE",
-        help="The file path for the csv containing all data",
-    )
-    parser.add_argument(
-        "-y",
-        "--yaml",
-        type=str,
-        required=True,
-        metavar="FILE",
-        help="The YAML config file that holds all parameter info",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        type=str,
-        required=True,
-        metavar="FILE",
-        help="The output file path to write the noised csv",
-    )
+def load_data_config_from_path(data_path: str, data_config_path: str) -> data_handlers.DatasetProcessor:
+    """Load the data config from a path.
 
-    return parser.parse_args()
+    Args:
+        data_path: Path to the data file.
+        data_config_path: Path to the data config file.
+
+    Returns:
+        A DatasetProcessor instance configured with the data.
+    """
+    with open(data_config_path) as file:
+        data_config_dict = yaml.safe_load(file)
+        data_config_obj = data_config_parser.SplitTransformDict(**data_config_dict)
+
+    transforms = data_config_parser.create_transforms([data_config_obj.transforms])
+    splitter = data_config_parser.create_splitter(data_config_obj.split)
+    split_columns = data_config_obj.split.split_input_columns
+
+    return data_handlers.DatasetProcessor(
+        csv_path=data_path,
+        transforms=transforms,
+        split_columns=split_columns,
+        splitter=splitter,
+    )
 
 
 def main(data_csv: str, config_yaml: str, out_path: str) -> None:
-    """Connect CSV and YAML configuration and handle sanity checks.
+    """Transform the data according to the configuration.
 
-    This launcher will be the connection between the csv and one YAML configuration.
-    It should also handle some sanity checks.
+    Args:
+        data_csv: Path to input CSV file.
+        config_yaml: Path to config YAML file.
+        out_path: Path to output transformed CSV.
     """
-    # initialize the csv processing class, it open and reads the csv in automatic
-    processor = DatasetProcessor(config_path=config_yaml, csv_path=data_csv)
+    # Create a DatasetProcessor object from the config and the csv
+    processor = load_data_config_from_path(data_csv, config_yaml)
+    logger.info("Dataset processor initialized successfully.")
 
-    # initialize the transform manager
-    transform_config = processor.dataset_manager.config.transforms
-    with open(config_yaml) as f:
-        yaml_config = YamlSubConfigDict(**yaml.safe_load(f))
-    transform_loader = TransformLoader(seed=yaml_config.global_params.seed)
-    transform_loader.initialize_column_data_transformers_from_config(transform_config)
-    transform_manager = TransformManager(transform_loader)
+    # Apply the transformations to the data
+    processor.apply_transformations()
+    logger.info("Transformations applied successfully.")
 
-    # apply the transformations to the data
-    processor.apply_transformation_group(transform_manager)
-
-    # write the transformed data to a new csv
+    # Save the modified csv
     processor.save(out_path)
-
-
-def run() -> None:
-    """Run the CSV transformation script."""
-    args = get_args()
-    main(args.csv, args.yaml, args.output)
-
-
-if __name__ == "__main__":
-    run()
+    logger.info("Transformed data saved successfully.")

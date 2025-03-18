@@ -1,19 +1,17 @@
 """Test suite for the data transformation generators."""
 
-import os
 from typing import Any
 
 import numpy as np
 import pytest
 
-from src.stimulus.data.transform.data_transformation_generators import (
-    AbstractDataTransformer,
+from src.stimulus.data.transforming.transforms import (
+    AbstractTransform,
     GaussianChunk,
     GaussianNoise,
     ReverseComplement,
     UniformTextMasker,
 )
-from stimulus.utils.yaml_data import dump_yaml_list_into_files, generate_data_configs
 
 
 class DataTransformerTest:
@@ -30,7 +28,7 @@ class DataTransformerTest:
 
     def __init__(  # noqa: D107
         self,
-        transformer: AbstractDataTransformer,
+        transformer: AbstractTransform,
         params: dict,
         single_input: Any,
         expected_single_output: Any,
@@ -74,7 +72,11 @@ def gaussian_noise() -> DataTransformerTest:
     single_input = 5.0
     expected_single_output = 5.4967141530112327
     multiple_inputs = [1.0, 2.0, 3.0]
-    expected_multiple_outputs = [1.4967141530112327, 1.8617356988288154, 3.6476885381006925]
+    expected_multiple_outputs = [
+        1.4967141530112327,
+        1.8617356988288154,
+        3.6476885381006925,
+    ]
     return DataTransformerTest(
         transformer=transformer,
         params=params,
@@ -134,7 +136,10 @@ class TestUniformTextMasker:
             test_data: The test data to use.
         """
         test_data = request.getfixturevalue(test_data_name)
-        transformed_data = test_data.transformer.transform(test_data.single_input, **test_data.params)
+        transformed_data = test_data.transformer.transform(
+            test_data.single_input,
+            **test_data.params,
+        )
         assert isinstance(transformed_data, str)
         assert transformed_data == test_data.expected_single_output
 
@@ -156,20 +161,33 @@ class TestGaussianNoise:
     def test_transform_single(self, request: Any, test_data_name: str) -> None:
         """Test transforming a single float."""
         test_data = request.getfixturevalue(test_data_name)
-        transformed_data = test_data.transformer.transform(test_data.single_input, **test_data.params)
+        transformed_data = test_data.transformer.transform(
+            test_data.single_input,
+            **test_data.params,
+        )
         assert isinstance(transformed_data, float)
         assert round(transformed_data, 7) == round(test_data.expected_single_output, 7)
 
     @pytest.mark.parametrize("test_data_name", ["gaussian_noise"])
-    def test_transform_multiple(self, request: Any, test_data_name: DataTransformerTest) -> None:
+    def test_transform_multiple(
+        self,
+        request: Any,
+        test_data_name: DataTransformerTest,
+    ) -> None:
         """Test transforming multiple floats."""
         test_data = request.getfixturevalue(test_data_name)
-        transformed_data = test_data.transformer.transform_all(test_data.multiple_inputs, **test_data.params)
+        transformed_data = test_data.transformer.transform_all(
+            test_data.multiple_inputs,
+            **test_data.params,
+        )
         assert isinstance(transformed_data, list)
         for item in transformed_data:
             assert isinstance(item, float)
         assert len(transformed_data) == len(test_data.expected_multiple_outputs)
-        for item, expected in zip(transformed_data, test_data.expected_multiple_outputs):
+        for item, expected in zip(
+            transformed_data,
+            test_data.expected_multiple_outputs,
+        ):
             assert round(item, 7) == round(expected, 7)
 
 
@@ -200,7 +218,10 @@ class TestGaussianChunk:
         """Test that the transform fails if chunk size is greater than the length of the input string."""
         test_data = request.getfixturevalue(test_data_name)
         transformer = GaussianChunk(chunk_size=100)
-        with pytest.raises(ValueError, match="The input data is shorter than the chunk size"):
+        with pytest.raises(
+            ValueError,
+            match="The input data is shorter than the chunk size",
+        ):
             transformer.transform(test_data.single_input)
 
 
@@ -211,7 +232,10 @@ class TestReverseComplement:
     def test_transform_single(self, request: Any, test_data_name: str) -> None:
         """Test transforming a single string."""
         test_data = request.getfixturevalue(test_data_name)
-        transformed_data = test_data.transformer.transform(test_data.single_input, **test_data.params)
+        transformed_data = test_data.transformer.transform(
+            test_data.single_input,
+            **test_data.params,
+        )
         assert isinstance(transformed_data, str)
         assert transformed_data == test_data.expected_single_output
 
@@ -219,20 +243,11 @@ class TestReverseComplement:
     def test_transform_multiple(self, request: Any, test_data_name: str) -> None:
         """Test transforming multiple strings."""
         test_data = request.getfixturevalue(test_data_name)
-        transformed_data = test_data.transformer.transform_all(test_data.multiple_inputs, **test_data.params)
+        transformed_data = test_data.transformer.transform_all(
+            test_data.multiple_inputs,
+            **test_data.params,
+        )
         assert isinstance(transformed_data, list)
         for item in transformed_data:
             assert isinstance(item, str)
         assert transformed_data == test_data.expected_multiple_outputs
-
-
-@pytest.fixture
-def titanic_config_path(base_config: dict) -> str:
-    """Ensure the config file exists and return its path."""
-    config_path = "tests/test_data/titanic/titanic_sub_config_0.yaml"
-
-    if not os.path.exists(config_path):
-        configs = generate_data_configs(base_config)
-        dump_yaml_list_into_files([configs[0]], "tests/test_data/titanic/", "titanic_sub_config")
-
-    return os.path.abspath(config_path)
