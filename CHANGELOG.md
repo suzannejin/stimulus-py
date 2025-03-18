@@ -133,64 +133,83 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ray init needs to be called in the run command, otherwise ray cluster is not found. ([4ebd495](https://github.com/mathysgrapotte/stimulus-py/commit/4ebd495ba348698252598d8e7a3575cead057593) by mgrapotte).
 
 
-<!-- insertion marker -->
-## [0.2.6](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.2.6) - 2025-02-13
+## [0.3.0](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.3.0) - 2025-03-18
 
-<small>[Compare with 0.2.5](https://github.com/mathysgrapotte/stimulus-py/compare/0.2.5...0.2.6)</small>
-
-### Bug Fixes
-
-- removed deprecated cli predict. ([6eb3160](https://github.com/mathysgrapotte/stimulus-py/commit/6eb31601185a4a9d772f80972cdb9a8c8a678a3a) by mgrapotte).
-- help message was not working, added a run() function. ([d6fb7dd](https://github.com/mathysgrapotte/stimulus-py/commit/d6fb7dd0edc0298220f4d2f0fd93625d032c91dc) by mgrapotte).
-
-## [0.2.5](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.2.5) - 2025-02-12
-
-<small>[Compare with 0.2.4](https://github.com/mathysgrapotte/stimulus-py/compare/0.2.4...0.2.5)</small>
+<small>[Compare with 0.2.6](https://github.com/mathysgrapotte/stimulus-py/compare/0.2.6...0.3.0)</small>
 
 ### Features
 
-- removed test results from git push. ([3f3f516](https://github.com/mathysgrapotte/stimulus-py/commit/3f3f5161e54dfc2d4db40ff59e5a2e924d30bfe4) by mgrapotte).
-- added dockerfiles. ([c18489f](https://github.com/mathysgrapotte/stimulus-py/commit/c18489f59ba7e0f36c5f90a7ce51248c0bb49a07) by mgrapotte).
+- get device can now return mps backend objecs. ([afd4e30](https://github.com/mathysgrapotte/stimulus-py/commit/afd4e300424b457986a8c69abd324e1a68c061f7) by mathysgrapotte).
+- config parser now also responsible for dealing with suggesting parameters. ([be51083](https://github.com/mathysgrapotte/stimulus-py/commit/be51083c7a98eb2a8c753aa7550fa0748323e6d6) by mgrapotte).
+- now supports variable lists in search space definition. ([ff5e0b8](https://github.com/mathysgrapotte/stimulus-py/commit/ff5e0b85957eff5ea31ef0e8954382d0d7f35f3e) by mgrapotte).
+- added extra test znf data. ([ab15e5e](https://github.com/mathysgrapotte/stimulus-py/commit/ab15e5ed897b9445746e2e458f822f1a2c54537d) by mgrapotte).
+- added support for stimulus-split-yaml-split and stimulus-split-yaml-transform. ([d85f6e0](https://github.com/mathysgrapotte/stimulus-py/commit/d85f6e0202a88ab70adcbc67efca6c09191e98a2) by mgrapotte).
 
 ### Bug Fixes
 
-- fixed duplicate in ruff config. ([eb9d3bf](https://github.com/mathysgrapotte/stimulus-py/commit/eb9d3bf566c7ab94c02f30b85d5a946b440711b9) by mgrapotte).
-- update ruff config to ignore shadowing python typing. ([55d33be](https://github.com/mathysgrapotte/stimulus-py/commit/55d33be8a6068e3b4649275ec1bf3827c21ffb9a) by mgrapotte).
-- renamed dockerfiles directory as it was causing ci to crash. ([6c19df4](https://github.com/mathysgrapotte/stimulus-py/commit/6c19df4589c2ff6e3a5ded53d561ba50dd4255f0) by mgrapotte).
-- ray init needs to be called in the run command otherwise ray cluster is not found. ([c9526d6](https://github.com/mathysgrapotte/stimulus-py/commit/c9526d60c909ddc8d8dabd751380c5d5e16b8d44) by mgrapotte).
-- ray init needs to be called in the run command, otherwise ray cluster is not found. ([4ebd495](https://github.com/mathysgrapotte/stimulus-py/commit/4ebd495ba348698252598d8e7a3575cead057593) by mgrapotte).
-
-## [0.2.4](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.2.4) - 2025-02-07
-
-<small>[Compare with 0.2.3](https://github.com/mathysgrapotte/stimulus-py/compare/0.2.3...0.2.4)</small>
-
-### Bug Fixes
-
-- test were failing, made format to fix it. ([19dce1f](https://github.com/mathysgrapotte/stimulus-py/commit/19dce1f2f6fc069a24991a843249f7edc876bb43) by mgrapotte).
-
-## [0.2.3](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.2.3) - 2025-02-07
-
-<small>[Compare with 0.2.2](https://github.com/mathysgrapotte/stimulus-py/compare/0.2.2...0.2.3)</small>
-
-### Bug Fixes
-
-- src.stimulus.data -> stimulus.data. ([b04546c](https://github.com/mathysgrapotte/stimulus-py/commit/b04546c2c9bcc1f6218c31d8f7132e57ea1dab91) by mgrapotte).
-- src.stimulus.utils -> stimulus.utils. ([55d1fed](https://github.com/mathysgrapotte/stimulus-py/commit/55d1fed95950adc2782a73a90690783786c9fb85) by mgrapotte).
-
-## [0.2.2](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.2.2) - 2025-02-05
-
-<small>[Compare with 0.2.1](https://github.com/mathysgrapotte/stimulus-py/compare/0.2.1...0.2.2)</small>
-
-### Bug Fixes
-
-- remove deprecated tests from analysis types. ([1dc4ed9](https://github.com/mathysgrapotte/stimulus-py/commit/1dc4ed96326f04adf8b4b5d7d7e74bd62e71953d) by mgrapotte).
-- removed deprecated types from analysis in __init__.py. ([7a7390f](https://github.com/mathysgrapotte/stimulus-py/commit/7a7390ff91b83a1974726dd8da9f26f81932fa18) by mgrapotte).
-- added split-yaml removed deprecated split json and run analysis-default. ([ddd9c9f](https://github.com/mathysgrapotte/stimulus-py/commit/ddd9c9fdd4ccf5445682008d271c9f4d648e6f22) by mgrapotte).
+- fixed a bug where predict was not transfering the batch to the device (when device is not CPU). ([1fa3e44](https://github.com/mathysgrapotte/stimulus-py/commit/1fa3e4408225b726358d1b52ee46970f4251b5c1) by mathysgrapotte).
+- polars.vstack is deprecated, replaced by pl.concat. ([989a1fd](https://github.com/mathysgrapotte/stimulus-py/commit/989a1fd0f7c40c251bc294575c37f18b1e08f8e7) by mgrapotte).
+- data handlers was calling the transform method instead of transform_all and passing a pl.series instead of a list. ([8463e90](https://github.com/mathysgrapotte/stimulus-py/commit/8463e90f9e1c5780a3f98eda9ed35cc57c5dd58c) by mgrapotte).
+- tests should now use temp_paths. ([5368518](https://github.com/mathysgrapotte/stimulus-py/commit/536851889a5c5408a461b95845dc92d628eda3f2) by mathysgrapotte).
+- fix issue where spearmanr would cause a warning when labels/predictions would be constant, now outputs 0.0 correlation. ([ecd9799](https://github.com/mathysgrapotte/stimulus-py/commit/ecd9799903e4cf7274cb77159a6be17799702df1) by mgrapotte).
+- add option in case of divide by zero which disables warnings. ([ddef6f5](https://github.com/mathysgrapotte/stimulus-py/commit/ddef6f54aa9507dde84f92cb3e6d80e407385436) by mgrapotte).
+- fix importlib import errors. ([af20925](https://github.com/mathysgrapotte/stimulus-py/commit/af209257074f6af1b75b27983ad0dcfa2a3847c7) by mgrapotte).
+- added importlib_metadata dependencies. ([57d1e35](https://github.com/mathysgrapotte/stimulus-py/commit/57d1e359a84c713361f67f15da9aefc73843b62d) by mgrapotte).
+- teardown is now a fixture with autouse set to true. ([414f315](https://github.com/mathysgrapotte/stimulus-py/commit/414f315d960d3c7fe09893574c93eaad70d8d80e) by mgrapotte).
+- redundant teardown. ([7991a57](https://github.com/mathysgrapotte/stimulus-py/commit/7991a57067688bd388dccf055c0ddcfc617f9619) by mgrapotte).
+- made teardown redundant. CI was failing because test is exectuting in parralel, CI workers do not share fixture state, so teardown was not called in all tests. ([853a0a2](https://github.com/mathysgrapotte/stimulus-py/commit/853a0a2cce7bd40d490dc796841bc4df9d30dbad) by mgrapotte).
+- updated ray version since ray 2.43 introduces breaking changes. ([dd0975f](https://github.com/mathysgrapotte/stimulus-py/commit/dd0975fae5308864afadc7cd7641ab667b2a4016) by mgrapotte).
+- fix ray not shutting down properly in the tests. ([6b58655](https://github.com/mathysgrapotte/stimulus-py/commit/6b5865573340b2e536e39673b46e1eeb7545e8bd) by mgrapotte).
+- removed minor bugs. ([2493bfb](https://github.com/mathysgrapotte/stimulus-py/commit/2493bfbe2f6a2ba8dbb919feab39ec3e09d84588) by mgrapotte).
+- now path can be given as intended to shuffle-csv. ([2fe4a0c](https://github.com/mathysgrapotte/stimulus-py/commit/2fe4a0ce1b69e046a3f1c5b68b9abd6b03363cdb) by mgrapotte).
+- fix linting ([dfb7fca](https://github.com/mathysgrapotte/stimulus-py/commit/dfb7fcadf3226ec13abc4b3adc8e233752bd8d68) by mgrapotte).
+- change -j flag to -y flag ([48b7ea9](https://github.com/mathysgrapotte/stimulus-py/commit/48b7ea9c6f926cc90e6183c7331355e0179ba54a) by V-E-D).
+- fix linting issues. ([7c2dd2a](https://github.com/mathysgrapotte/stimulus-py/commit/7c2dd2a688d1b8f51f0c760261c9c906fdca44c7) by mgrapotte).
+- running make format. ([736d6fc](https://github.com/mathysgrapotte/stimulus-py/commit/736d6fc29feb9930fd522a293394a347f5fc346c) by mgrapotte).
 
 ### Code Refactoring
 
-- removed analysis cli since it is deprecated. ([e2f44cf](https://github.com/mathysgrapotte/stimulus-py/commit/e2f44cf13e24111a4176efbcca2bd608da7e6f46) by mgrapotte).
-
-## [0.2.1](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.2.1) - 2025-02-05
-
-<small>[Compare with 0.2.0](https://github.com/mathysgrapotte/stimulus-py/compare/0.2.0...0.2.1)</small>
+- added extra yaml subconfigs. ([11d2405](https://github.com/mathysgrapotte/stimulus-py/commit/11d240589c47f588fae333066875a6c011e47318) by mgrapotte).
+- added ibis test files. ([0401fac](https://github.com/mathysgrapotte/stimulus-py/commit/0401fac49585772e7f0168890f0aaafd736aa216) by mgrapotte).
+- removing non-conclusive test files. ([bb5a4f7](https://github.com/mathysgrapotte/stimulus-py/commit/bb5a4f7fc6de4e2175aaa1d46065aee8ed75837e) by mgrapotte).
+- udpate check_model and tests. ([59ae38a](https://github.com/mathysgrapotte/stimulus-py/commit/59ae38a6f47e871dd4613b2deb6ee125f0ff5478) by mgrapotte).
+- removed test_model_yaml since it has been moved to learner/interface. ([4b5423b](https://github.com/mathysgrapotte/stimulus-py/commit/4b5423b163e8f9ab054731524fcf2780b852354f) by mgrapotte).
+- changed typing to follow optuna refactor. ([eed338d](https://github.com/mathysgrapotte/stimulus-py/commit/eed338dc71042debfb99f5b4f0a023d0631cf2f5) by mgrapotte).
+- tuning cli now up to date with optuna refactor. ([6d8c431](https://github.com/mathysgrapotte/stimulus-py/commit/6d8c43175f5dfe8979d7e87b545b54d81aadd54e) by mgrapotte).
+- removed tune related in tests. ([a937370](https://github.com/mathysgrapotte/stimulus-py/commit/a937370231fc542e09a0c5ba30de7c81ff164431) by mgrapotte).
+- removed tune related in src. ([da28b82](https://github.com/mathysgrapotte/stimulus-py/commit/da28b829b5833e661c615d65eb6a5f6419ca2cb8) by mgrapotte).
+- finished optuna_tune. ([234856b](https://github.com/mathysgrapotte/stimulus-py/commit/234856b52bce60ccb101aa4e83aea863a0c60318) by mgrapotte).
+- implemented optuna support, inital commit. ([173d54f](https://github.com/mathysgrapotte/stimulus-py/commit/173d54f2bc1298a75ef40fd0520f3bd5924fbf57) by mgrapotte).
+- made dir paths shorter. ([4f33101](https://github.com/mathysgrapotte/stimulus-py/commit/4f331014b665c39c1532ed6b86891d528590cccd) by mgrapotte).
+- tuning adapted to the new paradigm. ([7b6ed78](https://github.com/mathysgrapotte/stimulus-py/commit/7b6ed788ebef2f31445f0e8ab605435f21e3abab) by mgrapotte).
+- added tuning cli refactoring. ([6a371be](https://github.com/mathysgrapotte/stimulus-py/commit/6a371bea23d5fa94987221d7d49329b989edeab0) by mgrapotte).
+- refactored transform_csv to use click. ([806b9b6](https://github.com/mathysgrapotte/stimulus-py/commit/806b9b624a5a2abca3fc22925096edf325652661) by mathysgrapotte).
+- Change split_transforms to the new format ([ec3784b](https://github.com/mathysgrapotte/stimulus-py/commit/ec3784b0e0cc7f58432674ec6ce3cf89947c2d9c) by itrujnara).
+- added refactoring for split_csv cli. ([92558c0](https://github.com/mathysgrapotte/stimulus-py/commit/92558c07acef4fa5a6f5622ec75e08393882226f) by mathysgrapotte).
+- updated shuffle_csv to the new paradigm. ([e6a0e23](https://github.com/mathysgrapotte/stimulus-py/commit/e6a0e23800776898dbb7ac669faa0c049b645ad3) by mgrapotte).
+- added refactoring for check-model cli. ([09044c7](https://github.com/mathysgrapotte/stimulus-py/commit/09044c7b7b671d05e9df15d90679ce421b5b335f) by mgrapotte).
+- added main cli. ([01d4532](https://github.com/mathysgrapotte/stimulus-py/commit/01d4532b4c4e2a9faee8c08004c2bba9f6b56480) by mgrapotte).
+- gets a torchdataset as input. ([973e6f6](https://github.com/mathysgrapotte/stimulus-py/commit/973e6f6d1053417834d83c39c706638d8b3834d2) by mgrapotte).
+- moved raytune_learner to new paradigm. ([3efda09](https://github.com/mathysgrapotte/stimulus-py/commit/3efda090ba2f6d2fbbaf41e1c563d02d89668f2d) by mgrapotte).
+- fix typing accross codebase. ([ce0d5d4](https://github.com/mathysgrapotte/stimulus-py/commit/ce0d5d48d457a4d581e612c398321f7133dfd497) by mgrapotte).
+- removed test_data_yaml. ([e3951f9](https://github.com/mathysgrapotte/stimulus-py/commit/e3951f9f5e3642c010e42854501810e172901f7e) by mgrapotte).
+- changed import paths and removed unused fixture. ([8150042](https://github.com/mathysgrapotte/stimulus-py/commit/81500423f7be17a483a88f3c448cc48907ed9595) by mgrapotte).
+- removed test_experiment. ([dcb2c80](https://github.com/mathysgrapotte/stimulus-py/commit/dcb2c80f52abac65b75dcc72075d459ffb654a1a) by mgrapotte).
+- made data_handlers more explicit and added extra function to parse various configs. ([bdac5e4](https://github.com/mathysgrapotte/stimulus-py/commit/bdac5e4140354a761e7e00030d68e7e7c25abed1) by mgrapotte).
+- added tests for config loading interface. ([3c4e9b4](https://github.com/mathysgrapotte/stimulus-py/commit/3c4e9b4bf71008a98fb4999df506b32ccf6172d1) by mgrapotte).
+- removed duplicate files. ([21bc026](https://github.com/mathysgrapotte/stimulus-py/commit/21bc0262ec7047aea1cefad69323576d65885590) by mgrapotte).
+- refactored tests for data_handlers. ([6ffcf12](https://github.com/mathysgrapotte/stimulus-py/commit/6ffcf12316d1ec5c841053f44e3557f658d49ef8) by mgrapotte).
+- adapted TorchDataset to new paradigm. ([f3f13b6](https://github.com/mathysgrapotte/stimulus-py/commit/f3f13b6c40c467a646f1a0009143feb76b363567) by mgrapotte).
+- removed handlertorched and happend it to data_handlers. ([377e72e](https://github.com/mathysgrapotte/stimulus-py/commit/377e72ee38609a670636e85b310cdd3c48802622) by mgrapotte).
+- removed loader and manager logic. ([dbae19b](https://github.com/mathysgrapotte/stimulus-py/commit/dbae19b379664a35e6fe6e84d9d99fc7684963ca) by mgrapotte).
+- added the interface module. ([90f4bb1](https://github.com/mathysgrapotte/stimulus-py/commit/90f4bb16a62ed40b92876ee0b52d664ef4914627) by mgrapotte).
+- data_config interface in a single module. ([34049d0](https://github.com/mathysgrapotte/stimulus-py/commit/34049d01b204456a606fd1e9994ae44efc1f2e2a) by mgrapotte).
+- added boilerplate code for instantiating encoders splitters and transforms. ([fea0b87](https://github.com/mathysgrapotte/stimulus-py/commit/fea0b87173329c1f1c396b43ed3dc94ab17e9b86) by mgrapotte).
+- added parse_config function signature. ([6a6d21a](https://github.com/mathysgrapotte/stimulus-py/commit/6a6d21a82bf293983841f1f7c74db567942097bd) by mgrapotte).
+- changed filenames to have more consistant naming conventions. ([576885e](https://github.com/mathysgrapotte/stimulus-py/commit/576885ebb50c854866659c07e47b9d2dfb6239ef) by mgrapotte).
+- renamed to model_file_interface. ([47026f8](https://github.com/mathysgrapotte/stimulus-py/commit/47026f8f09d9257702fa9220cbef71847216b24f) by mgrapotte).
+- renamed data_config_parsing to data_config_splitting. ([14daba8](https://github.com/mathysgrapotte/stimulus-py/commit/14daba833ec19ee02404d3d0bed2f9f7d63dbc1d) by mgrapotte).
+- splitted yaml_data_schema and data_config_parsing. ([c1df9cf](https://github.com/mathysgrapotte/stimulus-py/commit/c1df9cfc6ae5c1c181bd323ce986c3b21c6ed1a7) by mgrapotte).
+- renamed yaml_data into yaml_data_schema for consistency. ([dbca1d5](https://github.com/mathysgrapotte/stimulus-py/commit/dbca1d56000ed66d6404bac73a1e0bddc0985fbb) by mgrapotte).
+- made dumper cleaner. ([8802c12](https://github.com/mathysgrapotte/stimulus-py/commit/8802c128052431c6c9994f119b08de78327d4ac8) by mgrapotte).
+- removed check_yaml, redundancy with pydantic functions. ([e76d246](https://github.com/mathysgrapotte/stimulus-py/commit/e76d246d09da1dc32a760821a49505bfd7043248) by mgrapotte).
