@@ -397,9 +397,9 @@ class TextAsciiEncoder(AbstractEncoder):
         tensor_2d = 2
 
         if data.dim() == tensor_1d:
-            return "".join([chr(int(x)) for x in data.cpu().numpy() if x != 0])
+            return "".join([chr(int(x)) for x in data.numpy() if x != 0])
         if data.dim() == tensor_2d:
-            return ["".join([chr(int(x)) for x in d if x != 0]) for d in data.cpu().numpy().tolist()]
+            return ["".join([chr(int(x)) for x in d if x != 0]) for d in data.numpy().tolist()]
 
         raise ValueError(f"Expected 1D or 2D tensor, got {data.dim()}D")
 
