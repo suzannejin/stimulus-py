@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import numpy as np
 import torch
@@ -297,6 +297,111 @@ class TextOneHotEncoder(AbstractEncoder):
             return ["".join(seq) for seq in filled_sequences]
 
         raise ValueError(f"Expected 2D or 3D tensor, got {data.dim()}D")
+
+
+class TextAsciiEncoder(AbstractEncoder):
+    """Encoder for text data that encodes the data based on ASCII values.
+
+    Attributes:
+        vocab_size (int): The size of the vocabulary. Default = 256 (ASCII characters)
+        dtype (torch.dtype): The data type of the encoded data. Default = torch.int64
+        padding (bool): whether to pad the sequences with zeros. Default = False
+
+    Methods:
+        encode: encodes a single data point
+        encode_all: encodes a list of data points into a torch.tensor
+        decode: decodes a single data point
+    """
+
+    def __init__(self, vocab_size: int = 256, dtype: torch.dtype = torch.int8, *, padding: bool = False) -> None:
+        """Initialize the TextAsciiEncoder class.
+
+        Args:
+            vocab_size (int): the size of the vocabulary. Default = 256 (ASCII characters)
+            dtype (torch.dtype): the data type of the encoded data. Default = torch.int8 (8-bit integer)
+            padding (bool): whether to pad the sequences with zeros. Default = False
+        """
+        self.vocab_size = vocab_size
+        self.dtype = dtype
+        self.padding = padding
+
+    def encode(self, data: str, length: Optional[int] = None) -> torch.Tensor:
+        """Encodes the data.
+
+        This method takes as input a single data point, should be mappable to a single output.
+
+        Args:
+            data (str): a single data point
+            length (Optional[int]): the length to pad the data to. Default = None
+
+        Returns:
+            encoded_data_point (torch.Tensor): the encoded data point
+
+        Raises:
+            TypeError: If the input data is not a string
+            ValueError: If the data contains characters with ASCII values greater than vocab_size - 1
+            ValueError: If the data length is greater than the specified length
+        """
+        if not isinstance(data, str):
+            raise TypeError(f"Expected input data to be a string, got {type(data).__name__}")
+
+        if any(ord(c) >= self.vocab_size for c in data):
+            raise ValueError(f"Data contains characters with ASCII values greater than {self.vocab_size - 1}")
+
+        values = np.frombuffer(data.encode(), dtype=np.uint8)
+
+        if length is not None:
+            if len(values) > length:
+                raise ValueError(f"Data length {len(values)} is greater than the specified length {length}")
+            values = np.pad(values, (0, length - len(values)), mode="constant")
+
+        return torch.tensor(values, dtype=self.dtype)
+
+    def encode_all(self, data: list[str]) -> torch.Tensor:
+        """Encodes the data.
+
+        This method takes as input a list of data points, or a single string, and returns a torch.tensor.
+
+        Args:
+            data (list[str]): a list of strings or a single string
+
+        Returns:
+            encoded_data (torch.Tensor): the encoded data
+
+        Raises:
+            TypeError: If the input data is not a list of strings
+        """
+        if not isinstance(data, list):
+            raise TypeError(f"Expected input data to be a list of strings, got {type(data).__name__}")
+
+        max_len = max(len(d) for d in data) if self.padding else None
+        encoded_data = [self.encode(d, max_len) for d in data]
+        return torch.stack(encoded_data)
+
+    def decode(self, data: torch.Tensor) -> Union[str, list[str]]:
+        """Decodes the data.
+
+        Args:
+            data (torch.Tensor): the encoded data
+
+        Returns:
+            decoded_data (list[str]): the decoded data
+
+        Raises:
+            ValueError: If the input data is not a 1D or 2D tensor
+        """
+        if type(data) is not torch.Tensor:
+            raise TypeError(f"Expected input data to be a tensor, got {type(data).__name__}")
+
+        tensor_1d = 1
+        tensor_2d = 2
+
+        if data.dim() == tensor_1d:
+            return "".join([chr(int(x)) for x in data.numpy() if x != 0])
+        if data.dim() == tensor_2d:
+            return ["".join([chr(int(x)) for x in d if x != 0]) for d in data.numpy().tolist()]
+
+        raise ValueError(f"Expected 1D or 2D tensor, got {data.dim()}D")
 
 
 class NumericEncoder(AbstractEncoder):

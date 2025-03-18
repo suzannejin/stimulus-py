@@ -7,6 +7,7 @@ from src.stimulus.data.encoding.encoders import (
     NumericEncoder,
     NumericRankEncoder,
     StrClassificationEncoder,
+    TextAsciiEncoder,
     TextOneHotEncoder,
 )
 
@@ -193,6 +194,93 @@ class TestTextOneHotEncoder:
         assert len(decoded) == 2
         assert decoded[0] == "acgt-"  # '-' for padding
         assert decoded[0] == "acgt-"  # '-' for unknown character n
+
+
+class TestTextAsciiEncoder:
+    """Test suite for TextAsciiEncoder."""
+
+    def test_encode_single_string(self) -> None:
+        """Test encoding a single string."""
+        encoder = TextAsciiEncoder()
+        input_str = "hello"
+        output = encoder.encode(input_str)
+        assert isinstance(output, torch.Tensor)
+        assert output.shape == (5,)
+        assert torch.all(output == torch.tensor([104, 101, 108, 108, 111]))
+
+    def test_encode_all(self) -> None:
+        """Test encoding a list of strings."""
+        encoder = TextAsciiEncoder()
+        input_strs = ["hello", "world"]
+        output = encoder.encode_all(input_strs)
+        assert isinstance(output, torch.Tensor)
+        assert output.shape == (2, 5)
+        assert torch.all(output[0] == torch.tensor([104, 101, 108, 108, 111]))
+        assert torch.all(output[1] == torch.tensor([119, 111, 114, 108, 100]))
+
+    def test_decode_single_tensor(self) -> None:
+        """Test decoding a single tensor."""
+        encoder = TextAsciiEncoder()
+        input_tensor = torch.tensor([104, 101, 108, 108, 111])
+        decoded = encoder.decode(input_tensor)
+        assert isinstance(decoded, str)
+        assert decoded == "hello"
+
+    def test_decode_all(self) -> None:
+        """Test decoding a tensor of shape (n, m)."""
+        encoder = TextAsciiEncoder()
+        input_tensor = torch.tensor([[104, 101, 108, 108, 111], [119, 111, 114, 108, 100]])
+        decoded = encoder.decode(input_tensor)
+        assert isinstance(decoded, list)
+        assert len(decoded) == 2
+        assert decoded[0] == "hello"
+        assert decoded[1] == "world"
+
+    def test_encode_all_padding(self) -> None:
+        """Test encoding a list of strings with padding."""
+        encoder = TextAsciiEncoder(padding=True)
+        input_strs = ["hello", "worlds"]
+        output = encoder.encode_all(input_strs)
+        assert isinstance(output, torch.Tensor)
+        assert output.shape == (2, 6)
+        assert torch.all(output[0] == torch.tensor([104, 101, 108, 108, 111, 0]))
+        assert torch.all(output[1] == torch.tensor([119, 111, 114, 108, 100, 115]))
+
+    def test_encode_not_string_raises(self) -> None:
+        """Test that encoding a non-string raises a TypeError."""
+        encoder = TextAsciiEncoder()
+        with pytest.raises(TypeError):
+            encoder.encode(42) # type: ignore[arg-type]
+
+    def test_encode_unicode_raises(self) -> None:
+        """Test that encoding a unicode string raises a ValueError."""
+        encoder = TextAsciiEncoder()
+        with pytest.raises(ValueError, match="Data contains characters with ASCII values greater.*"):
+            encoder.encode("你好")
+
+    def test_encode_too_long_raises(self) -> None:
+        """Test that encoding a string that is too long raises a ValueError."""
+        encoder = TextAsciiEncoder()
+        with pytest.raises(ValueError, match="Data length .* is greater than the specified length.*"):
+            encoder.encode("hello", length=3)
+
+    def test_encode_all_not_list_raises(self) -> None:
+        """Test that encoding a non-list raises a TypeError."""
+        encoder = TextAsciiEncoder()
+        with pytest.raises(TypeError):
+            encoder.encode_all("hello") # type: ignore[arg-type]
+
+    def test_decode_not_tensor_raises(self) -> None:
+        """Test that decoding a non-tensor raises a ValueError."""
+        encoder = TextAsciiEncoder()
+        with pytest.raises(TypeError):
+            encoder.decode("hello") # type: ignore[arg-type]
+
+    def test_decode_3d_tensor_raises(self) -> None:
+        """Test that decoding a 3D tensor raises a ValueError."""
+        encoder = TextAsciiEncoder()
+        with pytest.raises(ValueError, match="Expected 1D or 2D tensor, got.*"):
+            encoder.decode(torch.ones(2, 5, 5))
 
 
 class TestNumericEncoder:
