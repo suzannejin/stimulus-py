@@ -292,32 +292,29 @@ def dump_yaml_list_into_files(
     yaml_list: list[SplitConfigDict],
     directory_path: str,
     base_name: str,
+    len_simple_numeric: int = 5,
 ) -> None:
-    """Dumps YAML configurations to files with consistent formatting."""
+    """Dumps YAML configurations to files with consistent, readable formatting."""
 
-    class CleanDumper(yaml.SafeDumper):
-        """Simplified dumper maintaining key functionality."""
+    def represent_dict(dumper: yaml.SafeDumper, data: dict) -> Any:
+        """Custom representer for dictionaries to ensure block style."""
+        return dumper.represent_mapping("tag:yaml.org,2002:map", data.items(), flow_style=False)
 
+    def represent_list(dumper: yaml.SafeDumper, data: list) -> Any:
+        """Custom representer for lists to control flow style based on content."""
+        # Use flow style only for simple numeric lists like split ratios
+        is_simple_numeric = all(isinstance(i, (int, float)) for i in data) and len(data) <= len_simple_numeric
+        return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=is_simple_numeric)
+
+    # Create a dumper that preserves the document structure
+    class ReadableDumper(yaml.SafeDumper):
         def ignore_aliases(self, _data: Any) -> bool:
             return True  # Disable anchor/alias generation
 
-        def write_line_break(self, data: Any = None) -> None:
-            """Maintain root-level spacing."""
-            super().write_line_break(data)
-            if not self.indent:  # At root level
-                super().write_line_break()
-
-    # Register type handlers
-    CleanDumper.add_representer(type(None), lambda d, _: d.represent_scalar("tag:yaml.org,2002:null", ""))
-
-    CleanDumper.add_representer(
-        list,
-        lambda d, data: d.represent_sequence(
-            "tag:yaml.org,2002:seq",
-            data,
-            flow_style=isinstance(data[0], (list, dict)) if data else False,
-        ),
-    )
+    # Register our custom representers
+    ReadableDumper.add_representer(dict, represent_dict)
+    ReadableDumper.add_representer(list, represent_list)
+    ReadableDumper.add_representer(type(None), lambda d, _: d.represent_scalar("tag:yaml.org,2002:null", ""))
 
     for i, yaml_dict in enumerate(yaml_list):
         data = _clean_params(yaml_dict.model_dump(exclude_none=True))
@@ -326,11 +323,13 @@ def dump_yaml_list_into_files(
             yaml.dump(
                 data,
                 f,
-                Dumper=CleanDumper,
+                Dumper=ReadableDumper,
+                default_flow_style=False,  # Default to block style for readability
                 sort_keys=False,
                 indent=2,
-                width=float("inf"),
-                default_flow_style=None,  # Let representers handle flow style
+                width=80,  # Set reasonable line width
+                explicit_start=False,
+                explicit_end=False,
             )
 
 

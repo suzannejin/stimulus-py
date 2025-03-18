@@ -1,4 +1,5 @@
-# ruff: noqa
+# ruff: noqa: PGH004
+# ruff: noqa 
 # mypy: ignore-errors
 """Efficient KAN model implementation."""
 
@@ -276,7 +277,7 @@ class KAN(torch.nn.Module):
 class Model_ConvBasic_withEfficientKAN(nn.Module):
     def __init__(
         self,
-        sequence_length: int = 40,
+        sequence_length: int = 300,
         conv_kernel_size: int = 5,
         conv_kernel_number: int = 4,
         kan_layers_hidden: List[int] = [10, 1],
@@ -298,7 +299,7 @@ class Model_ConvBasic_withEfficientKAN(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, dna: torch.Tensor) -> dict:
-        x = dna.permute(0, 2, 1).to(torch.float32)
+        x = dna.squeeze(1).permute(0, 2, 1).to(torch.float32)
         x = self.conv1d(x)
         x = self.relu(x)
         x = x.reshape(x.shape[0], x.shape[1] * x.shape[2])
@@ -310,7 +311,7 @@ class Model_ConvBasic_withEfficientKAN(nn.Module):
         return x
 
     def compute_loss(self, output: torch.Tensor, binding: torch.Tensor, loss_fn: Callable) -> torch.Tensor:
-        return loss_fn(output, binding)
+        return loss_fn(output.squeeze(), binding.squeeze())
 
     def batch(
         self,
@@ -320,11 +321,11 @@ class Model_ConvBasic_withEfficientKAN(nn.Module):
         optimizer: Optional[Callable] = None,
     ) -> Tuple[torch.Tensor, dict]:
         # get input dna sequences, and binding label
-        dna = x["dna"].float()
+        dna = x["dna"]
         binding = y["binding"].float()
 
         # predict
-        output = self(**dna)
+        output = self.forward(dna)
 
         # compute loss and update model
         loss = self.compute_loss(output, binding, loss_fn=loss_fn)

@@ -22,7 +22,7 @@ class Objective:
     def __init__(
         self,
         model_class: torch.nn.Module,
-        network_params: dict[str, model_schema.TunableParameter],
+        network_params: dict[str, model_schema.TunableParameter | model_schema.VariableList],
         optimizer_params: dict[str, model_schema.TunableParameter],
         data_params: dict[str, model_schema.TunableParameter],
         loss_params: dict[str, model_schema.TunableParameter],
@@ -72,18 +72,6 @@ class Objective:
             return getattr(torch.optim, optimizer_name)
         except AttributeError as e:
             raise ValueError(f"Optimizer {optimizer_name} not found in torch.optim") from e
-
-    def suggest_parameters(
-        self,
-        trial: optuna.Trial,
-        params: dict[str, model_schema.TunableParameter],
-    ) -> dict[str, Any]:
-        """Suggest parameters for the model."""
-        suggestions = {}
-        for name, param in params.items():
-            suggestion = model_config_parser.get_suggestion(name, param, trial)
-            suggestions[name] = suggestion
-        return suggestions
 
     def __call__(self, trial: optuna.Trial):
         """Execute a full training trial and return the objective metric value."""
@@ -146,7 +134,7 @@ class Objective:
 
     def _setup_model(self, trial: optuna.Trial) -> torch.nn.Module:
         """Setup the model for the trial."""
-        model_suggestions = self.suggest_parameters(trial, self.network_params)
+        model_suggestions = model_config_parser.suggest_parameters(trial, self.network_params)
         logger.info(f"Model suggestions: {model_suggestions}")
         model_instance = self.model_class(**model_suggestions)
 
@@ -165,7 +153,7 @@ class Objective:
 
     def _setup_optimizer(self, trial: optuna.Trial, model_instance: torch.nn.Module) -> torch.optim.Optimizer:
         """Setup the optimizer for the trial."""
-        optimizer_suggestions = self.suggest_parameters(trial, self.optimizer_params)
+        optimizer_suggestions = model_config_parser.suggest_parameters(trial, self.optimizer_params)
         logger.info(f"Optimizer suggestions: {optimizer_suggestions}")
 
         optimizer_class = self._get_optimizer(optimizer_suggestions["method"])
@@ -184,7 +172,7 @@ class Objective:
         trial: optuna.Trial,
     ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
         """Setup the data loaders for the trial."""
-        batch_size = self.suggest_parameters(trial, self.data_params)["batch_size"]
+        batch_size = model_config_parser.suggest_parameters(trial, self.data_params)["batch_size"]
         logger.info(f"Batch size: {batch_size}")
 
         train_loader = torch.utils.data.DataLoader(
@@ -201,7 +189,7 @@ class Objective:
 
     def _setup_loss_functions(self, trial: optuna.Trial) -> dict[str, torch.nn.Module]:
         """Setup the loss functions for the trial."""
-        loss_dict = self.suggest_parameters(trial, self.loss_params)
+        loss_dict = model_config_parser.suggest_parameters(trial, self.loss_params)
         for key, loss_fn in loss_dict.items():
             loss_dict[key] = getattr(torch.nn, loss_fn)()
         logger.info(f"Loss parameters: {loss_dict}")
