@@ -270,6 +270,10 @@ def get_device() -> torch.device:
     Returns:
         torch.device: The selected computation device
     """
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+        logger.info("Using MPS (Metal Performance Shaders) device")
+        return device
     if torch.cuda.is_available():
         device = torch.device("cuda")
         gpu_name = torch.cuda.get_device_name(0)
