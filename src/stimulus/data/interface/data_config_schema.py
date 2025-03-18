@@ -15,7 +15,7 @@ class ColumnsEncoder(BaseModel):
     """Model for column encoder configuration."""
 
     name: str
-    params: Optional[dict[str, Union[str, list[Any]]]]  # Allow both string and list values
+    params: Optional[dict[str, Union[int, str, list[Any]]]]  # Allow both string and list values
 
 
 class Columns(BaseModel):
