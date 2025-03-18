@@ -34,13 +34,25 @@ class PredictWrapper:
             loss_dict: Optional dictionary of loss functions
             device: The device to run the model on
         """
-        self.model = model.to(device)
-        self.dataloader = dataloader
-        self.loss_dict = loss_dict
         if device is None:
             self.device = torch.device("cpu")
         else:
             self.device = device
+
+        try:
+            self.model = model.to(self.device)
+        except RuntimeError as e:
+            if self.device.type in ["cuda", "mps"]:
+                logger.warning(f"Failed to move model to {self.device.type.upper()}: {e}")
+                logger.warning("Falling back to CPU")
+                self.device = torch.device("cpu")
+                self.model = model.to(self.device)
+            else:
+                raise
+
+        self.dataloader = dataloader
+        self.loss_dict = loss_dict
+
         try:
             self.model.eval()
         except RuntimeError as e:
@@ -77,9 +89,32 @@ class PredictWrapper:
         # get the predictions (and labels) for each batch
         with torch.no_grad():
             for x, y, _ in self.dataloader:
-                x_device = {key: value.to(self.device) for key, value in x.items()}
-                current_predictions = self.model(**x_device).detach().cpu()
-                current_predictions = self.handle_predictions(current_predictions, y)
+                try:
+                    x_device = {key: value.to(self.device) for key, value in x.items()}
+                    current_predictions = self.model(**x_device).detach().cpu()
+                    current_predictions = self.handle_predictions(current_predictions, y)
+                except RuntimeError as e:
+                    if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
+                        "MPS backend out of memory" in str(e) and self.device.type == "mps"
+                    ):
+                        logger.warning(f"{self.device.type.upper()} out of memory during prediction: {e}")
+                        logger.warning("Falling back to CPU for this batch")
+                        temp_device = torch.device("cpu")
+                        # Use CPU for this batch
+                        x_cpu = {key: value.to(temp_device) for key, value in x.items()}
+                        # Move model to CPU temporarily
+                        model_on_cpu = self.model.to(temp_device)
+                        current_predictions = model_on_cpu(**x_cpu).detach().cpu()
+                        current_predictions = self.handle_predictions(current_predictions, y)
+                        # Move model back to original device for next batches
+                        try:
+                            self.model = self.model.to(self.device)
+                        except RuntimeError:
+                            logger.warning(f"Failed to move model back to {self.device.type}. Staying on CPU.")
+                            self.device = temp_device
+                    else:
+                        raise
+
                 for k in keys:
                     # it might happen that the batch consists of one element only so the torch.cat will fail. To prevent this the function to ensure at least one dimensionality is called.
                     predictions[k].append(ensure_at_least_1d(current_predictions[k]))
@@ -119,11 +154,34 @@ class PredictWrapper:
         loss = 0.0
         with torch.no_grad():
             for x, y, _ in self.dataloader:
-                # Move input tensors to the same device as the model
-                device_x = {key: value.to(self.device) for key, value in x.items()}
-                device_y = {key: value.to(self.device) for key, value in y.items()}
-                # the loss_dict could be unpacked with ** and the function declaration handle it differently like **kwargs. to be decided, personally find this more clean and understable.
-                current_loss = self.model.batch(x=device_x, y=device_y, **self.loss_dict)[0]
+                try:
+                    # Move input tensors to the same device as the model
+                    device_x = {key: value.to(self.device) for key, value in x.items()}
+                    device_y = {key: value.to(self.device) for key, value in y.items()}
+                    # the loss_dict could be unpacked with ** and the function declaration handle it differently like **kwargs. to be decided, personally find this more clean and understable.
+                    current_loss = self.model.batch(x=device_x, y=device_y, **self.loss_dict)[0]
+                except RuntimeError as e:
+                    if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
+                        "MPS backend out of memory" in str(e) and self.device.type == "mps"
+                    ):
+                        logger.warning(f"{self.device.type.upper()} out of memory during loss computation: {e}")
+                        logger.warning("Falling back to CPU for this batch")
+                        temp_device = torch.device("cpu")
+                        # Use CPU for this batch
+                        x_cpu = {key: value.to(temp_device) for key, value in x.items()}
+                        y_cpu = {key: value.to(temp_device) for key, value in y.items()}
+                        # Move model to CPU temporarily
+                        model_on_cpu = self.model.to(temp_device)
+                        current_loss = model_on_cpu.batch(x=x_cpu, y=y_cpu, **self.loss_dict)[0]
+                        # Move model back to original device for next batches
+                        try:
+                            self.model = self.model.to(self.device)
+                        except RuntimeError:
+                            logger.warning(f"Failed to move model back to {self.device.type}. Staying on CPU.")
+                            self.device = temp_device
+                    else:
+                        raise
+
                 loss += current_loss.item()
         return loss / len(self.dataloader)
 
