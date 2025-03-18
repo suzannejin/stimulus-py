@@ -100,7 +100,7 @@ def load_full_config(full_config_path: str) -> dict:
     """
     with open(full_config_path) as f:
         return ConfigDict(**yaml.safe_load(f))
-    
+
 
 @pytest.fixture
 def load_int_config(int_config_path: str) -> dict:

@@ -257,7 +257,7 @@ class TestTextAsciiEncoder:
         """Test that encoding a non-string raises a TypeError."""
         encoder = TextAsciiEncoder()
         with pytest.raises(TypeError):
-            encoder.encode(42) # type: ignore[arg-type]
+            encoder.encode(42)  # type: ignore[arg-type]
 
     def test_encode_unicode_raises(self) -> None:
         """Test that encoding a unicode string raises a ValueError."""
@@ -275,13 +275,13 @@ class TestTextAsciiEncoder:
         """Test that encoding a non-list raises a TypeError."""
         encoder = TextAsciiEncoder()
         with pytest.raises(TypeError):
-            encoder.encode_all("hello") # type: ignore[arg-type]
+            encoder.encode_all("hello")  # type: ignore[arg-type]
 
     def test_decode_not_tensor_raises(self) -> None:
         """Test that decoding a non-tensor raises a ValueError."""
         encoder = TextAsciiEncoder()
         with pytest.raises(TypeError):
-            encoder.decode("hello") # type: ignore[arg-type]
+            encoder.decode("hello")  # type: ignore[arg-type]
 
     def test_decode_3d_tensor_raises(self) -> None:
         """Test that decoding a 3D tensor raises a ValueError."""
