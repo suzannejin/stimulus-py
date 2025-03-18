@@ -95,14 +95,16 @@ class Objective:
                     model_instance.batch(x=device_x, y=device_y, optimizer=optimizer, **loss_dict)
 
                 except RuntimeError as e:
-                    if "CUDA out of memory" in str(e) and self.device.type == "cuda":
-                        logger.warning(f"CUDA out of memory during training: {e}")
+                    if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
+                        "MPS backend out of memory" in str(e) and self.device.type == "mps"
+                    ):
+                        logger.warning(f"{self.device.type.upper()} out of memory during training: {e}")
                         logger.warning("Falling back to CPU for this trial")
-                        cpu_device = torch.device("cpu")
-                        model_instance = model_instance.to(cpu_device)
+                        temp_device = torch.device("cpu")
+                        model_instance = model_instance.to(temp_device)
                         # Consider adjusting batch size or other parameters
-                        device_x = {key: value.to(cpu_device) for key, value in x.items()}
-                        device_y = {key: value.to(cpu_device) for key, value in y.items()}
+                        device_x = {key: value.to(temp_device) for key, value in x.items()}
+                        device_y = {key: value.to(temp_device) for key, value in y.items()}
                         # Retry the batch
                         model_instance.batch(x=device_x, y=device_y, optimizer=optimizer, **loss_dict)
                     else:
@@ -142,8 +144,8 @@ class Objective:
             model_instance = model_instance.to(self.device)
             logger.info(f"Model moved to device: {self.device}")
         except RuntimeError as e:
-            if self.device.type == "cuda":
-                logger.warning(f"Failed to move model to GPU: {e}")
+            if self.device.type in ["cuda", "mps"]:
+                logger.warning(f"Failed to move model to {self.device.type.upper()}: {e}")
                 logger.warning("Falling back to CPU")
                 self.device = torch.device("cpu")
                 model_instance = model_instance.to(self.device)
@@ -270,12 +272,28 @@ def get_device() -> torch.device:
     Returns:
         torch.device: The selected computation device
     """
+    if torch.backends.mps.is_available():
+        try:
+            # Try to allocate a small tensor on MPS to check if it works
+            device = torch.device("mps")
+            # Create a small tensor and move it to MPS as a test
+            test_tensor = torch.ones((1, 1)).to(device)
+            del test_tensor  # Free the memory
+            logger.info("Using MPS (Metal Performance Shaders) device")
+        except RuntimeError as e:
+            logger.warning(f"MPS available but failed to initialize: {e}")
+            logger.warning("Falling back to CPU")
+            return torch.device("cpu")
+        else:
+            return device
+
     if torch.cuda.is_available():
         device = torch.device("cuda")
         gpu_name = torch.cuda.get_device_name(0)
         memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
         logger.info(f"Using GPU: {gpu_name} with {memory:.2f} GB memory")
         return device
+
     logger.info("Using CPU (GPU not available)")
     return torch.device("cpu")
 
