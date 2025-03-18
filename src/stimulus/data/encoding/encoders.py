@@ -313,7 +313,7 @@ class TextAsciiEncoder(AbstractEncoder):
         decode: decodes a single data point
     """
 
-    def __init__(self, vocab_size: int = 256, dtype: torch.dtype = torch.int8, *, padding: bool = False) -> None:
+    def __init__(self, vocab_size: int = 256, dtype: str = "int8", *, padding: bool = False) -> None:
         """Initialize the TextAsciiEncoder class.
 
         Args:
@@ -322,7 +322,7 @@ class TextAsciiEncoder(AbstractEncoder):
             padding (bool): whether to pad the sequences with zeros. Default = False
         """
         self.vocab_size = vocab_size
-        self.dtype = dtype
+        self.dtype = getattr(torch, dtype)
         self.padding = padding
 
     def encode(self, data: str, length: Optional[int] = None) -> torch.Tensor:
