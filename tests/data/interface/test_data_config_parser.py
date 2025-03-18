@@ -51,6 +51,16 @@ def transform_config_path() -> str:
 
 
 @pytest.fixture
+def int_config_path() -> str:
+    """Get path to test config file.
+
+    Returns:
+        str: Path to test config file
+    """
+    return "tests/test_data/yaml_files/int_param.yaml"
+
+
+@pytest.fixture
 def load_transform_config(transform_config_path: str) -> dict:
     """Load the YAML config file.
 
@@ -90,6 +100,20 @@ def load_full_config(full_config_path: str) -> dict:
     """
     with open(full_config_path) as f:
         return ConfigDict(**yaml.safe_load(f))
+    
+
+@pytest.fixture
+def load_int_config(int_config_path: str) -> dict:
+    """Load the YAML config file.
+
+    Args:
+        config_path (str): Path to the YAML config file
+
+    Returns:
+        dict: The loaded YAML config
+    """
+    with open(int_config_path) as f:
+        return ConfigDict(**yaml.safe_load(f))
 
 
 def test_create_encoders(load_full_config: ConfigDict) -> None:
@@ -102,6 +126,17 @@ def test_create_encoders(load_full_config: ConfigDict) -> None:
     assert isinstance(encoders["sex"], encoders_module.StrClassificationEncoder)
     assert isinstance(encoders["age"], encoders_module.NumericEncoder)
     assert len(encoders) == len(config.columns)
+
+
+def test_load_int_config(load_int_config: ConfigDict) -> None:
+    """Test loading a config with integer parameters."""
+    config = load_int_config
+
+    encoders = create_encoders(config.columns)
+
+    # Test types
+    assert isinstance(config, ConfigDict)
+    assert isinstance(encoders, dict)
 
 
 def test_create_transforms(load_split_config: SplitTransformDict) -> None:
