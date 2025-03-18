@@ -155,4 +155,7 @@ def test_tune_loop(
             file_path=file_path,
             artifact_id=best_artifact_id,
         )
+        assert os.path.exists(file_path)
+        os.remove(file_path)
         shutil.rmtree(temp_dir)
+
