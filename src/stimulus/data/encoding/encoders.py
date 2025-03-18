@@ -345,7 +345,7 @@ class TextAsciiEncoder(AbstractEncoder):
         if not isinstance(data, str):
             raise TypeError(f"Expected input data to be a string, got {type(data).__name__}")
 
-        if any([ord(c) >= self.vocab_size for c in data]):
+        if any(ord(c) >= self.vocab_size for c in data):
             raise ValueError(f"Data contains characters with ASCII values greater than {self.vocab_size - 1}")
 
         values = np.frombuffer(data.encode(), dtype=np.uint8)
