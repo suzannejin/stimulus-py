@@ -119,8 +119,11 @@ class PredictWrapper:
         loss = 0.0
         with torch.no_grad():
             for x, y, _ in self.dataloader:
+                # Move input tensors to the same device as the model
+                device_x = {key: value.to(self.device) for key, value in x.items()}
+                device_y = {key: value.to(self.device) for key, value in y.items()}
                 # the loss_dict could be unpacked with ** and the function declaration handle it differently like **kwargs. to be decided, personally find this more clean and understable.
-                current_loss = self.model.batch(x=x, y=y, **self.loss_dict)[0]
+                current_loss = self.model.batch(x=device_x, y=device_y, **self.loss_dict)[0]
                 loss += current_loss.item()
         return loss / len(self.dataloader)
 
