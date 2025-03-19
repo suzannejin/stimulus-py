@@ -31,6 +31,7 @@ class AbstractTransform(ABC):
     def __init__(self) -> None:
         """Initialize the data transformer."""
         self.add_row: bool = False
+        self.remove_row: bool = False
         self.seed: int = 42
 
     @abstractmethod
@@ -74,6 +75,7 @@ class AbstractNoiseGenerator(AbstractTransform):
         """Initialize the noise generator."""
         super().__init__()
         self.add_row = False
+        self.remove_row = False
 
 
 class AbstractAugmentationGenerator(AbstractTransform):
@@ -86,6 +88,20 @@ class AbstractAugmentationGenerator(AbstractTransform):
         """Initialize the augmentation generator."""
         super().__init__()
         self.add_row = True
+        self.remove_row = False
+
+
+class AbstractSampler(AbstractTransform):
+    """Abstract class for samplers.
+
+    Sampler classes are expected to return np.nan in place of datapoints to be removed.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the sampler."""
+        super().__init__()
+        self.add_row = False
+        self.remove_row = True
 
 
 class UniformTextMasker(AbstractNoiseGenerator):
@@ -316,3 +332,47 @@ class GaussianChunk(AbstractAugmentationGenerator):
         with mp.Pool(mp.cpu_count()) as pool:
             function_specific_input = list(data)
             return pool.starmap(self.transform, function_specific_input)
+
+
+class BalanceSampler(AbstractSampler):
+    """Balance the data by sampling n samples from each class where n is the size of the smallest class.
+
+    This sampler class balances the data by sampling n samples from each class where n is the size of the smallest class.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the balance sampler."""
+        super().__init__()
+
+    def transform(self, data: Any) -> Any:
+        """Raises NotImplementedError, as it does not make sense to balance a single data point."""
+        raise NotImplementedError("BalanceSampler does not make sense for a single data point.")
+
+    def transform_all(self, data: list) -> list:
+        """Balance the data by sampling n samples from each class where n is the size of the smallest class.
+
+        Args:
+            data (list): the data to be balanced
+
+        Returns:
+            transformed_data (list): the balanced data
+        """
+        # Get all possible classes in the data
+        classes = set(data)
+
+        # build a dictionary of classes and their corresponding indices
+        data_dict: dict[Any, list[int]] = {c: [] for c in classes}
+        for i, c in enumerate(data):
+            data_dict[c].append(i)
+
+        # get min class size
+        min_class_size = min(len(data_dict[c]) for c in classes)
+
+        # sample n samples from each class where n is the size of the smallest class
+        kept_indices: list[int] = []
+        for c in classes:
+            indices = np.random.choice(data_dict[c], size=min_class_size, replace=False)
+            kept_indices.extend(indices)
+
+        # return the balanced data, with np.nan in place of datapoints to be removed
+        return [data[i] if i in kept_indices else np.nan for i in range(len(data))]

@@ -7,6 +7,7 @@ import pytest
 
 from src.stimulus.data.transforming.transforms import (
     AbstractTransform,
+    BalanceSampler,
     GaussianChunk,
     GaussianNoise,
     ReverseComplement,
@@ -251,3 +252,16 @@ class TestReverseComplement:
         for item in transformed_data:
             assert isinstance(item, str)
         assert transformed_data == test_data.expected_multiple_outputs
+
+
+def test_balance_sampler() -> None:
+    """Test the BalanceSampler class."""
+    sampler = BalanceSampler()
+    data = ["a", "a", "a", "b", "b", "c", "c", "c", "c", "c"]
+    transformed_data = sampler.transform_all(data)
+    nb_a = len([x for x in transformed_data if x == "a"])
+    nb_b = len([x for x in transformed_data if x == "b"])
+    nb_c = len([x for x in transformed_data if x == "c"])
+    nb_nan = len([x for x in transformed_data if x is np.nan])
+    assert nb_a == nb_b == nb_c == 2
+    assert nb_nan == 4

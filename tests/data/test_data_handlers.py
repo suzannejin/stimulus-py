@@ -3,6 +3,7 @@
 import logging
 from typing import Any
 
+import numpy as np
 import pytest
 import torch
 
@@ -69,6 +70,13 @@ def ibis_znf395_transforms() -> dict[str, list]:
     """Create test transforms."""
     return {
         "dna": [transforms_module.ReverseComplement()],
+    }
+
+@pytest.fixture
+def ibis_znf395_balance_sampler() -> dict[str, list]:
+    """Create test balance sampler."""
+    return {
+        "binding": [transforms_module.BalanceSampler()],
     }
 
 
@@ -175,6 +183,32 @@ def test_dataset_processor_apply_transformation_group_ibis_znf395(
     assert processor.data["dna"].to_list() != control.data["dna"].to_list()
     assert len(processor.data) == len(control.data) * 2
 
+
+def test_dataset_processor_apply_transformation_group_ibis_znf395_balance_sampler(
+    ibis_znf395_csv_path: str,
+    ibis_znf395_balance_sampler: dict,
+    dummy_splitter: Any,
+) -> None:
+    """Test applying transformation groups."""
+    processor = DatasetProcessor(
+        csv_path=ibis_znf395_csv_path,
+        transforms=ibis_znf395_balance_sampler,
+        splitter=dummy_splitter,
+        split_columns=["dna"],
+    )
+
+    control = DatasetProcessor(
+        csv_path=ibis_znf395_csv_path,
+        transforms={},
+        splitter=dummy_splitter,
+        split_columns=["dna"],
+    )
+
+    processor.apply_transformations()
+
+    assert processor.data["binding"].to_list() != control.data["binding"].to_list()
+    assert processor.data["binding"].to_list().count(np.nan) == 0
+    assert processor.data["binding"].to_list().count(0) == processor.data["binding"].to_list().count(1)
 
 def test_dataset_processor_shuffle_labels(
     titanic_csv_path: str,
