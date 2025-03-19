@@ -90,7 +90,14 @@ class TextOneHotEncoder(AbstractEncoder):
         _sequence_to_array: transforms a sequence into a numpy array
     """
 
-    def __init__(self, alphabet: str = "acgt", *, convert_lowercase: bool = False, padding: bool = False) -> None:
+    def __init__(
+        self,
+        alphabet: str = "acgt",
+        *,
+        convert_lowercase: bool = False,
+        padding: bool = False,
+        dtype: torch.dtype = torch.int16,
+    ) -> None:
         """Initialize the TextOneHotEncoder class.
 
         Args:
@@ -110,6 +117,7 @@ class TextOneHotEncoder(AbstractEncoder):
         self.alphabet = alphabet
         self.convert_lowercase = convert_lowercase
         self.padding = padding
+        self.dtype = dtype
 
         self.encoder = preprocessing.OneHotEncoder(
             categories=[list(alphabet)],
@@ -190,7 +198,7 @@ class TextOneHotEncoder(AbstractEncoder):
         sequence_array = self._sequence_to_array(data)
         transformed = self.encoder.transform(sequence_array)
         numpy_array = np.squeeze(np.stack(transformed.toarray()))
-        return torch.from_numpy(numpy_array)
+        return torch.from_numpy(numpy_array).to(self.dtype)
 
     def encode_multiprocess(self, data: list[str]) -> list[torch.Tensor]:
         """Encodes a list of sequences using multiprocessing."""
@@ -313,7 +321,7 @@ class TextAsciiEncoder(AbstractEncoder):
         decode: decodes a single data point
     """
 
-    def __init__(self, vocab_size: int = 256, dtype: str = "int8", *, padding: bool = False) -> None:
+    def __init__(self, vocab_size: int = 256, dtype: torch.dtype = torch.int8, *, padding: bool = False) -> None:
         """Initialize the TextAsciiEncoder class.
 
         Args:
@@ -322,7 +330,7 @@ class TextAsciiEncoder(AbstractEncoder):
             padding (bool): whether to pad the sequences with zeros. Default = False
         """
         self.vocab_size = vocab_size
-        self.dtype = getattr(torch, dtype)
+        self.dtype = dtype
         self.padding = padding
 
     def encode(self, data: str, length: Optional[int] = None) -> torch.Tensor:
@@ -508,13 +516,14 @@ class StrClassificationEncoder(AbstractEncoder):
             Validates that all items in the data list are strings, raising a ValueError otherwise.
     """
 
-    def __init__(self, *, scale: bool = False) -> None:
+    def __init__(self, *, scale: bool = False, dtype: torch.dtype = torch.int16) -> None:
         """Initialize the StrClassificationEncoder class.
 
         Args:
             scale (bool): whether to scale the labels to be between 0 and 1. Default = False
         """
         self.scale = scale
+        self.dtype = dtype
 
     def encode(self, data: str) -> int:
         """Returns an error since encoding a single string does not make sense.
@@ -546,7 +555,7 @@ class StrClassificationEncoder(AbstractEncoder):
         if self.scale:
             encoded_data = encoded_data / max(len(encoded_data) - 1, 1)
 
-        return encoded_data
+        return encoded_data.to(self.dtype)
 
     def decode(self, data: Any) -> Any:
         """Returns an error since decoding does not make sense without encoder information, which is not yet supported."""
@@ -580,13 +589,14 @@ class NumericRankEncoder(AbstractEncoder):
         _check_input_dtype: checks if the input data is int or float data
     """
 
-    def __init__(self, *, scale: bool = False) -> None:
+    def __init__(self, *, scale: bool = False, dtype: torch.dtype = torch.int16) -> None:
         """Initialize the NumericRankEncoder class.
 
         Args:
             scale (bool): whether to scale the ranks to be between 0 and 1. Default = False
         """
         self.scale = scale
+        self.dtype = dtype
 
     def encode(self, data: Any) -> torch.Tensor:
         """Returns an error since encoding a single float does not make sense."""
@@ -614,7 +624,7 @@ class NumericRankEncoder(AbstractEncoder):
         ranks: np.ndarray = np.argsort(np.argsort(array_data))
         if self.scale:
             ranks = ranks / max(len(ranks) - 1, 1)
-        return torch.tensor(ranks)
+        return torch.tensor(ranks).to(self.dtype)
 
     def decode(self, data: Any) -> Any:
         """Returns an error since decoding does not make sense without encoder information, which is not yet supported."""
