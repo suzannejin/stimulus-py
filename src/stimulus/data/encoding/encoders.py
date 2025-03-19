@@ -77,7 +77,6 @@ class TextOneHotEncoder(AbstractEncoder):
     If a character c is not in the alphabet, c will be represented by a vector of zeros.
     This encoder is optimized for processing large batches of sequences efficiently on GPU.
     """
-
     # Constants to replace magic numbers
     TENSOR_3D_SHAPE = 3
     ASCII_MAX_VALUE = 128
@@ -176,7 +175,6 @@ class TextOneHotEncoder(AbstractEncoder):
         # Transfer to GPU in one operation
         # OPTIMIZATION: Use torch.tensor directly on device rather than to() to avoid copy
         ascii_tensor = torch.tensor(ascii_array, dtype=torch.int64, device=self.device)
-
         # OPTIMIZATION: Create valid ASCII mask directly
         # This combines multiple operations into one
         valid_mask = (ascii_tensor > 0) & (ascii_tensor < self.ASCII_MAX_VALUE)
@@ -476,13 +474,14 @@ class StrClassificationEncoder(AbstractEncoder):
             Validates that all items in the data list are strings, raising a ValueError otherwise.
     """
 
-    def __init__(self, *, scale: bool = False) -> None:
+    def __init__(self, *, scale: bool = False, dtype: torch.dtype = torch.int16) -> None:
         """Initialize the StrClassificationEncoder class.
 
         Args:
             scale (bool): whether to scale the labels to be between 0 and 1. Default = False
         """
         self.scale = scale
+        self.dtype = dtype
 
     def encode(self, data: str) -> int:
         """Returns an error since encoding a single string does not make sense.
@@ -514,7 +513,7 @@ class StrClassificationEncoder(AbstractEncoder):
         if self.scale:
             encoded_data = encoded_data / max(len(encoded_data) - 1, 1)
 
-        return encoded_data
+        return encoded_data.to(self.dtype)
 
     def decode(self, data: Any) -> Any:
         """Returns an error since decoding does not make sense without encoder information, which is not yet supported."""
@@ -548,13 +547,14 @@ class NumericRankEncoder(AbstractEncoder):
         _check_input_dtype: checks if the input data is int or float data
     """
 
-    def __init__(self, *, scale: bool = False) -> None:
+    def __init__(self, *, scale: bool = False, dtype: torch.dtype = torch.int16) -> None:
         """Initialize the NumericRankEncoder class.
 
         Args:
             scale (bool): whether to scale the ranks to be between 0 and 1. Default = False
         """
         self.scale = scale
+        self.dtype = dtype
 
     def encode(self, data: Any) -> torch.Tensor:
         """Returns an error since encoding a single float does not make sense."""
@@ -582,7 +582,7 @@ class NumericRankEncoder(AbstractEncoder):
         ranks: np.ndarray = np.argsort(np.argsort(array_data))
         if self.scale:
             ranks = ranks / max(len(ranks) - 1, 1)
-        return torch.tensor(ranks)
+        return torch.tensor(ranks).to(self.dtype)
 
     def decode(self, data: Any) -> Any:
         """Returns an error since decoding does not make sense without encoder information, which is not yet supported."""

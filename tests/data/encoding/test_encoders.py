@@ -214,6 +214,13 @@ class TestTextAsciiEncoder:
         assert torch.all(output[0] == torch.tensor([104, 101, 108, 108, 111, 0]))
         assert torch.all(output[1] == torch.tensor([119, 111, 114, 108, 100, 115]))
 
+    def test_encode_dtype(self) -> None:
+        """Test encoding with a non-default dtype."""
+        encoder = TextAsciiEncoder(dtype=torch.int32)
+        input_str = "hello"
+        output = encoder.encode(input_str)
+        assert output.dtype == torch.int32
+
     def test_encode_not_string_raises(self) -> None:
         """Test that encoding a non-string raises a TypeError."""
         encoder = TextAsciiEncoder()
@@ -399,7 +406,7 @@ class TestStrClassificationEncoder:
         Returns:
             StrClassificationEncoder: Default encoder instance
         """
-        return StrClassificationEncoder()
+        return StrClassificationEncoder(dtype=torch.int64)
 
     @staticmethod
     @pytest.fixture
@@ -409,7 +416,7 @@ class TestStrClassificationEncoder:
         Returns:
             StrClassificationEncoder: Scaled encoder instance
         """
-        return StrClassificationEncoder(scale=True)
+        return StrClassificationEncoder(scale=True, dtype=torch.float32)
 
     @pytest.mark.parametrize("fixture", ["str_encoder", "scaled_encoder"])
     def test_encode_raises_not_implemented(
@@ -505,7 +512,7 @@ class TestNumericRankEncoder:
         Returns:
             NumericRankEncoder: Scaled encoder instance
         """
-        return NumericRankEncoder(scale=True)
+        return NumericRankEncoder(scale=True, dtype=torch.float32)
 
     @pytest.mark.parametrize("fixture", ["rank_encoder", "scaled_encoder"])
     def test_encode_raises_not_implemented(

@@ -4,7 +4,7 @@ global_params:
 columns:
   - column_name: "hi"
     column_type: "type"
-    data_type: str
+    data_type: str # Wrong
     encoder:
       - name: OneHotEncoder
         params:
