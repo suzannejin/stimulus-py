@@ -161,6 +161,11 @@ class DatasetProcessor(DatasetHandler):
                         pl.Series(column_name, transformed_data),
                     )
                     self.data = pl.concat([self.data, new_rows], how="vertical")
+
+                elif transform.remove_row:
+                    self.data = self.data.with_columns(
+                        pl.Series(column_name, transformed_data, strict=False),
+                    ).drop_nans()
                 else:
                     self.data = self.data.with_columns(
                         pl.Series(column_name, transformed_data),
