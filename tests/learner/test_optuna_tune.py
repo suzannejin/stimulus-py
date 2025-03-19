@@ -121,8 +121,8 @@ def test_tune_loop(
             train_torch_dataset=train_data,
             val_torch_dataset=val_data,
             artifact_store=artifact_store,
-            max_batches=get_model_config.max_batches,
-            compute_objective_every_n_batches=get_model_config.compute_objective_every_n_batches,
+            max_samples=get_model_config.max_samples,
+            compute_objective_every_n_samples=get_model_config.compute_objective_every_n_samples,
             target_metric=get_model_config.objective.metric,
             device=device,
         )

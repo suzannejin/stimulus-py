@@ -77,6 +77,7 @@ class TextOneHotEncoder(AbstractEncoder):
     If a character c is not in the alphabet, c will be represented by a vector of zeros.
     This encoder is optimized for processing large batches of sequences efficiently on GPU.
     """
+
     # Constants to replace magic numbers
     TENSOR_3D_SHAPE = 3
     ASCII_MAX_VALUE = 128

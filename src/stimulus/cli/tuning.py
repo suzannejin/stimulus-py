@@ -109,8 +109,8 @@ def tune(
         train_torch_dataset=train_dataset,
         val_torch_dataset=validation_dataset,
         artifact_store=artifact_store,
-        max_batches=model_config.max_batches,
-        compute_objective_every_n_batches=model_config.compute_objective_every_n_batches,
+        max_samples=model_config.max_samples,
+        compute_objective_every_n_samples=model_config.compute_objective_every_n_samples,
         target_metric=model_config.objective.metric,
         device=device,
     )

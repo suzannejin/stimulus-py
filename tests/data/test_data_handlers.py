@@ -72,6 +72,7 @@ def ibis_znf395_transforms() -> dict[str, list]:
         "dna": [transforms_module.ReverseComplement()],
     }
 
+
 @pytest.fixture
 def ibis_znf395_balance_sampler() -> dict[str, list]:
     """Create test balance sampler."""
@@ -209,6 +210,7 @@ def test_dataset_processor_apply_transformation_group_ibis_znf395_balance_sample
     assert processor.data["binding"].to_list() != control.data["binding"].to_list()
     assert processor.data["binding"].to_list().count(np.nan) == 0
     assert processor.data["binding"].to_list().count(0) == processor.data["binding"].to_list().count(1)
+
 
 def test_dataset_processor_shuffle_labels(
     titanic_csv_path: str,
