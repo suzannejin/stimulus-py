@@ -2,11 +2,13 @@
 
 from typing import Any
 
+import torch
 import yaml
 
 from stimulus.data.encoding import encoders as encoders_module
 from stimulus.data.interface.data_config_schema import (
     Columns,
+    ColumnsEncoder,
     ConfigDict,
     Split,
     SplitConfigDict,
@@ -36,11 +38,34 @@ def _instantiate_component(module: Any, name: str, params: dict) -> Any:
 
 def create_encoders(column_config: list[Columns]) -> dict[str, encoders_module.AbstractEncoder]:
     """Factory for creating encoders from config."""
+    data_types = {
+        "int8": torch.int8,
+        "int16": torch.int16,
+        "int32": torch.int32,
+        "int64": torch.int64,
+        "float16": torch.float16,
+        "float32": torch.float32,
+        "float64": torch.float64,
+    }
+
+    for column in column_config:
+        dtype = data_types.get(column.data_type, None)
+        if dtype is None:
+            raise ValueError(f"Invalid data type {column.data_type} for column {column.column_name}")
+        column.data_type = dtype
+
+    def add_dtype(params: ColumnsEncoder) -> dict:
+        params_dict = (
+            params.model_dump() if isinstance(params, ColumnsEncoder) else params if isinstance(params, dict) else {}
+        )
+        params_dict.update({"dtype": column.data_type})
+        return params_dict
+
     return {
         column.column_name: _instantiate_component(
             module=encoders_module,
             name=column.encoder[0].name,
-            params=column.encoder[0].params,
+            params=add_dtype(column.encoder[0].params),
         )
         for column in column_config
     }
