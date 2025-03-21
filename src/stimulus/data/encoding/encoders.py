@@ -323,18 +323,18 @@ class TextAsciiEncoder(AbstractEncoder):
             raise ValueError(f"Data contains characters with ASCII values greater than {self.vocab_size - 1}")
 
         values = np.frombuffer(data.encode(), dtype=np.uint8)
-        values_arr = np.array([values])
+        values_arr = [values]
 
         if length is not None:
             if len(values) > length:
                 if not slice_long:
                     raise ValueError(f"Data length {len(values)} is greater than the specified length {length}")
                 values_arr = np.array_split(values, len(values) // length + 1)
-                values_arr = np.array([np.pad(v, (length - len(v), 0), mode="constant") for v in values])
+                values_arr = [np.pad(v, (length - len(v), 0), mode="constant") for v in values_arr]
             else:
-                values_arr = np.array([np.pad(values, (length - len(values), 0), mode="constant")])
+                values_arr = [np.pad(values, (length - len(values), 0), mode="constant")]
 
-        return torch.tensor(values_arr, dtype=self.dtype)
+        return torch.tensor(np.array(values_arr), dtype=self.dtype)
 
     def encode_all(self, data: list[str], *, slice_long: bool = False) -> torch.Tensor:
         """Encodes the data.
@@ -354,9 +354,7 @@ class TextAsciiEncoder(AbstractEncoder):
         if not isinstance(data, list):
             raise TypeError(f"Expected input data to be a list of strings, got {type(data).__name__}")
 
-        encoded_data = [
-            self.encode(d, self.max_len, slice_long=slice_long).flatten(end_dim=1) for d in data
-        ]
+        encoded_data = [self.encode(d, self.max_len, slice_long=slice_long).flatten(end_dim=1) for d in data]
         return torch.stack(encoded_data)
 
     def decode(self, data: torch.Tensor) -> Union[str, list[str]]:
