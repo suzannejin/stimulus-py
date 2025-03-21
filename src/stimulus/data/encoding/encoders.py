@@ -281,7 +281,11 @@ class TextAsciiEncoder(AbstractEncoder):
     """
 
     def __init__(
-        self, vocab_size: int = 256, dtype: torch.dtype = torch.int8, *, max_len: Optional[int] = None
+        self,
+        vocab_size: int = 256,
+        dtype: torch.dtype = torch.int8,
+        *,
+        max_len: Optional[int] = None,
     ) -> None:
         """Initialize the TextAsciiEncoder class.
 
