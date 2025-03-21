@@ -77,6 +77,7 @@ class TextOneHotEncoder(AbstractEncoder):
     If a character c is not in the alphabet, c will be represented by a vector of zeros.
     This encoder is optimized for processing large batches of sequences efficiently on GPU.
     """
+
     # Constants to replace magic numbers
     TENSOR_3D_SHAPE = 3
     ASCII_MAX_VALUE = 128
@@ -279,7 +280,9 @@ class TextAsciiEncoder(AbstractEncoder):
         decode: decodes a single data point
     """
 
-    def __init__(self, vocab_size: int = 256, dtype: torch.dtype = torch.int8, *, padding: bool = False) -> None:
+    def __init__(
+        self, vocab_size: int = 256, dtype: torch.dtype = torch.int8, *, max_len: Optional[int] = None
+    ) -> None:
         """Initialize the TextAsciiEncoder class.
 
         Args:
@@ -289,7 +292,7 @@ class TextAsciiEncoder(AbstractEncoder):
         """
         self.vocab_size = vocab_size
         self.dtype = dtype
-        self.padding = padding
+        self.max_len = max_len
 
     def encode(self, data: str, length: Optional[int] = None) -> torch.Tensor:
         """Encodes the data.
@@ -319,7 +322,7 @@ class TextAsciiEncoder(AbstractEncoder):
         if length is not None:
             if len(values) > length:
                 raise ValueError(f"Data length {len(values)} is greater than the specified length {length}")
-            values = np.pad(values, (0, length - len(values)), mode="constant")
+            values = np.pad(values, (length - len(values), 0), mode="constant")
 
         return torch.tensor(values, dtype=self.dtype)
 
@@ -340,8 +343,7 @@ class TextAsciiEncoder(AbstractEncoder):
         if not isinstance(data, list):
             raise TypeError(f"Expected input data to be a list of strings, got {type(data).__name__}")
 
-        max_len = max(len(d) for d in data) if self.padding else None
-        encoded_data = [self.encode(d, max_len) for d in data]
+        encoded_data = [self.encode(d, self.max_len) for d in data]
         return torch.stack(encoded_data)
 
     def decode(self, data: torch.Tensor) -> Union[str, list[str]]:
