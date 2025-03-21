@@ -298,7 +298,7 @@ class TextAsciiEncoder(AbstractEncoder):
         self.dtype = dtype
         self.max_len = max_len
 
-    def encode(self, data: str, length: Optional[int] = None) -> torch.Tensor:
+    def encode(self, data: str, length: Optional[int] = None, slice: bool = False) -> torch.Tensor:
         """Encodes the data.
 
         This method takes as input a single data point, should be mappable to a single output.
@@ -306,6 +306,7 @@ class TextAsciiEncoder(AbstractEncoder):
         Args:
             data (str): a single data point
             length (Optional[int]): the length to pad the data to. Default = None
+            slice (bool): whether to slice the data into chunks of the specified length if it is too long. Default = False
 
         Returns:
             encoded_data_point (torch.Tensor): the encoded data point
@@ -325,18 +326,24 @@ class TextAsciiEncoder(AbstractEncoder):
 
         if length is not None:
             if len(values) > length:
-                raise ValueError(f"Data length {len(values)} is greater than the specified length {length}")
-            values = np.pad(values, (length - len(values), 0), mode="constant")
+                if not slice:
+                    raise ValueError(f"Data length {len(values)} is greater than the specified length {length}")
+                else:
+                    values = np.array_split(values, len(values) // length + 1)
+                    values = [np.pad(v, (length - len(v), 0), mode="constant") for v in values]
+            else:
+                values = np.pad(values, (length - len(values), 0), mode="constant")
 
         return torch.tensor(values, dtype=self.dtype)
 
-    def encode_all(self, data: list[str]) -> torch.Tensor:
+    def encode_all(self, data: list[str], slice: bool = False) -> torch.Tensor:
         """Encodes the data.
 
         This method takes as input a list of data points, or a single string, and returns a torch.tensor.
 
         Args:
             data (list[str]): a list of strings or a single string
+            slice (bool): whether to slice the data into chunks of the specified length if it is too long. Default = False
 
         Returns:
             encoded_data (torch.Tensor): the encoded data
@@ -347,7 +354,7 @@ class TextAsciiEncoder(AbstractEncoder):
         if not isinstance(data, list):
             raise TypeError(f"Expected input data to be a list of strings, got {type(data).__name__}")
 
-        encoded_data = [self.encode(d, self.max_len) for d in data]
+        encoded_data = [self.encode(d, self.max_len, slice) for d in data]
         return torch.stack(encoded_data)
 
     def decode(self, data: torch.Tensor) -> Union[str, list[str]]:
