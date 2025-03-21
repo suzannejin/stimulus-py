@@ -323,6 +323,7 @@ class TextAsciiEncoder(AbstractEncoder):
             raise ValueError(f"Data contains characters with ASCII values greater than {self.vocab_size - 1}")
 
         values = np.frombuffer(data.encode(), dtype=np.uint8)
+        values_arr = [values]
 
         if length is not None:
             if len(values) > length:
