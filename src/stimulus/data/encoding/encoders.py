@@ -328,9 +328,8 @@ class TextAsciiEncoder(AbstractEncoder):
             if len(values) > length:
                 if not slice:
                     raise ValueError(f"Data length {len(values)} is greater than the specified length {length}")
-                else:
-                    values = np.array_split(values, len(values) // length + 1)
-                    values = [np.pad(v, (length - len(v), 0), mode="constant") for v in values]
+                values = np.array_split(values, len(values) // length + 1)
+                values = [np.pad(v, (length - len(v), 0), mode="constant") for v in values]
             else:
                 values = np.pad(values, (length - len(values), 0), mode="constant")
 
