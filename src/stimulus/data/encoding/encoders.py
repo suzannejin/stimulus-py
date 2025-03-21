@@ -7,7 +7,6 @@ from typing import Any, Optional, Union
 import numpy as np
 import torch
 import torch.nn.functional as F  # noqa: N812
-from einops import rearrange
 from sklearn import preprocessing
 
 from stimulus.learner.optuna_tune import get_device
@@ -356,7 +355,7 @@ class TextAsciiEncoder(AbstractEncoder):
             raise TypeError(f"Expected input data to be a list of strings, got {type(data).__name__}")
 
         encoded_data = [
-            rearrange(self.encode(d, self.max_len, slice_long=slice_long), "s c L -> (s c) L") for d in data
+            self.encode(d, self.max_len, slice_long=slice_long).flatten(end_dim=1) for d in data
         ]
         return torch.stack(encoded_data)
 
