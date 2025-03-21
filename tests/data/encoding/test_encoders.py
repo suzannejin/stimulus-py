@@ -173,7 +173,7 @@ class TestTextAsciiEncoder:
         input_str = "hello"
         output = encoder.encode(input_str)
         assert isinstance(output, torch.Tensor)
-        assert output.shape == (5,)
+        assert output.shape == (1,5)
         assert torch.all(output == torch.tensor([104, 101, 108, 108, 111]))
 
     def test_encode_all(self) -> None:
