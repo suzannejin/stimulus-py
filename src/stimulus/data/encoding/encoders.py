@@ -292,7 +292,7 @@ class TextAsciiEncoder(AbstractEncoder):
         Args:
             vocab_size (int): the size of the vocabulary. Default = 256 (ASCII characters)
             dtype (torch.dtype): the data type of the encoded data. Default = torch.int8 (8-bit integer)
-            padding (bool): whether to pad the sequences with zeros. Default = False
+            max_len (Optional[int]): the length to pad the sequences to. No padding is done if set to None. Default = None
         """
         self.vocab_size = vocab_size
         self.dtype = dtype
