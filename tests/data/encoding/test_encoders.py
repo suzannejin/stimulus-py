@@ -206,13 +206,13 @@ class TestTextAsciiEncoder:
 
     def test_encode_all_padding(self) -> None:
         """Test encoding a list of strings with padding."""
-        encoder = TextAsciiEncoder(padding=True)
+        encoder = TextAsciiEncoder(max_len=10)
         input_strs = ["hello", "worlds"]
         output = encoder.encode_all(input_strs)
         assert isinstance(output, torch.Tensor)
         assert output.shape == (2, 6)
-        assert torch.all(output[0] == torch.tensor([104, 101, 108, 108, 111, 0]))
-        assert torch.all(output[1] == torch.tensor([119, 111, 114, 108, 100, 115]))
+        assert torch.all(output[0] == torch.tensor([0, 0, 0, 0, 0, 104, 101, 108, 108, 111]))
+        assert torch.all(output[1] == torch.tensor([0, 0, 0, 0, 119, 111, 114, 108, 100, 115]))
 
     def test_encode_dtype(self) -> None:
         """Test encoding with a non-default dtype."""
