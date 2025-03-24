@@ -1,8 +1,7 @@
 """Module for defining the data config schema."""
 
-import torch
-
 from typing import Any, Optional, Union
+
 from pydantic import BaseModel, field_validator
 
 
@@ -17,13 +16,11 @@ class ColumnsEncoder(BaseModel):
 
     name: str
     params: dict[str, Union[int, str, list[Any]]]
-    
-    @field_validator('params')
-    def validate_dtype(cls, params):
-        """Validate that the 'dtype' key is present in the encoder parameters
-        and convert the str into torch dtype.
-        """
-        if 'dtype' not in params:
+
+    @field_validator("params")
+    def validate_dtype(cls, params: dict) -> dict: # noqa: N805
+        """Validate that the 'dtype' key is present in the encoder parameters and convert the str into torch dtype."""
+        if "dtype" not in params:
             raise ValueError("params must contain 'dtype' key")
         return params
 

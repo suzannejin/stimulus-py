@@ -8,7 +8,6 @@ import yaml
 from stimulus.data.encoding import encoders as encoders_module
 from stimulus.data.interface.data_config_schema import (
     Columns,
-    ColumnsEncoder,
     ConfigDict,
     Split,
     SplitConfigDict,
