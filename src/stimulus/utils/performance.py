@@ -116,7 +116,12 @@ class Performance:
                 return labels, predictions
             # Case 3: Multi-class classification with shape (N,C)
             # Keep predictions as-is if labels are 1D and batch sizes match
-            if len(labels.shape) == 1 and predictions.shape[0] == labels.shape[0]:
+            if len(labels.shape) == 1 and len(predictions.shape) == 1 and predictions.shape[0] == labels.shape[0]:
+                return labels, predictions
+
+            # Case 4: Predictions are column vectors with shape (N,1)
+            if predictions.shape[1] == 1:
+                predictions = predictions.squeeze(-1)
                 return labels, predictions
 
         # If we get here, the shapes are not compatible
@@ -156,6 +161,6 @@ class Performance:
     def spearmanr(self, labels: NDArray[np.float64], predictions: NDArray[np.float64]) -> float:
         """Compute Spearman correlation coefficient."""
         if np.allclose(labels, labels[0]) or np.allclose(predictions, predictions[0]):
-            logger.info("Labels or predictions are constant. Returning 0.0.")
+            logger.info("Labels or predictions are constant. Spearman correlation is not defined. Returning 0.0.")
             return 0.0
         return float(spearmanr(labels, predictions)[0])
