@@ -5,11 +5,11 @@ global_params:
 columns:
   - column_name: passenger_id
     column_type: meta
-    data_type: int16
     encoder:
       - name: TextAsciiEncoder
         params:
           vocab_size: 100
+          dtype: int16
 
 transforms:
   - transformation_name: "noise"

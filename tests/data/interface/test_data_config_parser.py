@@ -1,6 +1,8 @@
 """Test the data config parser."""
 
+import logging
 import pytest
+import torch
 import yaml
 
 import stimulus.data.encoding.encoders as encoders_module  # TODO: should be imported from stimulus.typing instead.
@@ -17,7 +19,11 @@ from stimulus.data.interface.data_config_schema import (
     ConfigDict,
     SplitConfigDict,
     SplitTransformDict,
+    ColumnsEncoder,
+    Columns,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @pytest.fixture
@@ -38,7 +44,6 @@ def full_config_path() -> str:
         str: Path to test config file
     """
     return "tests/test_data/titanic/titanic.yaml"
-
 
 @pytest.fixture
 def transform_config_path() -> str:
@@ -115,18 +120,30 @@ def load_int_config(int_config_path: str) -> dict:
     with open(int_config_path) as f:
         return ConfigDict(**yaml.safe_load(f))
 
-
 def test_create_encoders(load_full_config: ConfigDict) -> None:
     """Test encoder creation from config."""
     config = load_full_config
-
     encoders = create_encoders(config.columns)
 
     # Test encoder types
     assert isinstance(encoders["sex"], encoders_module.StrClassificationEncoder)
     assert isinstance(encoders["age"], encoders_module.NumericEncoder)
     assert len(encoders) == len(config.columns)
+    assert encoders["passenger_id"].dtype == torch.int32
+    assert encoders["age"].dtype == torch.int8
+    assert encoders["fare"].dtype == torch.float32
 
+def test_create_encoders_invalid_dtype():
+    """Test error handling for invalid dtype."""
+    column_config = [
+        Columns(
+            column_name="test",
+            column_type="input",
+            encoder=[ColumnsEncoder(name="NumericEncoder", params={"dtype": "invalid_dtype"})]
+        )
+    ]
+    with pytest.raises(ValueError):
+        create_encoders(column_config)
 
 def test_load_int_config(load_int_config: ConfigDict) -> None:
     """Test loading a config with integer parameters."""
