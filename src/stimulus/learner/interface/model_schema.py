@@ -26,6 +26,7 @@ class TunableParameter(pydantic.BaseModel):
             "int",
             "loguniform",
             "uniform",
+            "variable_list",
         ]:
             raise NotImplementedError(
                 f"Mode {self.mode} not available for Optuna, please use one of the following: categorical, discrete_uniform, float, int, loguniform, uniform, variable_list",
