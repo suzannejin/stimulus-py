@@ -1,10 +1,10 @@
 """Optuna tuning module."""
 
 import inspect
+import json
 import logging
 import os
 import uuid
-import json
 from typing import Any
 
 import optuna
@@ -238,7 +238,9 @@ class Objective:
             os.remove(optimizer_path)
             os.remove(model_suggestions_path)
         except FileNotFoundError:
-            logger.info(f"File was already deleted: {model_path} or {optimizer_path} or {model_suggestions_path}, most likely due to pruning")
+            logger.info(
+                f"File was already deleted: {model_path} or {optimizer_path} or {model_suggestions_path}, most likely due to pruning",
+            )
         trial.set_user_attr("model_id", artifact_id_model)
         trial.set_user_attr("model_path", model_path)
         trial.set_user_attr("optimizer_id", artifact_id_optimizer)
