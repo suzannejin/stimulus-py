@@ -11,7 +11,10 @@ from stimulus.utils.model_file_interface import import_class_from_file
 def load_model(model_path, weight_path):
     """Dynamically loads the model from a .py file."""
     model = import_class_from_file(model_path)()
+    # Check which is the model i loaded 
+    print(model)
     weights = load_file(weight_path)
+    print(weights)
     model.load_state_dict(weights)
     return model
 
