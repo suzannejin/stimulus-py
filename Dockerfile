@@ -3,7 +3,7 @@
 ############################
 # Stage 1: Builder         #
 ############################
-FROM --platform=linux/amd64 python:3.12-slim AS builder
+FROM python:3.12-slim AS builder
 
 # Install build dependencies
 RUN apt-get update && apt-get install -y build-essential \
@@ -39,7 +39,7 @@ RUN ls -la /usr/local/bin/
 ############################
 # Stage 2: Final Image     #
 ############################
-FROM --platform=linux/amd64 python:3.12-slim
+FROM python:3.12-slim
 
 # Install minimal runtime dependency
 RUN apt-get update && apt-get install -y procps \
