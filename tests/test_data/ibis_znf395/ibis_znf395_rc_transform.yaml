@@ -3,17 +3,17 @@ global_params:
 columns:
 - column_name: dna
   column_type: input
-  data_type: int8
   encoder:
   - name: TextOneHotEncoder
     params:
+      dtype: float32
       alphabet: acgt
 - column_name: binding
   column_type: label
-  data_type: float32
   encoder:
   - name: NumericEncoder
-    params: {}
+    params:
+      dtype: float32
 transforms:
   transformation_name: reverse_complement
   columns:

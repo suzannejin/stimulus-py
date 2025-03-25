@@ -58,6 +58,7 @@ def tune(
     optuna_results_dirpath: str = "./optuna_results",
     best_model_path: str = "best_model.safetensors",
     best_optimizer_path: str = "best_optimizer.pt",
+    best_config_path: str = "best_config.json",
 ) -> None:
     """Run model hyperparameter tuning.
 
@@ -129,6 +130,8 @@ def tune(
     best_optimizer_artifact_id = best_trial.user_attrs["optimizer_id"]
     best_model_file_path = best_trial.user_attrs["model_path"]
     best_optimizer_file_path = best_trial.user_attrs["optimizer_path"]
+    best_model_suggestions_artifact_id = best_trial.user_attrs["model_suggestions_id"]
+    best_model_suggestions_file_path = best_trial.user_attrs["model_suggestions_path"]
 
     optuna.artifacts.download_artifact(
         artifact_store=artifact_store,
@@ -140,12 +143,20 @@ def tune(
         file_path=best_optimizer_file_path,
         artifact_id=best_optimizer_artifact_id,
     )
+    optuna.artifacts.download_artifact(
+        artifact_store=artifact_store,
+        file_path=best_model_suggestions_file_path,
+        artifact_id=best_model_suggestions_artifact_id,
+    )
     try:
         shutil.move(best_model_file_path, best_model_path)
         shutil.move(best_optimizer_file_path, best_optimizer_path)
+        shutil.move(best_model_suggestions_file_path, best_config_path)
     except FileNotFoundError:
         logger.info("Best model or optimizer file_path not found, creating output directories")
         os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
         os.makedirs(os.path.dirname(best_optimizer_path), exist_ok=True)
+        os.makedirs(os.path.dirname(best_config_path), exist_ok=True)
         shutil.move(best_model_file_path, best_model_path)
         shutil.move(best_optimizer_file_path, best_optimizer_path)
+        shutil.move(best_model_suggestions_file_path, best_config_path)
