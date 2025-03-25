@@ -151,7 +151,7 @@ class UniformTextMasker(AbstractNoiseGenerator):
         """
         with mp.Pool(mp.cpu_count()) as pool:
             function_specific_input = list(data)
-            return pool.starmap(self.transform, function_specific_input)
+            return pool.map(self.transform, function_specific_input)
 
 
 class GaussianNoise(AbstractNoiseGenerator):

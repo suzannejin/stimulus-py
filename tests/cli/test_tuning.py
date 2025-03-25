@@ -90,7 +90,7 @@ def test_tuning_main(
             model_instance = model(**best_config)
             assert model_instance is not None, "Model could not be loaded"
 
-            log = safetensors.torch.load_model(model_instance, best_model_path) # type: ignore[attr-defined]
+            log = safetensors.torch.load_model(model_instance, best_model_path)  # type: ignore[attr-defined]
             logger.info(f"Log: {log}")
 
         finally:
