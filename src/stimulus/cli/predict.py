@@ -3,17 +3,16 @@
 
 import json
 
-import torch
-import yaml
 import safetensors
 import torch
+import yaml
 
 from stimulus.data import data_handlers
 from stimulus.data.interface import data_config_parser
 from stimulus.utils.model_file_interface import import_class_from_file
 
 
-def load_model(model_path, model_config_path, weight_path):
+def load_model(model_path: str, model_config_path:str, weight_path:str) -> torch.nn.Module:
     """Dynamically loads the model from a .py file."""
     with open(model_config_path) as f:
         best_config = json.load(f)
@@ -33,7 +32,6 @@ def load_data_config_from_path(data_path: str, data_config_path: str) -> torch.u
     Args:
         data_path: Path to the input data file.
         data_config_path: Path to the data config file.
-        split: Split index to use (0=train, 1=validation, 2=test).
 
     Returns:
         A TorchDataset with the configured data.
@@ -80,13 +78,13 @@ def predict(
 
     # create empty tensor for predictions
     is_first_batch = True
-    for x, y, _meta in loader:
+    for x, _y, _meta in loader:
         if is_first_batch:
             predictions = model(**x)
             is_first_batch = False
         temp_predictions = model(**x)
         predictions = torch.cat((predictions, temp_predictions), dim=0)
 
-    to_return : dict = {"predictions": predictions} 
+    to_return: dict = {"predictions": predictions}
     # Predict the data
     safetensors.torch.save_file(to_return, output)
