@@ -1,28 +1,20 @@
 #!/usr/bin/env python3
 """CLI module for model prediction on datasets."""
 
-import torch
 import json
-import importlib.util
-from safetensors.torch import load_file
-from torch.utils.data import DataLoader
-import pandas as pd
 
+import torch
 import yaml
-from torch.utils.data import Dataset
-from stimulus.data.data_handlers import TorchDataset
+import safetensors
+import torch
+
 from stimulus.data import data_handlers
-
-from stimulus.learner.predict import PredictWrapper
 from stimulus.data.interface import data_config_parser
-
-import inspect
 from stimulus.utils.model_file_interface import import_class_from_file
 
 
 def load_model(model_path, model_config_path, weight_path):
     """Dynamically loads the model from a .py file."""
-
     with open(model_config_path) as f:
         best_config = json.load(f)
 
@@ -30,13 +22,12 @@ def load_model(model_path, model_config_path, weight_path):
     model = import_class_from_file(model_path)
     model_instance = model(**best_config)
 
-    weights = load_file(weight_path)
+    weights = safetensors.torch.load_file(weight_path)
     model_instance.load_state_dict(weights)
     return model_instance
 
 
-
-def load_data_config_from_path(data_path: str, data_config_path: str, split: int) -> torch.utils.data.Dataset:
+def load_data_config_from_path(data_path: str, data_config_path: str) -> torch.utils.data.Dataset:
     """Load the data config from a path.
 
     Args:
@@ -62,9 +53,9 @@ def load_data_config_from_path(data_path: str, data_config_path: str, split: int
             label_columns=label_columns,
             meta_columns=meta_columns,
             csv_path=data_path,
-            split=split,
         ),
     )
+
 
 def predict(
     data_path: str,
@@ -72,7 +63,7 @@ def predict(
     model_path: str,
     model_config_path: str,
     weight_path: str,
-    output: str
+    output: str,
 ) -> None:
     """Run model prediction pipeline.
 
@@ -82,27 +73,20 @@ def predict(
         data_path: Path to the input data file.
         output: Path to save the prediction results.
     """
-    
     # Get the best model with best architecture and weights
     model = load_model(model_path, model_config_path, weight_path)
+    dataset = load_data_config_from_path(data_path, data_config_path)
+    loader = torch.utils.data.DataLoader(dataset, batch_size=256, shuffle=False)
 
-    dataset = load_data_config_from_path(data_path, data_config_path, split=0)
-
-    loader = DataLoader(dataset, batch_size=256, shuffle=False)
-
+    # create empty tensor for predictions
+    is_first_batch = True
     for x, y, _meta in loader:
-        print(x)
-    #    print(y)
-    #    return  
-        #preds = model(batch)
+        if is_first_batch:
+            predictions = model(**x)
+            is_first_batch = False
+        temp_predictions = model(**x)
+        predictions = torch.cat((predictions, temp_predictions), dim=0)
 
+    to_return : dict = {"predictions": predictions} 
     # Predict the data
-    #predictions = model(data)
-    print("Model loaded successfully.")
-
-    
-    
-
-
-
-
+    safetensors.torch.save_file(to_return, output)

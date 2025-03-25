@@ -359,14 +359,13 @@ def tune(
     default="best_model.safetensors",
     help="Path to save the best model [default: best_model.safetensors]",
 )
-
 def predict(
     data: str,
     data_config: str,
     model: str,
     model_config: str,
     model_weight: str,
-    output: str,
+    output: str = "predictions.safetensors",
 ) -> None:
     """Use model to predict on data."""
     from stimulus.cli.predict import predict as predict_func
@@ -377,5 +376,5 @@ def predict(
         model_path=model,
         model_config_path=model_config,
         weight_path=model_weight,
-        output=output
+        output=output,
     )
