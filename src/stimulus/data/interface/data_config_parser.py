@@ -45,7 +45,7 @@ def create_encoders(column_config: list[Columns]) -> dict[str, encoders_module.A
             params_new = copy.deepcopy(params)
             params_new["dtype"] = getattr(torch, params["dtype"])
         except AttributeError as e:
-            raise ValueError(f"Invalid dtype {params['dtype']} in encoder params") from e
+            raise ValueError(f"Invalid dtype {params_new['dtype']} in encoder params") from e
         return params_new
 
     return {
