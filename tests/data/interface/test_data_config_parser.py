@@ -125,7 +125,6 @@ def load_int_config(int_config_path: str) -> dict:
 
 def test_create_encoders(load_full_config: ConfigDict) -> None:
     """Test encoder creation from config."""
-
     config = load_full_config
     encoders = create_encoders(config.columns)
 
@@ -142,8 +141,8 @@ def test_create_encoders(load_full_config: ConfigDict) -> None:
     # Test config is not overwritten
     col_passenger_id = 0
     col_age = 4
-    assert config.columns[col_passenger_id].encoder[0].params['dtype'] == 'int32'
-    assert config.columns[col_age].encoder[0].params['dtype'] == 'int8'
+    assert config.columns[col_passenger_id].encoder[0].params["dtype"] == "int32"
+    assert config.columns[col_age].encoder[0].params["dtype"] == "int8"
 
 
 def test_create_encoders_invalid_dtype() -> None:

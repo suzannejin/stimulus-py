@@ -1,5 +1,6 @@
 """Module for parsing data configs."""
 
+import copy
 from typing import Any
 
 import torch
@@ -41,7 +42,7 @@ def create_encoders(column_config: list[Columns]) -> dict[str, encoders_module.A
     def get_params(params: dict) -> dict:
         """Get the params with the dtype string converted to torch dtype."""
         try:
-            params_new = params.copy()
+            params_new = copy.deepcopy(params)
             params_new["dtype"] = getattr(torch, params["dtype"])
         except AttributeError as e:
             raise ValueError(f"Invalid dtype {params['dtype']} in encoder params") from e
