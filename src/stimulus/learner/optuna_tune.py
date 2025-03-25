@@ -4,6 +4,7 @@ import inspect
 import logging
 import os
 import uuid
+import json
 from typing import Any
 
 import optuna
@@ -76,7 +77,7 @@ class Objective:
     def __call__(self, trial: optuna.Trial):
         """Execute a full training trial and return the objective metric value."""
         # Setup phase
-        model_instance = self._setup_model(trial)
+        model_instance, model_suggestions = self._setup_model(trial)
         optimizer = self._setup_optimizer(trial, model_instance)
         train_loader, val_loader, batch_size = self._setup_data_loaders(trial)
         loss_dict = self._setup_loss_functions(trial)
@@ -127,17 +128,17 @@ class Objective:
 
                     # Check if trial should be pruned
                     if trial.should_prune():
-                        self.save_checkpoint(trial, model_instance, optimizer)
+                        self.save_checkpoint(trial, model_instance, optimizer, model_suggestions)
                         raise optuna.TrialPruned()  # noqa: RSE102
 
                 if batch_idx * batch_size >= self.max_samples:
                     break
 
         # Final checkpoint and return objective value
-        self.save_checkpoint(trial, model_instance, optimizer)
+        self.save_checkpoint(trial, model_instance, optimizer, model_suggestions)
         return metric_dict[self.target_metric]
 
-    def _setup_model(self, trial: optuna.Trial) -> torch.nn.Module:
+    def _setup_model(self, trial: optuna.Trial) -> tuple[torch.nn.Module, dict]:
         """Setup the model for the trial."""
         model_suggestions = model_config_parser.suggest_parameters(trial, self.network_params)
         logger.info(f"Model suggestions: {model_suggestions}")
@@ -154,7 +155,7 @@ class Objective:
                 model_instance = model_instance.to(self.device)
             else:
                 raise
-        return model_instance
+        return model_instance, model_suggestions
 
     def _setup_optimizer(self, trial: optuna.Trial, model_instance: torch.nn.Module) -> torch.optim.Optimizer:
         """Setup the optimizer for the trial."""
@@ -205,13 +206,17 @@ class Objective:
         trial: optuna.Trial,
         model_instance: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
+        model_suggestions: dict,
     ) -> None:
         """Save the model and optimizer to the trial."""
         unique_id = str(uuid.uuid4())[:8]
         model_path = f"{trial.number}_{unique_id}_model.safetensors"
         optimizer_path = f"{trial.number}_{unique_id}_optimizer.pt"
+        model_suggestions_path = f"{trial.number}_{unique_id}_model_suggestions.json"
         safe_save_model(model_instance, model_path)
         torch.save(optimizer.state_dict(), optimizer_path)
+        with open(model_suggestions_path, "w") as f:
+            json.dump(model_suggestions, f)
         artifact_id_model = optuna.artifacts.upload_artifact(
             artifact_store=self.artifact_store,
             file_path=model_path,
@@ -222,16 +227,24 @@ class Objective:
             file_path=optimizer_path,
             study_or_trial=trial.study,
         )
+        artifact_id_model_suggestions = optuna.artifacts.upload_artifact(
+            artifact_store=self.artifact_store,
+            file_path=model_suggestions_path,
+            study_or_trial=trial.study,
+        )
         # delete the files from the local filesystem
         try:
             os.remove(model_path)
             os.remove(optimizer_path)
+            os.remove(model_suggestions_path)
         except FileNotFoundError:
-            logger.info(f"File was already deleted: {model_path} or {optimizer_path}, most likely due to pruning")
+            logger.info(f"File was already deleted: {model_path} or {optimizer_path} or {model_suggestions_path}, most likely due to pruning")
         trial.set_user_attr("model_id", artifact_id_model)
         trial.set_user_attr("model_path", model_path)
         trial.set_user_attr("optimizer_id", artifact_id_optimizer)
         trial.set_user_attr("optimizer_path", optimizer_path)
+        trial.set_user_attr("model_suggestions_id", artifact_id_model_suggestions)
+        trial.set_user_attr("model_suggestions_path", model_suggestions_path)
 
     def objective(
         self,
