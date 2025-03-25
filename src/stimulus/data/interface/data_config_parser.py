@@ -41,10 +41,11 @@ def create_encoders(column_config: list[Columns]) -> dict[str, encoders_module.A
     def get_params(params: dict) -> dict:
         """Get the params with the dtype string converted to torch dtype."""
         try:
-            params["dtype"] = getattr(torch, params["dtype"])
+            params_new = params.copy()
+            params_new["dtype"] = getattr(torch, params["dtype"])
         except AttributeError as e:
             raise ValueError(f"Invalid dtype {params['dtype']} in encoder params") from e
-        return params
+        return params_new
 
     return {
         column.column_name: _instantiate_component(

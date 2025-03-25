@@ -125,6 +125,7 @@ def load_int_config(int_config_path: str) -> dict:
 
 def test_create_encoders(load_full_config: ConfigDict) -> None:
     """Test encoder creation from config."""
+
     config = load_full_config
     encoders = create_encoders(config.columns)
 
@@ -132,9 +133,17 @@ def test_create_encoders(load_full_config: ConfigDict) -> None:
     assert isinstance(encoders["sex"], encoders_module.StrClassificationEncoder)
     assert isinstance(encoders["age"], encoders_module.NumericEncoder)
     assert len(encoders) == len(config.columns)
+
+    # Test encoder parameters
     assert encoders["passenger_id"].dtype == torch.int32
     assert encoders["age"].dtype == torch.int8
     assert encoders["fare"].dtype == torch.float32
+
+    # Test config is not overwritten
+    col_passenger_id = 0
+    col_age = 4
+    assert config.columns[col_passenger_id].encoder[0].params['dtype'] == 'int32'
+    assert config.columns[col_age].encoder[0].params['dtype'] == 'int8'
 
 
 def test_create_encoders_invalid_dtype() -> None:
