@@ -3,12 +3,14 @@
 # mypy: ignore-errors
 """Efficient KAN model implementation."""
 
-import math
-from typing import Callable, List, Optional, Tuple
-
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from torch import nn
+import math
+import logging
+from typing import Callable, List, Tuple, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class KANLinear(torch.nn.Module):
@@ -41,13 +43,9 @@ class KANLinear(torch.nn.Module):
         self.register_buffer("grid", grid)
 
         self.base_weight = torch.nn.Parameter(torch.Tensor(out_features, in_features))
-        self.spline_weight = torch.nn.Parameter(
-            torch.Tensor(out_features, in_features, grid_size + spline_order),
-        )
+        self.spline_weight = torch.nn.Parameter(torch.Tensor(out_features, in_features, grid_size + spline_order))
         if enable_standalone_scale_spline:
-            self.spline_scaler = torch.nn.Parameter(
-                torch.Tensor(out_features, in_features),
-            )
+            self.spline_scaler = torch.nn.Parameter(torch.Tensor(out_features, in_features))
 
         self.scale_noise = scale_noise
         self.scale_base = scale_base
@@ -71,14 +69,15 @@ class KANLinear(torch.nn.Module):
                 * self.curve2coeff(
                     self.grid.T[self.spline_order : -self.spline_order],
                     noise,
-                ),
+                )
             )
             if self.enable_standalone_scale_spline:
                 # torch.nn.init.constant_(self.spline_scaler, self.scale_spline)
                 torch.nn.init.kaiming_uniform_(self.spline_scaler, a=math.sqrt(5) * self.scale_spline)
 
     def b_splines(self, x: torch.Tensor):
-        """Compute the B-spline bases for the given input tensor.
+        """
+        Compute the B-spline bases for the given input tensor.
 
         Args:
             x (torch.Tensor): Input tensor of shape (batch_size, in_features).
@@ -104,7 +103,8 @@ class KANLinear(torch.nn.Module):
         return bases.contiguous()
 
     def curve2coeff(self, x: torch.Tensor, y: torch.Tensor):
-        """Compute the coefficients of the curve that interpolates the given points.
+        """
+        Compute the coefficients of the curve that interpolates the given points.
 
         Args:
             x (torch.Tensor): Input tensor of shape (batch_size, in_features).
@@ -116,20 +116,10 @@ class KANLinear(torch.nn.Module):
         assert x.dim() == 2 and x.size(1) == self.in_features
         assert y.size() == (x.size(0), self.in_features, self.out_features)
 
-        A = self.b_splines(x).transpose(
-            0,
-            1,
-        )  # (in_features, batch_size, grid_size + spline_order)
+        A = self.b_splines(x).transpose(0, 1)  # (in_features, batch_size, grid_size + spline_order)
         B = y.transpose(0, 1)  # (in_features, batch_size, out_features)
-        solution = torch.linalg.lstsq(
-            A,
-            B,
-        ).solution  # (in_features, grid_size + spline_order, out_features)
-        result = solution.permute(
-            2,
-            0,
-            1,
-        )  # (out_features, in_features, grid_size + spline_order)
+        solution = torch.linalg.lstsq(A, B).solution  # (in_features, grid_size + spline_order, out_features)
+        result = solution.permute(2, 0, 1)  # (out_features, in_features, grid_size + spline_order)
 
         assert result.size() == (
             self.out_features,
@@ -167,32 +157,15 @@ class KANLinear(torch.nn.Module):
         orig_coeff = self.scaled_spline_weight  # (out, in, coeff)
         orig_coeff = orig_coeff.permute(1, 2, 0)  # (in, coeff, out)
         unreduced_spline_output = torch.bmm(splines, orig_coeff)  # (in, batch, out)
-        unreduced_spline_output = unreduced_spline_output.permute(
-            1,
-            0,
-            2,
-        )  # (batch, in, out)
+        unreduced_spline_output = unreduced_spline_output.permute(1, 0, 2)  # (batch, in, out)
 
         # sort each channel individually to collect data distribution
         x_sorted = torch.sort(x, dim=0)[0]
-        grid_adaptive = x_sorted[
-            torch.linspace(
-                0,
-                batch - 1,
-                self.grid_size + 1,
-                dtype=torch.int64,
-                device=x.device,
-            )
-        ]
+        grid_adaptive = x_sorted[torch.linspace(0, batch - 1, self.grid_size + 1, dtype=torch.int64, device=x.device)]
 
         uniform_step = (x_sorted[-1] - x_sorted[0] + 2 * margin) / self.grid_size
         grid_uniform = (
-            torch.arange(
-                self.grid_size + 1,
-                dtype=torch.float64,
-                device=x.device,
-            ).unsqueeze(1)
-            * uniform_step
+            torch.arange(self.grid_size + 1, dtype=torch.float64, device=x.device).unsqueeze(1) * uniform_step
             + x_sorted[0]
             - margin
         )
@@ -211,7 +184,8 @@ class KANLinear(torch.nn.Module):
         self.spline_weight.data.copy_(self.curve2coeff(x, unreduced_spline_output))
 
     def regularization_loss(self, regularize_activation=1.0, regularize_entropy=1.0):
-        """Compute the regularization loss.
+        """
+        Compute the regularization loss.
 
         This is a dumb simulation of the original L1 regularization as stated in the
         paper, since the original one requires computing absolutes and entropy from the
@@ -260,7 +234,7 @@ class KAN(torch.nn.Module):
                     base_activation=base_activation,
                     grid_eps=grid_eps,
                     grid_range=grid_range,
-                ),
+                )
             )
 
     def forward(self, x: torch.Tensor, update_grid=False):
@@ -286,10 +260,7 @@ class Model_ConvBasic_withEfficientKAN(nn.Module):
         super(Model_ConvBasic_withEfficientKAN, self).__init__()
 
         self.conv1d = nn.Conv1d(
-            in_channels=4,
-            out_channels=conv_kernel_number,
-            kernel_size=conv_kernel_size,
-            bias=False,
+            in_channels=4, out_channels=conv_kernel_number, kernel_size=conv_kernel_size, bias=False
         )
         self.relu = nn.ReLU()
         self.kan = KAN(
@@ -299,33 +270,30 @@ class Model_ConvBasic_withEfficientKAN(nn.Module):
         self.sigmoid = nn.Sigmoid()
 
     def forward(self, dna: torch.Tensor) -> dict:
-        x = dna.squeeze(1).permute(0, 2, 1).to(torch.float32)
+        x = dna.permute(0, 1, 3, 2).to(torch.float32)
+        x = x.reshape(x.shape[0], x.shape[2], x.shape[3])
         x = self.conv1d(x)
         x = self.relu(x)
         x = x.reshape(x.shape[0], x.shape[1] * x.shape[2])
         x = self.kan(x)
         x = self.sigmoid(x)
-        x = x.squeeze()
-        if x.dim() == 0:
-            x = x.unsqueeze(0)
+        # x = x.squeeze()
+        # if x.dim() == 0:
+        #    x = x.unsqueeze(0)
         return x
 
     def compute_loss(self, output: torch.Tensor, binding: torch.Tensor, loss_fn: Callable) -> torch.Tensor:
-        return loss_fn(output.squeeze(), binding.squeeze())
+        return loss_fn(output, binding)
 
     def batch(
-        self,
-        x: dict,
-        y: dict,
-        loss_fn: Callable,
-        optimizer: Optional[Callable] = None,
+        self, x: dict, y: dict, loss_fn: Callable, optimizer: Optional[Callable] = None
     ) -> Tuple[torch.Tensor, dict]:
         # get input dna sequences, and binding label
-        dna = x["dna"]
+        dna = x["dna"].float()
         binding = y["binding"].float()
 
         # predict
-        output = self.forward(dna)
+        output = self(dna)
 
         # compute loss and update model
         loss = self.compute_loss(output, binding, loss_fn=loss_fn)

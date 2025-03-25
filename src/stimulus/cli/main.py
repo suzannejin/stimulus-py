@@ -331,6 +331,20 @@ def tune(
     help="Path to model file",
 )
 @click.option(
+    "-c",
+    "--model-config",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to model config file",
+)
+@click.option(
+    "-e",
+    "--data-config",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to data config file",
+)
+@click.option(
     "-w",
     "--model-weight",
     type=click.Path(exists=True),
@@ -348,7 +362,9 @@ def tune(
 
 def predict(
     data: str,
+    data_config: str,
     model: str,
+    model_config: str,
     model_weight: str,
     output: str,
 ) -> None:
@@ -357,7 +373,9 @@ def predict(
 
     predict_func(
         data_path=data,
+        data_config_path=data_config,
         model_path=model,
+        model_config_path=model_config,
         weight_path=model_weight,
         output=output
     )

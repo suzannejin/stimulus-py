@@ -414,7 +414,6 @@ class NumericEncoder(AbstractEncoder):
             data = [data]
 
         self._check_input_dtype(data)
-        self._warn_float_is_converted_to_int(data)
 
         return torch.tensor(data, dtype=self.dtype)
 
@@ -442,17 +441,6 @@ class NumericEncoder(AbstractEncoder):
             err_msg = "Expected input data to be a float or int"
             logger.error(err_msg)
             raise ValueError(err_msg)
-
-    def _warn_float_is_converted_to_int(self, data: list[float]) -> None:
-        """Warn if float data is encoded into int data.
-
-        Args:
-            data (list[float]): a list of float data points
-        """
-        if any(isinstance(d, float) for d in data) and (
-            self.dtype in [torch.int, torch.int8, torch.int16, torch.int32, torch.int64]
-        ):
-            logger.warning("Encoding float data to torch.int data type.")
 
 
 class StrClassificationEncoder(AbstractEncoder):
