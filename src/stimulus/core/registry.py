@@ -5,14 +5,63 @@ metaclass=BaseRegistry in a new object or using the wrapper
 function as a header `@BaseRegistry.register(name)`
 """
 
+from abc import ABC, abstractmethod
 from typing import Callable, ClassVar
 
 
-class BaseRegistry(type):
+class AbstractRegistry(ABC):
+    """Abstract class for registry.
+
+    A registry registers and manage classes.
+
+    Methods:
+        register: wrapper to register a class.
+        get: returns the class by given name.
+        all: returns all registered classes.
+    """
+
+    @abstractmethod
+    def __new__(cls, name: str, bases: tuple, attrs: dict[str, str]) -> type[object]:
+        """Using __new__ instead of __init__ to register at definition and not class declaration.
+
+        When a class inherits from this class as metaclass it is saved in the
+        registry and all children will also be saved.
+
+        Args:
+            name(: obj: `str`, optional): A name for the registered class .
+                If None, the class name will be used.
+            bases(tuple): ???.
+            attrs dict[str, str]: object attributes dictionnary.
+
+        Return:
+            type[object]: returns the given class as input.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def register(
+        cls,
+        name: str | None = None,
+    ) -> Callable[[type[object]], type[object]]:
+        """Function using a wrapper to register the given class with a specific name."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def get(cls, name: str) -> type[object] | None:
+        """Returns the saved classe with a given name as key."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def all(cls) -> dict[str, type[object]]:
+        """Return all the saved classes."""
+        raise NotImplementedError
+
+
+class BaseRegistry(type, AbstractRegistry):
     """A generic registry implementation.
 
-    #registry-subclasses.
-    Source: https://charlesreid1.github.io/python-patterns-the-registry.html
+    # registry-subclasses.
+    Source: https: // charlesreid1.github.io/python-patterns-the-registry.html
     """
 
     _REGISTRY: ClassVar[dict[str, type[object]]] = {}
@@ -24,9 +73,9 @@ class BaseRegistry(type):
         registry and all children will also be saved.
 
         Args:
-            name (:obj:`str`, optional): A name for the registered class.
+            name(: obj: `str`, optional): A name for the registered class .
                 If None, the class name will be used.
-            bases (tuple): ???.
+            bases(tuple): ???.
             attrs dict[str, str]: object attributes dictionnary.
 
         Return:
