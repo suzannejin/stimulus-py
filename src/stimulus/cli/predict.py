@@ -12,7 +12,7 @@ from stimulus.data.interface import data_config_parser
 from stimulus.utils.model_file_interface import import_class_from_file
 
 
-def load_model(model_path: str, model_config_path:str, weight_path:str) -> torch.nn.Module:
+def load_model(model_path: str, model_config_path: str, weight_path: str) -> torch.nn.Module:
     """Dynamically loads the model from a .py file."""
     with open(model_config_path) as f:
         best_config = json.load(f)
