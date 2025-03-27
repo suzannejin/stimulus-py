@@ -59,7 +59,7 @@ def create_encoders(column_config: list[Columns]) -> dict[str, encoders_module.A
         if not isinstance(params, ColumnsEncoder) and not isinstance(params, dict):
             raise ValueError(f"Expected column params to be a ColumnsEncoder or dict, found {type(params)}")
         params_dict = deepcopy(
-            params.model_dump() if isinstance(params, ColumnsEncoder) else params
+            params.model_dump() if isinstance(params, ColumnsEncoder) else params,
         )
         params_dict.update({"dtype": column.data_type})
         return params_dict
