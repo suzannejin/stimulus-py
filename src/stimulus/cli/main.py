@@ -418,7 +418,7 @@ def compare_tensors(
     """
     from stimulus.cli.compare_tensors import compare_tensors_and_save
 
-    if len(tensor_paths) < 2: # noqa: PLR2004
+    if len(tensor_paths) < 2:  # noqa: PLR2004
         click.echo("Error: At least two tensor files are required for comparison.")
         return
 
