@@ -1,6 +1,6 @@
 """Module for parsing data configs."""
 
-from copy import deepcopy
+import copy
 from typing import Any
 
 import torch
@@ -9,7 +9,6 @@ import yaml
 from stimulus.data.encoding import encoders as encoders_module
 from stimulus.data.interface.data_config_schema import (
     Columns,
-    ColumnsEncoder,
     ConfigDict,
     Split,
     SplitConfigDict,
@@ -39,36 +38,21 @@ def _instantiate_component(module: Any, name: str, params: dict) -> Any:
 
 def create_encoders(column_config: list[Columns]) -> dict[str, encoders_module.AbstractEncoder]:
     """Factory for creating encoders from config."""
-    data_types = {
-        "int8": torch.int8,
-        "int16": torch.int16,
-        "int32": torch.int32,
-        "int64": torch.int64,
-        "float16": torch.float16,
-        "float32": torch.float32,
-        "float64": torch.float64,
-    }
 
-    for column in column_config:
-        dtype = data_types.get(column.data_type, None)
-        if dtype is None:
-            raise ValueError(f"Invalid data type {column.data_type} for column {column.column_name}")
-        column.data_type = dtype
-
-    def add_dtype(params: ColumnsEncoder) -> dict:
-        if not isinstance(params, ColumnsEncoder) and not isinstance(params, dict):
-            raise TypeError(f"Expected column params to be a ColumnsEncoder or dict, found {type(params)}")
-        params_dict = deepcopy(
-            params.model_dump() if isinstance(params, ColumnsEncoder) else params,
-        )
-        params_dict.update({"dtype": column.data_type})
-        return params_dict
+    def get_params(params: dict) -> dict:
+        """Get the params with the dtype string converted to torch dtype."""
+        try:
+            params_new = copy.deepcopy(params)
+            params_new["dtype"] = getattr(torch, params["dtype"])
+        except AttributeError as e:
+            raise ValueError(f"Invalid dtype {params_new['dtype']} in encoder params") from e
+        return params_new
 
     return {
         column.column_name: _instantiate_component(
             module=encoders_module,
             name=column.encoder[0].name,
-            params=add_dtype(column.encoder[0].params),
+            params=get_params(column.encoder[0].params),
         )
         for column in column_config
     }

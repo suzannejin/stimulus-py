@@ -3,23 +3,23 @@ global_params:
 columns:
 - column_name: dna
   column_type: input
-  data_type: str
   encoder:
   - name: TextOneHotEncoder
     params:
       alphabet: acgt
 - column_name: binding
   column_type: label
-  data_type: int
   encoder:
   - name: NumericEncoder
-    params: {}
+    params:
+      dtype: float32
 - column_name: binding
   column_type: label
   data_type: str
   encoder:
   - name: NumericEncoder
-    params: {}
+    params:
+      dtype: float32
 transforms:
   transformation_name: reverse_complement_masked
   columns:

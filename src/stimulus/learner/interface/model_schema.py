@@ -26,6 +26,7 @@ class TunableParameter(pydantic.BaseModel):
             "int",
             "loguniform",
             "uniform",
+            "variable_list",
         ]:
             raise NotImplementedError(
                 f"Mode {self.mode} not available for Optuna, please use one of the following: categorical, discrete_uniform, float, int, loguniform, uniform, variable_list",
@@ -165,8 +166,8 @@ class Model(pydantic.BaseModel):
     sampler: Sampler
     objective: Objective
     seed: int = 42
-    max_batches: int = 1000
-    compute_objective_every_n_batches: int = 50
+    max_samples: int = 1000
+    compute_objective_every_n_samples: int = 50
     n_trials: int = 10
 
     # Add a model validator to debug the input data

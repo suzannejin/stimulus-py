@@ -34,3 +34,6 @@ __pycache__/
 
 # Ignore output directories from Dream tests
 /tutorials/dream/dream_train.csv
+
+# Ignore output directories from Optuna tests
+.DS_Store

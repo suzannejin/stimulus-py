@@ -1,6 +1,7 @@
 """Optuna tuning module."""
 
 import inspect
+import json
 import logging
 import os
 import uuid
@@ -29,8 +30,8 @@ class Objective:
         train_torch_dataset: torch.utils.data.Dataset,
         val_torch_dataset: torch.utils.data.Dataset,
         artifact_store: Any,
-        max_batches: int = 1000,
-        compute_objective_every_n_batches: int = 50,
+        max_samples: int = 1000,
+        compute_objective_every_n_samples: int = 50,
         target_metric: str = "val_loss",
         device: torch.device | None = None,
     ):
@@ -45,8 +46,8 @@ class Objective:
             train_torch_dataset: The training dataset.
             val_torch_dataset: The validation dataset.
             artifact_store: The artifact store to save the model and optimizer.
-            max_batches: The maximum number of batches to train.
-            compute_objective_every_n_batches: The number of batches to compute the objective.
+            max_samples: The maximum number of samples to train.
+            compute_objective_every_n_samples: The number of samples to compute the objective.
             target_metric: The target metric to optimize.
             device: The device to run the training on.
         """
@@ -59,8 +60,8 @@ class Objective:
         self.val_torch_dataset = val_torch_dataset
         self.artifact_store = artifact_store
         self.target_metric = target_metric
-        self.max_batches = max_batches
-        self.compute_objective_every_n_batches = compute_objective_every_n_batches
+        self.max_samples = max_samples
+        self.compute_objective_every_n_samples = compute_objective_every_n_samples
         if device is None:
             self.device = torch.device("cpu")
         else:
@@ -76,16 +77,17 @@ class Objective:
     def __call__(self, trial: optuna.Trial):
         """Execute a full training trial and return the objective metric value."""
         # Setup phase
-        model_instance = self._setup_model(trial)
+        model_instance, model_suggestions = self._setup_model(trial)
         optimizer = self._setup_optimizer(trial, model_instance)
-        train_loader, val_loader = self._setup_data_loaders(trial)
+        train_loader, val_loader, batch_size = self._setup_data_loaders(trial)
         loss_dict = self._setup_loss_functions(trial)
 
         # Training loop
         batch_idx: int = 0
         metric_dict: dict = {}
 
-        while batch_idx < self.max_batches:
+        while batch_idx * batch_size < self.max_samples:
+            nb_computed_samples = 0
             for x, y, _meta in train_loader:
                 try:
                     device_x = {key: value.to(self.device, non_blocking=True) for key, value in x.items()}
@@ -111,8 +113,10 @@ class Objective:
                         raise
 
                 batch_idx += 1
+                nb_computed_samples += batch_size
                 # Compute objective periodically
-                if batch_idx % self.compute_objective_every_n_batches == 0:
+                if nb_computed_samples >= self.compute_objective_every_n_samples:
+                    nb_computed_samples = 0
                     # Evaluate current model performance
                     metric_dict = self.objective(model_instance, train_loader, val_loader, loss_dict)
                     logger.info(f"Objective: {metric_dict} at batch {batch_idx}")
@@ -124,17 +128,17 @@ class Objective:
 
                     # Check if trial should be pruned
                     if trial.should_prune():
-                        self.save_checkpoint(trial, model_instance, optimizer)
+                        self.save_checkpoint(trial, model_instance, optimizer, model_suggestions)
                         raise optuna.TrialPruned()  # noqa: RSE102
 
-                if batch_idx >= self.max_batches:
+                if batch_idx * batch_size >= self.max_samples:
                     break
 
         # Final checkpoint and return objective value
-        self.save_checkpoint(trial, model_instance, optimizer)
+        self.save_checkpoint(trial, model_instance, optimizer, model_suggestions)
         return metric_dict[self.target_metric]
 
-    def _setup_model(self, trial: optuna.Trial) -> torch.nn.Module:
+    def _setup_model(self, trial: optuna.Trial) -> tuple[torch.nn.Module, dict]:
         """Setup the model for the trial."""
         model_suggestions = model_config_parser.suggest_parameters(trial, self.network_params)
         logger.info(f"Model suggestions: {model_suggestions}")
@@ -151,7 +155,7 @@ class Objective:
                 model_instance = model_instance.to(self.device)
             else:
                 raise
-        return model_instance
+        return model_instance, model_suggestions
 
     def _setup_optimizer(self, trial: optuna.Trial, model_instance: torch.nn.Module) -> torch.optim.Optimizer:
         """Setup the optimizer for the trial."""
@@ -172,7 +176,7 @@ class Objective:
     def _setup_data_loaders(
         self,
         trial: optuna.Trial,
-    ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader]:
+    ) -> tuple[torch.utils.data.DataLoader, torch.utils.data.DataLoader, int]:
         """Setup the data loaders for the trial."""
         batch_size = model_config_parser.suggest_parameters(trial, self.data_params)["batch_size"]
         logger.info(f"Batch size: {batch_size}")
@@ -187,7 +191,7 @@ class Objective:
             batch_size=batch_size,
             shuffle=False,
         )
-        return train_loader, val_loader
+        return train_loader, val_loader, batch_size
 
     def _setup_loss_functions(self, trial: optuna.Trial) -> dict[str, torch.nn.Module]:
         """Setup the loss functions for the trial."""
@@ -202,13 +206,17 @@ class Objective:
         trial: optuna.Trial,
         model_instance: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
+        model_suggestions: dict,
     ) -> None:
         """Save the model and optimizer to the trial."""
         unique_id = str(uuid.uuid4())[:8]
         model_path = f"{trial.number}_{unique_id}_model.safetensors"
         optimizer_path = f"{trial.number}_{unique_id}_optimizer.pt"
+        model_suggestions_path = f"{trial.number}_{unique_id}_model_suggestions.json"
         safe_save_model(model_instance, model_path)
         torch.save(optimizer.state_dict(), optimizer_path)
+        with open(model_suggestions_path, "w") as f:
+            json.dump(model_suggestions, f)
         artifact_id_model = optuna.artifacts.upload_artifact(
             artifact_store=self.artifact_store,
             file_path=model_path,
@@ -219,16 +227,26 @@ class Objective:
             file_path=optimizer_path,
             study_or_trial=trial.study,
         )
+        artifact_id_model_suggestions = optuna.artifacts.upload_artifact(
+            artifact_store=self.artifact_store,
+            file_path=model_suggestions_path,
+            study_or_trial=trial.study,
+        )
         # delete the files from the local filesystem
         try:
             os.remove(model_path)
             os.remove(optimizer_path)
+            os.remove(model_suggestions_path)
         except FileNotFoundError:
-            logger.info(f"File was already deleted: {model_path} or {optimizer_path}, most likely due to pruning")
+            logger.info(
+                f"File was already deleted: {model_path} or {optimizer_path} or {model_suggestions_path}, most likely due to pruning",
+            )
         trial.set_user_attr("model_id", artifact_id_model)
         trial.set_user_attr("model_path", model_path)
         trial.set_user_attr("optimizer_id", artifact_id_optimizer)
         trial.set_user_attr("optimizer_path", optimizer_path)
+        trial.set_user_attr("model_suggestions_id", artifact_id_model_suggestions)
+        trial.set_user_attr("model_suggestions_path", model_suggestions_path)
 
     def objective(
         self,

@@ -69,7 +69,7 @@ def dummy_transforms() -> dict[str, list]:
 def ibis_znf395_transforms() -> dict[str, list]:
     """Create test transforms."""
     return {
-        "dna": [transforms_module.ReverseComplement()],
+        "dna": [transforms_module.ReverseComplement(), transforms_module.UniformTextMasker()],
     }
 
 

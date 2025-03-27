@@ -313,3 +313,124 @@ def tune(
         best_model_path=output,
         best_optimizer_path=best_optimizer,
     )
+
+
+@cli.command()
+@click.option(
+    "-d",
+    "--data",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to input csv file",
+)
+@click.option(
+    "-m",
+    "--model",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to model file",
+)
+@click.option(
+    "-c",
+    "--model-config",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to model config file",
+)
+@click.option(
+    "-e",
+    "--data-config",
+    type=click.Path(exists=True),
+    required=True,
+    help="Path to data config file",
+)
+@click.option(
+    "-w",
+    "--model-weight",
+    type=click.Path(exists=True),
+    required=True,
+    default="best_model.safetensors",
+    help="Path to save the best model [default: best_model.safetensors]",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    default="best_model.safetensors",
+    help="Path to save the best model [default: best_model.safetensors]",
+)
+def predict(
+    data: str,
+    data_config: str,
+    model: str,
+    model_config: str,
+    model_weight: str,
+    output: str = "predictions.safetensors",
+) -> None:
+    """Use model to predict on data."""
+    from stimulus.cli.predict import predict as predict_func
+
+    predict_func(
+        data_path=data,
+        data_config_path=data_config,
+        model_path=model,
+        model_config_path=model_config,
+        weight_path=model_weight,
+        output=output,
+    )
+
+
+@cli.command()
+@click.argument("tensor_paths", nargs=-1, type=click.Path(exists=True), required=True)
+@click.option(
+    "-m",
+    "--mode",
+    type=click.Choice(["cosine_similarity"]),
+    default="cosine_similarity",
+    help="Similarity metric to use for comparison",
+)
+@click.option(
+    "-p",
+    "--pairwise-output",
+    type=click.Path(),
+    default="comparison_results.csv",
+    help="Path to save pairwise comparison results [default: comparison_results.csv]",
+)
+@click.option(
+    "-s",
+    "--statistics-output",
+    type=click.Path(),
+    default="comparison_statistics.csv",
+    help="Path to save statistics results [default: comparison_statistics.csv]",
+)
+def compare_tensors(
+    tensor_paths: tuple,
+    mode: str,
+    pairwise_output: str,
+    statistics_output: str,
+) -> None:
+    """Compare multiple tensor files with each other.
+
+    Accepts an arbitrary number of tensor file paths and computes pairwise similarities.
+
+    Example:
+        stimulus compare-tensors tensor1.safetensors tensor2.safetensors tensor3.safetensors --mode cosine_similarity
+    """
+    from stimulus.cli.compare_tensors import compare_tensors_and_save
+
+    if len(tensor_paths) < 2: # noqa: PLR2004
+        click.echo("Error: At least two tensor files are required for comparison.")
+        return
+
+    click.echo(f"Comparing {len(tensor_paths)} tensors using {mode}...")
+    click.echo(f"Saving pairwise results to: {pairwise_output}")
+    click.echo(f"Saving statistics to: {statistics_output}")
+
+    compare_tensors_and_save(
+        list(tensor_paths),
+        pairwise_output,
+        statistics_output,
+        mode=mode,
+    )
+
+    click.echo("Comparison complete!")
