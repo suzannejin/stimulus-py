@@ -1,0 +1,1 @@
+"""Splitter registry test package."""
