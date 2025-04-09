@@ -5,8 +5,8 @@ metaclass=BaseRegistry in a new object or using the wrapper
 function as a header `@BaseRegistry.register(name)`
 """
 
-from abc import ABC, abstractmethod
 from typing import Callable, ClassVar
+from abc import ABC, abstractmethod
 
 
 class AbstractRegistry(ABC):
@@ -19,71 +19,6 @@ class AbstractRegistry(ABC):
         get: returns the class by given name.
         all: returns all registered classes.
     """
-
-    @abstractmethod
-    def __new__(cls, name: str, bases: tuple, attrs: dict[str, str]) -> type[object]:
-        """Using __new__ instead of __init__ to register at definition and not class declaration.
-
-        When a class inherits from this class as metaclass it is saved in the
-        registry and all children will also be saved.
-
-        Args:
-            name(: obj: `str`, optional): A name for the registered class .
-                If None, the class name will be used.
-            bases(tuple): ???.
-            attrs dict[str, str]: object attributes dictionnary.
-
-        Return:
-            type[object]: returns the given class as input.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def register(
-        cls,
-        name: str | None = None,
-    ) -> Callable[[type[object]], type[object]]:
-        """Function using a wrapper to register the given class with a specific name."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def get(cls, name: str) -> type[object] | None:
-        """Returns the saved classe with a given name as key."""
-        raise NotImplementedError
-
-    @abstractmethod
-    def all(cls) -> dict[str, type[object]]:
-        """Return all the saved classes."""
-        raise NotImplementedError
-
-
-class BaseRegistry(type, AbstractRegistry):
-    """A generic registry implementation.
-
-    # registry-subclasses.
-    Source: https: // charlesreid1.github.io/python-patterns-the-registry.html
-    """
-
-    _REGISTRY: ClassVar[dict[str, type[object]]] = {}
-
-    def __new__(cls, name: str, bases: tuple, attrs: dict[str, str]) -> type[object]:
-        """Using __new__ instead of __init__ to register at definition and not class declaration.
-
-        When a class inherits from this class as metaclass it is saved in the
-        registry and all children will also be saved.
-
-        Args:
-            name(: obj: `str`, optional): A name for the registered class .
-                If None, the class name will be used.
-            bases(tuple): ???.
-            attrs dict[str, str]: object attributes dictionnary.
-
-        Return:
-            type[object]: returns the given class as input.
-        """
-        new_cls: type[object] = type.__new__(cls, name, bases, attrs)
-        cls.save_class(new_cls, name)
-        return new_cls
 
     @classmethod
     def save_class(
@@ -119,3 +54,34 @@ class BaseRegistry(type, AbstractRegistry):
     def all(cls) -> dict[str, type[object]]:
         """Return all the saved classes."""
         return cls._REGISTRY
+
+
+class BaseRegistry(AbstractRegistry, type):
+    """A generic registry implementation.
+
+    type is necessary to be registered as a metaclass.
+
+    # registry-subclasses.
+    Source: https: // charlesreid1.github.io/python-patterns-the-registry.html
+    """
+
+    _REGISTRY: ClassVar[dict[str, type[object]]] = {}
+
+    def __new__(cls, name: str, bases: tuple, attrs: dict[str, str]) -> type[object]:
+        """Using __new__ instead of __init__ to register at definition and not class declaration.
+
+        When a class inherits from this class as metaclass it is saved in the
+        registry and all children will also be saved.
+
+        Args:
+            name(: obj: `str`, optional): A name for the registered class .
+                If None, the class name will be used.
+            bases(tuple): ???.
+            attrs dict[str, str]: object attributes dictionnary.
+
+        Return:
+            type[object]: returns the given class as input.
+        """
+        new_cls: type[object] = type.__new__(cls, name, bases, attrs)
+        cls.save_class(new_cls, name)
+        return new_cls
