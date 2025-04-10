@@ -5,14 +5,19 @@ metaclass=BaseRegistry in a new object or using the wrapper
 function as a header `@BaseRegistry.register(name)`
 """
 
-from typing import Callable, ClassVar
-from abc import ABC, abstractmethod
+from abc import ABCMeta
+from typing import Any, Callable, ClassVar
 
 
-class AbstractRegistry(ABC):
+class AbstractRegistry(ABCMeta):
     """Abstract class for registry.
 
     A registry registers and manage classes.
+
+    THIS CLASS SHOULD NOT BE CALLED DIRECTLY.
+    USE THE ADAPTED CLASS INHERITING FROM IT.
+
+    REIMPLEMENT THE FUNCTION `save_class` in the children to change the behaviour
 
     Methods:
         register: wrapper to register a class.
@@ -20,52 +25,7 @@ class AbstractRegistry(ABC):
         all: returns all registered classes.
     """
 
-    @classmethod
-    def save_class(
-        cls,
-        class_to_register: type[object],
-        name: str | None = None,
-    ) -> None:
-        """Saves the class and the given name in the registry."""
-        if name is None:
-            name = class_to_register.__name__
-        cls._REGISTRY[name.lower()] = class_to_register
-
-    @classmethod
-    def register(
-        cls,
-        name: str | None = None,
-    ) -> Callable[[type[object]], type[object]]:
-        """Function using a wrapper to register the given class with a specific name."""
-
-        def wrapper(wrapped_class: type[object]) -> type[object]:
-            """Wrapper function to save a class to the registry."""
-            cls.save_class(wrapped_class, name)
-            return wrapped_class
-
-        return wrapper
-
-    @classmethod
-    def get(cls, name: str) -> type[object] | None:
-        """Returns the saved classe with a given name as key."""
-        return cls._REGISTRY.get(name.lower())
-
-    @classmethod
-    def all(cls) -> dict[str, type[object]]:
-        """Return all the saved classes."""
-        return cls._REGISTRY
-
-
-class BaseRegistry(AbstractRegistry, type):
-    """A generic registry implementation.
-
-    type is necessary to be registered as a metaclass.
-
-    # registry-subclasses.
-    Source: https: // charlesreid1.github.io/python-patterns-the-registry.html
-    """
-
-    _REGISTRY: ClassVar[dict[str, type[object]]] = {}
+    _REGISTRY: ClassVar[dict[str, Any]] = {}
 
     def __new__(cls, name: str, bases: tuple, attrs: dict[str, str]) -> type[object]:
         """Using __new__ instead of __init__ to register at definition and not class declaration.
@@ -85,3 +45,50 @@ class BaseRegistry(AbstractRegistry, type):
         new_cls: type[object] = type.__new__(cls, name, bases, attrs)
         cls.save_class(new_cls, name)
         return new_cls
+
+    @classmethod
+    def save_class(
+        cls,
+        class_to_register: Any,
+        name: str | None = None,
+    ) -> None:
+        """Saves the class and the given name in the registry."""
+        if name is None:
+            name = class_to_register.__name__
+        cls._REGISTRY[name.lower()] = class_to_register
+
+    @classmethod
+    def register(  # type: ignore[override]
+        cls,
+        name: str | None = None,
+    ) -> Callable[[type[object]], type[object]]:
+        """Function using a wrapper to register the given class with a specific name."""
+
+        def wrapper(wrapped_class: type[object]) -> type[object]:
+            """Wrapper function to save a class to the registry."""
+            cls.save_class(wrapped_class, name)
+            return wrapped_class
+
+        return wrapper
+
+    @classmethod
+    def get(cls, name: str) -> type[object] | None:
+        """Returns the saved classe with a given name as key."""
+        return cls._REGISTRY.get(name.lower())
+
+    @classmethod
+    def all(cls) -> dict[str, Any]:
+        """Return all the saved classes."""
+        return cls._REGISTRY
+
+
+class BaseRegistry(AbstractRegistry):
+    """A generic registry implementation.
+
+    type is necessary to be registered as a metaclass.
+
+    # registry-subclasses.
+    Source: https: // charlesreid1.github.io/python-patterns-the-registry.html
+    """
+
+    _REGISTRY: ClassVar[dict[str, type[object]]] = {}
