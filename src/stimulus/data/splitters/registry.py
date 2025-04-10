@@ -34,8 +34,7 @@ class SplitterRegistry(AbstractRegistry):
     def _check_class(cls, class_to_register: AbstractSplitter) -> None:
         # Check if class_to_register is a type
         if not isinstance(class_to_register, type):
-            raise TypeError(
-                f"{class_to_register} must be a class, not an instance")
+            raise TypeError(f"{class_to_register} must be a class, not an instance")
 
         if not issubclass(type(class_to_register), type(cls._CLASS_TYPE)):
             raise TypeError(
