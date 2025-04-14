@@ -12,7 +12,6 @@ import torch
 from safetensors.torch import save_model as safe_save_model
 
 from stimulus.learner.interface import model_config_parser, model_schema
-from stimulus.learner.predict import PredictWrapper
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +93,7 @@ class Objective:
                     device_y = {key: value.to(self.device, non_blocking=True) for key, value in y.items()}
 
                     # Perform a batch update
-                    model_instance.batch(x=device_x, y=device_y, optimizer=optimizer, **loss_dict)
+                    _loss, _metrics = model_instance.batch(x=device_x, y=device_y, optimizer=optimizer, **loss_dict)
 
                 except RuntimeError as e:
                     if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
@@ -108,7 +107,7 @@ class Objective:
                         device_x = {key: value.to(temp_device) for key, value in x.items()}
                         device_y = {key: value.to(temp_device) for key, value in y.items()}
                         # Retry the batch
-                        model_instance.batch(x=device_x, y=device_y, optimizer=optimizer, **loss_dict)
+                        _loss, _metrics = model_instance.batch(x=device_x, y=device_y, optimizer=optimizer, **loss_dict)
                     else:
                         raise
 
@@ -121,7 +120,6 @@ class Objective:
                     metric_dict = self.objective(model_instance, train_loader, val_loader, loss_dict)
                     logger.info(f"Objective: {metric_dict} at batch {batch_idx}")
 
-                    # Report to Optuna
                     trial.report(metric_dict[self.target_metric], batch_idx)
                     for metric_name, metric_value in metric_dict.items():
                         trial.set_user_attr(metric_name, metric_value)
@@ -250,38 +248,86 @@ class Objective:
 
     def objective(
         self,
-        model: torch.nn.Module,
+        model_instance: torch.nn.Module,
         train_loader: torch.utils.data.DataLoader,
         val_loader: torch.utils.data.DataLoader,
         loss_dict: dict[str, torch.nn.Module],
+        device: torch.device,
+    ) -> dict[str, float]:
+        """Compute the objective metric(s) for the tuning process.
+
+        The objectives are outputed by the model's batch function in the form of loss, metric_dictionary.
+        """
+
+        train_metrics = self.get_metrics(model_instance, train_loader, loss_dict, device)
+        val_metrics = self.get_metrics(model_instance, val_loader, loss_dict, device)
+    
+        # add train_ and val_ prefix to related keys.
+        return {
+            **{f"train_{k}": v for k, v in train_metrics.items()},
+            **{f"val_{k}": v for k, v in val_metrics.items()},
+        }
+
+    def get_metrics(
+        self,
+        model_instance: torch.nn.Module,
+        data_loader: torch.utils.data.DataLoader,
+        loss_dict: dict[str, torch.nn.Module],
+        device: torch.device,
     ) -> dict[str, float]:
         """Compute the objective metric(s) for the tuning process."""
-        metrics = [
-            "loss",
-            "rocauc",
-            "prauc",
-            "mcc",
-            "f1score",
-            "precision",
-            "recall",
-            "spearmanr",
-        ]  # TODO maybe we report only a subset of metrics, given certain criteria (eg. if classification or regression)
-        predict_val = PredictWrapper(
-            model,
-            val_loader,
-            loss_dict=loss_dict,
-            device=self.device,
-        )
-        predict_train = PredictWrapper(
-            model,
-            train_loader,
-            loss_dict=loss_dict,
-            device=self.device,
-        )
-        return {
-            **{"val_" + metric: value for metric, value in predict_val.compute_metrics(metrics).items()},
-            **{"train_" + metric: value for metric, value in predict_train.compute_metrics(metrics).items()},
-        }
+
+        def update_metric_dict(metric_dict: dict, metrics: dict, loss: float) -> dict:
+            """Update the metric dictionary with the new metrics and loss."""
+            for key, value in metrics.items():
+                if key not in metric_dict:
+                    metric_dict[key] = value
+                else:
+                    metric_dict[key] += value
+            if "loss" not in metric_dict:
+                metric_dict["loss"] = loss
+            else:
+                metric_dict["loss"] += loss
+            return metric_dict
+
+        # set model in eval mode
+        model_instance.eval()
+
+        batch_idx: int = 0
+        metric_dict: dict = {}
+
+        for x, y, _meta in data_loader:
+            try:
+                device_x = {key: value.to(device, non_blocking=True) for key, value in x.items()}
+                device_y = {key: value.to(device, non_blocking=True) for key, value in y.items()}
+
+                # Perform a batch update
+                loss, metrics = model_instance.batch(x=device_x, y=device_y, **loss_dict)
+
+            except RuntimeError as e:
+                if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
+                    "MPS backend out of memory" in str(e) and self.device.type == "mps"
+                ):
+                    logger.warning(f"{self.device.type.upper()} out of memory during training: {e}")
+                    logger.warning("Falling back to CPU for this trial")
+                    temp_device = torch.device("cpu")
+                    model_instance = model_instance.to(temp_device)
+                    # Consider adjusting batch size or other parameters
+                    device_x = {key: value.to(temp_device) for key, value in x.items()}
+                    device_y = {key: value.to(temp_device) for key, value in y.items()}
+                    # Retry the batch
+                    loss, metrics = model_instance.batch(x=device_x, y=device_y, **loss_dict)
+                else:
+                    raise
+
+            metric_dict = update_metric_dict(metric_dict, metrics, loss)
+            batch_idx += 1
+
+        # devide all metrics by number of batches
+        for key in metric_dict:
+            metric_dict[key] /= batch_idx
+
+        return metric_dict
 
 
 def get_device() -> torch.device:
