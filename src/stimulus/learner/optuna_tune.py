@@ -88,6 +88,8 @@ class Objective:
         while batch_idx * batch_size < self.max_samples:
             nb_computed_samples = 0
             for x, y, _meta in train_loader:
+                # set model in train mode
+                model_instance.train()
                 try:
                     device_x = {key: value.to(self.device, non_blocking=True) for key, value in x.items()}
                     device_y = {key: value.to(self.device, non_blocking=True) for key, value in y.items()}
@@ -117,7 +119,11 @@ class Objective:
                 if nb_computed_samples >= self.compute_objective_every_n_samples:
                     nb_computed_samples = 0
                     # Evaluate current model performance
-                    metric_dict = self.objective(model_instance, train_loader, val_loader, loss_dict)
+                    metric_dict = self.objective(model_instance=model_instance, 
+                                                train_loader=train_loader, 
+                                                val_loader=val_loader, 
+                                                loss_dict=loss_dict, 
+                                                device=self.device)
                     logger.info(f"Objective: {metric_dict} at batch {batch_idx}")
 
                     trial.report(metric_dict[self.target_metric], batch_idx)
@@ -207,12 +213,21 @@ class Objective:
         model_suggestions: dict,
     ) -> None:
         """Save the model and optimizer to the trial."""
+        # Convert model to CPU before saving to avoid device-specific tensors
+        model_instance = model_instance.cpu()
+        optimizer_state = optimizer.state_dict()
+        
+        # Convert optimizer state to CPU tensors
+        for param in optimizer_state['state'].values():
+            for k, v in param.items():
+                if isinstance(v, torch.Tensor):
+                    param[k] = v.cpu()
         unique_id = str(uuid.uuid4())[:8]
         model_path = f"{trial.number}_{unique_id}_model.safetensors"
         optimizer_path = f"{trial.number}_{unique_id}_optimizer.pt"
         model_suggestions_path = f"{trial.number}_{unique_id}_model_suggestions.json"
         safe_save_model(model_instance, model_path)
-        torch.save(optimizer.state_dict(), optimizer_path)
+        torch.save(optimizer_state, optimizer_path)
         with open(model_suggestions_path, "w") as f:
             json.dump(model_suggestions, f)
         artifact_id_model = optuna.artifacts.upload_artifact(
@@ -327,7 +342,9 @@ class Objective:
         for key in metric_dict:
             metric_dict[key] /= batch_idx
 
-        return metric_dict
+        # Convert tensors to floats before returning
+        return {k: v.item() if isinstance(v, torch.Tensor) else v 
+                for k, v in metric_dict.items()}
 
 
 def get_device() -> torch.device:
