@@ -10,6 +10,7 @@ from src.stimulus.data.transforming.transforms import (
     BalanceSampler,
     GaussianChunk,
     GaussianNoise,
+    RandomDownSampler,
     ReverseComplement,
     UniformTextMasker,
 )
@@ -265,3 +266,15 @@ def test_balance_sampler() -> None:
     nb_nan = len([x for x in transformed_data if x is np.nan])
     assert nb_a == nb_b == nb_c == 2
     assert nb_nan == 4
+
+
+def test_random_down_sampler() -> None:
+    """Test the RandomDownSampler class."""
+    sampler = RandomDownSampler(n=3, seed=0)
+    data = ["a", "a", "a", "b", "b", "c", "c", "c", "c", "c"]
+    transformed_data = sampler.transform_all(data)
+    transformed_data = [x for x in transformed_data if not isinstance(x, float) or not np.isnan(x)]
+    assert len(transformed_data) == 3
+    assert transformed_data[0] == "a"
+    assert transformed_data[1] == "b"
+    assert transformed_data[2] == "c"
