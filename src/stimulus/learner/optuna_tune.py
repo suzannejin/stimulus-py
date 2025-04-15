@@ -119,11 +119,13 @@ class Objective:
                 if nb_computed_samples >= self.compute_objective_every_n_samples:
                     nb_computed_samples = 0
                     # Evaluate current model performance
-                    metric_dict = self.objective(model_instance=model_instance, 
-                                                train_loader=train_loader, 
-                                                val_loader=val_loader, 
-                                                loss_dict=loss_dict, 
-                                                device=self.device)
+                    metric_dict = self.objective(
+                        model_instance=model_instance,
+                        train_loader=train_loader,
+                        val_loader=val_loader,
+                        loss_dict=loss_dict,
+                        device=self.device,
+                    )
                     logger.info(f"Objective: {metric_dict} at batch {batch_idx}")
 
                     trial.report(metric_dict[self.target_metric], batch_idx)
@@ -216,9 +218,9 @@ class Objective:
         # Convert model to CPU before saving to avoid device-specific tensors
         model_instance = model_instance.cpu()
         optimizer_state = optimizer.state_dict()
-        
+
         # Convert optimizer state to CPU tensors
-        for param in optimizer_state['state'].values():
+        for param in optimizer_state["state"].values():
             for k, v in param.items():
                 if isinstance(v, torch.Tensor):
                     param[k] = v.cpu()
@@ -273,10 +275,9 @@ class Objective:
 
         The objectives are outputed by the model's batch function in the form of loss, metric_dictionary.
         """
-
         train_metrics = self.get_metrics(model_instance, train_loader, loss_dict, device)
         val_metrics = self.get_metrics(model_instance, val_loader, loss_dict, device)
-    
+
         # add train_ and val_ prefix to related keys.
         return {
             **{f"train_{k}": v for k, v in train_metrics.items()},
@@ -292,23 +293,34 @@ class Objective:
     ) -> dict[str, float]:
         """Compute the objective metric(s) for the tuning process."""
 
-        def update_metric_dict(metric_dict: dict, metrics: dict, loss: float) -> dict:
+        def update_metric_dict(
+            metric_dict: dict[str, torch.Tensor], metrics: dict[str, torch.Tensor], loss: torch.Tensor,
+        ) -> dict[str, torch.Tensor]:
             """Update the metric dictionary with the new metrics and loss."""
             for key, value in metrics.items():
                 if key not in metric_dict:
-                    metric_dict[key] = value
+                    if value.ndim == 0:
+                        metric_dict[key] = value.unsqueeze(0)
+                    else:
+                        metric_dict[key] = value
+                elif value.ndim == 0:
+                    metric_dict[key] = torch.cat([metric_dict[key], value.unsqueeze(0)], dim=0)
                 else:
-                    metric_dict[key] += value
+                    metric_dict[key] = torch.cat([metric_dict[key], value], dim=0)
             if "loss" not in metric_dict:
-                metric_dict["loss"] = loss
+                if loss.ndim == 0:
+                    metric_dict["loss"] = loss.unsqueeze(0)
+                else:
+                    metric_dict["loss"] = loss
+            elif loss.ndim == 0:
+                metric_dict["loss"] = torch.cat([metric_dict["loss"], loss.unsqueeze(0)], dim=0)
             else:
-                metric_dict["loss"] += loss
+                metric_dict["loss"] = torch.cat([metric_dict["loss"], loss], dim=0)
             return metric_dict
 
         # set model in eval mode
         model_instance.eval()
 
-        batch_idx: int = 0
         metric_dict: dict = {}
 
         for x, y, _meta in data_loader:
@@ -336,15 +348,13 @@ class Objective:
                     raise
 
             metric_dict = update_metric_dict(metric_dict, metrics, loss)
-            batch_idx += 1
 
         # devide all metrics by number of batches
         for key in metric_dict:
-            metric_dict[key] /= batch_idx
+            metric_dict[key] = metric_dict[key].mean()
 
         # Convert tensors to floats before returning
-        return {k: v.item() if isinstance(v, torch.Tensor) else v 
-                for k, v in metric_dict.items()}
+        return {k: v.item() if isinstance(v, torch.Tensor) else v for k, v in metric_dict.items()}
 
 
 def get_device() -> torch.device:
