@@ -81,5 +81,5 @@ def test_model_schema(get_config: dict[str, Any]) -> None:
     assert model.sampler.params is None
 
     # Test objective
-    assert model.objective.metric == "val_rocauc"
-    assert model.objective.direction == "maximize"
+    assert model.objective.metric == "val_loss"
+    assert model.objective.direction == "minimize"
