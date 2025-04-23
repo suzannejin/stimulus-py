@@ -1,5 +1,6 @@
 """This file contains noise generators classes for generating various types of noise."""
 
+import copy
 import multiprocessing as mp
 from abc import ABC, abstractmethod
 from typing import Any
@@ -377,6 +378,53 @@ class BalanceSampler(AbstractSampler):
         # return the balanced data, with np.nan in place of datapoints to be removed
         return [data[i] if i in kept_indices else np.nan for i in range(len(data))]
 
+
+
+class SwapTransform(AbstractTransform):
+    """Swap the values of pairs of elemengs in the data n-times with replacement.
+
+    This transform swaps the values of pairs of elements in the data n-times with replacement.
+    E.g if the data is [1, 2, 3, 4, 5] and swap_numbers is 2, the output could be [2, 1, 4, 3, 5].
+    """
+
+    def __init__(self, swap_numbers: int = 1, seed: int = 42) -> None:
+        """Initialize the swap transform.
+
+        Args:
+            swap_numbers: Number of swaps to perform
+            seed: Random seed for reproducibility
+        """
+        super().__init__()
+        self.swap_numbers = swap_numbers
+        self.seed = seed
+
+    def transform(self, data: list[Any]) -> list[Any]:
+        """Swap the values of two random elements in the data.
+
+        Args:
+            data (list): the data to be transformed
+
+        Returns:
+            transformed_data (list): the transformed data
+        """
+        data_clone = copy.deepcopy(data)
+        i = np.random.randint(0, len(data_clone))
+        j = np.random.randint(0, len(data_clone))
+        while j == i:
+            j = np.random.randint(0, len(data_clone))
+        data_clone[i], data_clone[j] = data_clone[j], data_clone[i]
+        return data_clone
+
+    def transform_all(self, data: list[Any]) -> list[Any]:
+        """Swap the values of two random elements in the data n times.
+
+        Args:
+            data (list): the data to be transformed
+        """
+        data_clone = copy.deepcopy(data)
+        for _ in range(self.swap_numbers):
+            data_clone = self.transform(data_clone)
+        return data_clone
 
 class RandomDownSampler:
     """A transformer that randomly samples a dataset to a specified size n.
