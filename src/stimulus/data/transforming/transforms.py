@@ -383,7 +383,7 @@ class BalanceSampler(AbstractSampler):
 class SwapTransform(AbstractTransform):
     """Swap the values of pairs of elemengs in the data n-times with replacement.
 
-    This transform swaps the values of pairs of elemengs in the data n-times with replacement.
+    This transform swaps the values of pairs of elements in the data n-times with replacement.
     E.g if the data is [1, 2, 3, 4, 5] and swap_numbers is 2, the output could be [2, 1, 4, 3, 5].
     """
 
