@@ -271,7 +271,7 @@ def test_balance_sampler() -> None:
 
 def test_swap_transform() -> None:
     """Test the SwapTransform class."""
-    swap_transform = SwapTransform(swap_numbers=1)
+    swap_transform = SwapTransform(swap_numbers=1.5)
     data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     transformed_data = swap_transform.transform_all(data)
     assert transformed_data != data
