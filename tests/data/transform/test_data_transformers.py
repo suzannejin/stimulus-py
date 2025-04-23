@@ -11,6 +11,7 @@ from src.stimulus.data.transforming.transforms import (
     GaussianChunk,
     GaussianNoise,
     ReverseComplement,
+    SwapTransform,
     UniformTextMasker,
 )
 
@@ -265,3 +266,23 @@ def test_balance_sampler() -> None:
     nb_nan = len([x for x in transformed_data if x is np.nan])
     assert nb_a == nb_b == nb_c == 2
     assert nb_nan == 4
+
+
+def test_swap_transform() -> None:
+    """Test the SwapTransform class."""
+    swap_transform = SwapTransform(swap_numbers=1)
+    data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    transformed_data = swap_transform.transform_all(data)
+    assert transformed_data != data
+    # check that only two elements are swapped
+    # Count differences between original and transformed data
+    differences = sum(1 for i, x in enumerate(transformed_data) if x != data[i])
+    assert differences == 2
+
+
+def test_swap_transform_multiple() -> None:
+    """Test the SwapTransform class with multiple swaps."""
+    swap_transform = SwapTransform(swap_numbers=10)
+    data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    transformed_data = swap_transform.transform_all(data)
+    assert transformed_data != data
