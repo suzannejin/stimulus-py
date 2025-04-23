@@ -5,17 +5,27 @@ metaclass=BaseRegistry in a new object or using the wrapper
 function as a header `@BaseRegistry.register(name)`
 """
 
-from typing import Callable, ClassVar
+from abc import ABCMeta
+from typing import Any, Callable, ClassVar
 
 
-class BaseRegistry(type):
-    """A generic registry implementation.
+class AbstractRegistry(ABCMeta):
+    """Abstract class for registry.
 
-    #registry-subclasses.
-    Source: https://charlesreid1.github.io/python-patterns-the-registry.html
+    A registry registers and manage classes.
+
+    THIS CLASS SHOULD NOT BE CALLED DIRECTLY.
+    USE THE ADAPTED CLASS INHERITING FROM IT.
+
+    REIMPLEMENT THE FUNCTION `save_class` in the children to change the behaviour
+
+    Methods:
+        register: wrapper to register a class.
+        get: returns the class by given name.
+        all: returns all registered classes.
     """
 
-    _REGISTRY: ClassVar[dict[str, type[object]]] = {}
+    _REGISTRY: ClassVar[dict[str, Any]] = {}
 
     def __new__(cls, name: str, bases: tuple, attrs: dict[str, str]) -> type[object]:
         """Using __new__ instead of __init__ to register at definition and not class declaration.
@@ -24,9 +34,9 @@ class BaseRegistry(type):
         registry and all children will also be saved.
 
         Args:
-            name (:obj:`str`, optional): A name for the registered class.
+            name(: obj: `str`, optional): A name for the registered class .
                 If None, the class name will be used.
-            bases (tuple): ???.
+            bases(tuple): ???.
             attrs dict[str, str]: object attributes dictionnary.
 
         Return:
@@ -39,7 +49,7 @@ class BaseRegistry(type):
     @classmethod
     def save_class(
         cls,
-        class_to_register: type[object],
+        class_to_register: Any,
         name: str | None = None,
     ) -> None:
         """Saves the class and the given name in the registry."""
@@ -48,7 +58,7 @@ class BaseRegistry(type):
         cls._REGISTRY[name.lower()] = class_to_register
 
     @classmethod
-    def register(
+    def register(  # type: ignore[override]
         cls,
         name: str | None = None,
     ) -> Callable[[type[object]], type[object]]:
@@ -67,6 +77,18 @@ class BaseRegistry(type):
         return cls._REGISTRY.get(name.lower())
 
     @classmethod
-    def all(cls) -> dict[str, type[object]]:
+    def all(cls) -> dict[str, Any]:
         """Return all the saved classes."""
         return cls._REGISTRY
+
+
+class BaseRegistry(AbstractRegistry):
+    """A generic registry implementation.
+
+    type is necessary to be registered as a metaclass.
+
+    # registry-subclasses.
+    Source: https: // charlesreid1.github.io/python-patterns-the-registry.html
+    """
+
+    _REGISTRY: ClassVar[dict[str, type[object]]] = {}

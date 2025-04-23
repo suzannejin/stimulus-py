@@ -53,7 +53,7 @@ sampler:
   params:
 
 objective:
-  metric: val_rocauc
-  direction: maximize
+  metric: val_loss
+  direction: minimize
 
 

@@ -10,6 +10,7 @@ from src.stimulus.data.transforming.transforms import (
     BalanceSampler,
     GaussianChunk,
     GaussianNoise,
+    RandomDownSampler,
     ReverseComplement,
     SwapTransform,
     UniformTextMasker,
@@ -286,3 +287,15 @@ def test_swap_transform_multiple() -> None:
     data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     transformed_data = swap_transform.transform_all(data)
     assert transformed_data != data
+
+def test_random_down_sampler() -> None:
+    """Test the RandomDownSampler class."""
+    sampler = RandomDownSampler(n=3, seed=0)
+    data = ["a", "a", "a", "b", "b", "c", "c", "c", "c", "c"]
+    transformed_data = sampler.transform_all(data)
+    transformed_data = [x for x in transformed_data if not isinstance(x, float) or not np.isnan(x)]
+    assert len(transformed_data) == 3
+    assert transformed_data[0] == "a"
+    assert transformed_data[1] == "b"
+    assert transformed_data[2] == "c"
+

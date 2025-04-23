@@ -379,6 +379,7 @@ class BalanceSampler(AbstractSampler):
         return [data[i] if i in kept_indices else np.nan for i in range(len(data))]
 
 
+
 class SwapTransform(AbstractTransform):
     """Swap the values of two random elements in the data.
 
@@ -423,3 +424,49 @@ class SwapTransform(AbstractTransform):
         for _ in range(self.swap_numbers):
             data_clone = self.transform(data_clone)
         return data_clone
+
+class RandomDownSampler:
+    """A transformer that randomly samples a dataset to a specified size n.
+
+    This transformer reduces the total size of the dataset by randomly selecting
+    n samples while maintaining the original ordering with np.nan for removed items.
+    """
+
+    def __init__(self, n: int, seed: int = 42):
+        """Initialize the DownSampler.
+
+        Args:
+            n (int): target size of the sampled dataset
+        """
+        super().__init__()
+        self.n = n
+        self.seed = seed
+
+    def transform(self, data: Any) -> Any:
+        """Raises NotImplementedError, as it does not make sense to balance a single data point."""
+        raise NotImplementedError("BalanceSampler does not make sense for a single data point.")
+
+    def transform_all(self, data: list) -> list:
+        """Transform the data by randomly sampling n items.
+
+        Args:
+            data (list): the data to be sampled
+
+        Returns:
+            transformed_data (list): the sampled data with np.nan for removed items
+        """
+        if self.n > len(data):
+            return data
+
+        # set seed
+        np.random.seed(self.seed)
+
+        # randomly select n indices
+        kept_indices = np.random.choice(
+            range(len(data)),
+            size=self.n,
+            replace=False,
+        )
+
+        # return sampled data with np.nan for removed items
+        return [data[i] if i in kept_indices else np.nan for i in range(len(data))]
