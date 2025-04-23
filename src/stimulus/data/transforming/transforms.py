@@ -387,7 +387,7 @@ class SwapTransform(AbstractTransform):
     E.g if the data is [1, 2, 3, 4, 5] and swap_numbers is 2, the output could be [2, 1, 4, 3, 5].
     """
 
-    def __init__(self, swap_numbers: int = 1, seed: int = 42) -> None:
+    def __init__(self, swap_numbers: float = 1, seed: int = 42) -> None:
         """Initialize the swap transform.
 
         Args:
@@ -395,7 +395,10 @@ class SwapTransform(AbstractTransform):
             seed: Random seed for reproducibility
         """
         super().__init__()
-        self.swap_numbers = swap_numbers
+        if isinstance(swap_numbers, float):
+            self.swap_numbers = int(swap_numbers)
+        else:
+            self.swap_numbers = swap_numbers
         self.seed = seed
 
     def transform(self, data: list[Any]) -> list[Any]:
