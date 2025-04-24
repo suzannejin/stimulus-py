@@ -294,7 +294,9 @@ class Objective:
         """Compute the objective metric(s) for the tuning process."""
 
         def update_metric_dict(
-            metric_dict: dict[str, torch.Tensor], metrics: dict[str, torch.Tensor], loss: torch.Tensor,
+            metric_dict: dict[str, torch.Tensor],
+            metrics: dict[str, torch.Tensor],
+            loss: torch.Tensor,
         ) -> dict[str, torch.Tensor]:
             """Update the metric dictionary with the new metrics and loss."""
             for key, value in metrics.items():

@@ -288,6 +288,7 @@ def test_swap_transform_multiple() -> None:
     transformed_data = swap_transform.transform_all(data)
     assert transformed_data != data
 
+
 def test_random_down_sampler() -> None:
     """Test the RandomDownSampler class."""
     sampler = RandomDownSampler(n=3, seed=0)
@@ -298,4 +299,3 @@ def test_random_down_sampler() -> None:
     assert transformed_data[0] == "a"
     assert transformed_data[1] == "b"
     assert transformed_data[2] == "c"
-

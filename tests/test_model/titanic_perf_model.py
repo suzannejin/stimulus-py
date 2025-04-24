@@ -99,7 +99,7 @@ class ModelTitanicPerformance(torch.nn.Module):
         self,
         x: dict[str, torch.Tensor],
         y: dict[str, torch.Tensor],
-        loss_fn: Callable,
+        loss_fn: Optional[Callable] = None,
         optimizer: Optional[torch.optim.Optimizer] = None,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Perform one batch step.
@@ -117,7 +117,10 @@ class ModelTitanicPerformance(torch.nn.Module):
         output = self.forward(**x).squeeze(-1)
 
         # Compute loss
-        loss = self.compute_loss(output, **y, loss_fn=loss_fn)
+        if loss_fn is None:
+            loss = torch.tensor(0.0)
+        else:
+            loss = self.compute_loss(output, **y, loss_fn=loss_fn)
 
         # Backward pass and optimization
         if optimizer is not None:
@@ -126,4 +129,4 @@ class ModelTitanicPerformance(torch.nn.Module):
             optimizer.step()
 
         accuracy = self.compute_accuracy(output, **y)
-        return loss, {"accuracy": accuracy}
+        return loss, {"accuracy": accuracy, "predictions": output}
