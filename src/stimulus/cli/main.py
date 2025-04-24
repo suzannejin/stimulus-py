@@ -385,7 +385,7 @@ def predict(
 @click.option(
     "-m",
     "--mode",
-    type=click.Choice(["cosine_similarity"]),
+    type=click.Choice(["cosine_similarity", "discrete_comparison"]),
     default="cosine_similarity",
     help="Similarity metric to use for comparison",
 )
