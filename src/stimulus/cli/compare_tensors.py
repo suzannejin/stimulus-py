@@ -116,8 +116,8 @@ def compare_tensors(tensor_paths: list[str], mode: str = "cosine_similarity") ->
                     statistics_log[f"{key}_std"] = [combined_tensor.std().item()]
                 else:
                     # Handle case where it's already a single tensor or list of scalars
-                    statistics_log[f"{key}_min"] = [result_log[f"{key}"][0].min().item()]
-                    statistics_log[f"{key}_max"] = [result_log[f"{key}"][0].max().item()]
+                    statistics_log[f"{key}_min"] = [torch.tensor(result_log[f"{key}"]).min().item()]
+                    statistics_log[f"{key}_max"] = [torch.tensor(result_log[f"{key}"]).max().item()]
                     statistics_log[f"{key}_mean"] = [torch.tensor(result_log[f"{key}"]).mean().item()]
                     statistics_log[f"{key}_median"] = [torch.tensor(result_log[f"{key}"]).median().item()]
                     statistics_log[f"{key}_std"] = [torch.tensor(result_log[f"{key}"]).std().item()]
