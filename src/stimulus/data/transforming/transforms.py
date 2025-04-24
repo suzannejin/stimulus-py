@@ -379,7 +379,6 @@ class BalanceSampler(AbstractSampler):
         return [data[i] if i in kept_indices else np.nan for i in range(len(data))]
 
 
-
 class SwapTransform(AbstractTransform):
     """Swap the values of pairs of elemengs in the data n-times with replacement.
 
@@ -428,6 +427,7 @@ class SwapTransform(AbstractTransform):
         for _ in range(self.swap_numbers):
             data_clone = self.transform(data_clone)
         return data_clone
+
 
 class RandomDownSampler:
     """A transformer that randomly samples a dataset to a specified size n.
