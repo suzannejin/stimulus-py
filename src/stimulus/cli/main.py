@@ -390,24 +390,16 @@ def predict(
     help="Similarity metric to use for comparison",
 )
 @click.option(
-    "-p",
-    "--pairwise-output",
+    "-o",
+    "--output",
     type=click.Path(),
     default="comparison_results.csv",
     help="Path to save pairwise comparison results [default: comparison_results.csv]",
 )
-@click.option(
-    "-s",
-    "--statistics-output",
-    type=click.Path(),
-    default="comparison_statistics.csv",
-    help="Path to save statistics results [default: comparison_statistics.csv]",
-)
 def compare_tensors(
     tensor_paths: tuple,
     mode: str,
-    pairwise_output: str,
-    statistics_output: str,
+    output: str,
 ) -> None:
     """Compare multiple tensor files with each other.
 
@@ -423,13 +415,11 @@ def compare_tensors(
         return
 
     click.echo(f"Comparing {len(tensor_paths)} tensors using {mode}...")
-    click.echo(f"Saving pairwise results to: {pairwise_output}")
-    click.echo(f"Saving statistics to: {statistics_output}")
+    click.echo(f"Saving results to: {output}")
 
     compare_tensors_and_save(
-        list(tensor_paths),
-        pairwise_output,
-        statistics_output,
+        tensor_paths=list(tensor_paths),
+        output_logs=output,
         mode=mode,
     )
 
