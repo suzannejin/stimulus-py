@@ -8,7 +8,7 @@ function as a header `@TransformRegistry.register(name)`
 from typing import ClassVar
 
 from src.stimulus.core.registry import AbstractRegistry
-from src.stimulus.data.splitting.splitters import AbstractTransform
+from src.stimulus.data.transforming.transforms import AbstractTransform
 
 
 class TransformRegistry(AbstractRegistry):
