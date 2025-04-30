@@ -50,8 +50,7 @@ class TransformClass2(AbstractTransform):
 
 def test_num_transform_in_registry() -> None:
     """Checks that TransformClass, TransformClass1, TransformClass2."""
-    transform_registry_classes: dict[str,
-                                     AbstractTransform] = TransformRegistry.all()
+    transform_registry_classes: dict[str, AbstractTransform] = TransformRegistry.all()
     assert len(transform_registry_classes) == 4
 
 
@@ -70,8 +69,7 @@ def test_wrong_model_registering() -> None:
 
 def test_uniqueness_registry() -> None:
     """Checks that registering in the TransformRegistry doesn't save in the BaseRegistry."""
-    transform_registry_classes: dict[str,
-                                     AbstractTransform] = TransformRegistry.all()
+    transform_registry_classes: dict[str, AbstractTransform] = TransformRegistry.all()
     base_registry_classes: dict[str, Any] = BaseRegistry.all()
     abstract_registry_classes: dict[str, Any] = AbstractRegistry.all()
 

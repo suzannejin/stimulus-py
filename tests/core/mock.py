@@ -1,10 +1,8 @@
 """A mock class to show the registering on import in tests/core/test_registry.py."""
 
 from src.stimulus.core.registry import BaseRegistry
-
 from src.stimulus.data.splitters.registry import SplitterRegistry
 from src.stimulus.data.splitting.splitters import AbstractSplitter
-
 from src.stimulus.data.transform.registry import TransformRegistry
 from src.stimulus.data.transforming.transforms import AbstractTransform
 
