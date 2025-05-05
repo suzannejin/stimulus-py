@@ -1,7 +1,6 @@
 """CLI module for comparing tensors."""
 
 import logging
-import os
 from collections import defaultdict
 
 import polars as pl
@@ -103,8 +102,6 @@ def compare_tensors_and_save(
     tensors: dict[str, dict[str, torch.Tensor]] = {path: load_file(path) for path in tensor_paths}
     for i in range(len(tensor_paths)):
         for j in range(i + 1, len(tensor_paths)):
-            results["tensor1"].append(str(os.path.basename(tensor_paths[i])))
-            results["tensor2"].append(str(os.path.basename(tensor_paths[j])))
             tensor1 = tensors[tensor_paths[i]]
             tensor2 = tensors[tensor_paths[j]]
             tensor_comparison = compare_tensors(tensor1, tensor2, mode)
