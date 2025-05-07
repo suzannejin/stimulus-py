@@ -5,6 +5,8 @@ try:
 except ImportError:
     from importlib_metadata import version
 
+from typing import Optional
+
 import click
 
 
@@ -50,12 +52,19 @@ def cli() -> None:
     default="./optuna_results",
     help="Location for optuna results output directory [default: ./optuna_results]",
 )
+@click.option(
+    "-f",
+    "--force-device",
+    default=None,
+    help="Force the use of a specific device. Example: --force-device cuda:0",
+)
 def check_model(
     data: str,
     model: str,
     data_config: str,
     model_config: str,
     optuna_results_dirpath: str,
+    force_device: Optional[str] = None,
 ) -> None:
     """Check model configuration and run initial tests."""
     from stimulus.cli.check_model import check_model as check_model_func
@@ -66,6 +75,7 @@ def check_model(
         data_config_path=data_config,
         model_config_path=model_config,
         optuna_results_dirpath=optuna_results_dirpath,
+        force_device=force_device,
     )
 
 
@@ -292,6 +302,12 @@ def transform_csv(
     default="./optuna_results",
     help="Location for optuna results output directory",
 )
+@click.option(
+    "-f",
+    "--force-device",
+    default=None,
+    help="Force the use of a specific device. Example: --force-device cuda:0",
+)
 def tune(
     data: str,
     model: str,
@@ -300,6 +316,7 @@ def tune(
     output: str,
     best_optimizer: str,
     optuna_results_dirpath: str,
+    force_device: Optional[str] = None,
 ) -> None:
     """Run hyperparameter tuning for a model."""
     from stimulus.cli.tuning import tune as tune_func
@@ -312,6 +329,7 @@ def tune(
         optuna_results_dirpath=optuna_results_dirpath,
         best_model_path=output,
         best_optimizer_path=best_optimizer,
+        force_device=force_device,
     )
 
 
