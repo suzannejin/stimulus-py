@@ -8,6 +8,7 @@ import datasets
 import pyarrow
 import yaml
 import numpy as np
+import copy
 
 from stimulus.data.interface import data_config_parser
 
@@ -54,6 +55,8 @@ def transform_batch(
         A dictionary representing the transformed batch, with all original columns
         present and modified columns updated according to the transforms.
     """
+    # here we should init a result directory from the batch. 
+    result_dict = {key: value for key, value in batch.items()}
     for column_name, list_of_transforms in transforms_config.items():
         if column_name not in batch:
             logger.warning(
@@ -65,26 +68,18 @@ def transform_batch(
         for transform_obj in list_of_transforms:
             if transform_obj.add_rows == True:
                 # here duplicate the batch 
-                """
-                import pyarrow as pa
-                # Assuming lb1 and lb2 are your LazyBatch objects
-                # lb1 = LazyBatch(pyarrow_table_1, formatter_1)
-                # lb2 = LazyBatch(pyarrow_table_2, formatter_2)
+                original_values = np.array(batch[column_name])
+                processed_values = transform_obj.transform_all(original_values)
+                other_columns = {k: v for k, v in batch.items() if k != column_name}
 
-                # 1. Access the underlying pyarrow.Table objects
-                table1 = lb1.pa_table
-                table2 = lb2.pa_table
+                # Combine original and processed values
+                result = {
+                    column_name: original_values.tolist() + processed_values.tolist()
+                }
+                for col_name, values in other_columns.items():
+                    result[col_name] = values + values
 
-                # 2. Concatenate the tables (assuming compatible schemas)
-                #    pyarrow.concat_tables raises an error if schemas are not compatible by default.
-                concatenated_pa_table = pa.concat_tables([table1, table2])
-
-                # 3. Create a new LazyBatch with the concatenated table
-                #    You can typically reuse the formatter from one of the original LazyBatch objects.
-                #    Ensure the formatter is appropriate for the concatenated_pa_table.
-                concatenated_lazy_batch = LazyBatch(concatenated_pa_table, lb1.formatter)
-
-                # Now, concatenated_lazy_batch will lazily format data from the combined table."""
+            if transform_obj.remove_rows == True:
                 column_data_to_process = transform_obj.transform_all(column_data_to_process)
             else:
                 column_data_to_process = transform_obj.transform_all(column_data_to_process)
