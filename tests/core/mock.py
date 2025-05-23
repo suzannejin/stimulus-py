@@ -3,6 +3,8 @@
 from src.stimulus.core.registry import BaseRegistry
 from src.stimulus.data.splitters.registry import SplitterRegistry
 from src.stimulus.data.splitting.splitters import AbstractSplitter
+from src.stimulus.data.transform.registry import TransformRegistry
+from src.stimulus.data.transforming.transforms import AbstractTransform
 
 
 @BaseRegistry.register("tEst_ClAss3")
@@ -21,3 +23,12 @@ class Splitter3(AbstractSplitter):
     def echo(self) -> str:
         """Returns just class3."""
         return "splitter_3"
+
+
+@TransformRegistry.register("TranSFOrM_CLASs3")
+class Transform3(AbstractTransform):
+    """A mock class."""
+
+    def echo(self) -> str:
+        """Returns just transform_3."""
+        return "transform_3"
