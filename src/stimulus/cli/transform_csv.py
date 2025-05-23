@@ -5,10 +5,9 @@ import logging
 from typing import Any
 
 import datasets
-import pyarrow
+import pandas as pd
+import pyarrow as pa
 import yaml
-import numpy as np
-import copy
 
 from stimulus.data.interface import data_config_parser
 
@@ -19,7 +18,6 @@ def load_transforms_from_config(data_config_path: str) -> dict[str, list[Any]]:
     """Load the data config from a path.
 
     Args:
-        data_path: Path to the data file.
         data_config_path: Path to the data config file.
 
     Returns:
@@ -55,8 +53,8 @@ def transform_batch(
         A dictionary representing the transformed batch, with all original columns
         present and modified columns updated according to the transforms.
     """
-    # here we should init a result directory from the batch. 
-    result_dict = {key: value for key, value in batch.items()}
+    # here we should init a result directory from the batch.
+    result_dict = dict(batch)
     for column_name, list_of_transforms in transforms_config.items():
         if column_name not in batch:
             logger.warning(
@@ -66,29 +64,22 @@ def transform_batch(
             continue
 
         for transform_obj in list_of_transforms:
-            if transform_obj.add_rows == True:
-                # here duplicate the batch 
-                original_values = np.array(batch[column_name])
+            if transform_obj.add_row:
+                # here duplicate the batch
+                original_values = result_dict[column_name]
                 processed_values = transform_obj.transform_all(original_values)
-                other_columns = {k: v for k, v in batch.items() if k != column_name}
-
-                # Combine original and processed values
-                result = {
-                    column_name: original_values.tolist() + processed_values.tolist()
-                }
-                for col_name, values in other_columns.items():
-                    result[col_name] = values + values
-
-            if transform_obj.remove_rows == True:
-                column_data_to_process = transform_obj.transform_all(column_data_to_process)
+                for key, value in result_dict.items():
+                    if key != column_name:
+                        result_dict[key] = value + value
+                    else:
+                        result_dict[key] = value + processed_values
             else:
-                column_data_to_process = transform_obj.transform_all(column_data_to_process)
+                result_dict[column_name] = transform_obj.transform_all(result_dict[column_name])
 
-        batch[column_name] = column_data_to_process
-    return batch
+    return result_dict
 
 
-def main(data: str, config_yaml: str, out_path: str) -> None:
+def main(data_csv: str, config_yaml: str, out_path: str) -> None:
     """Transform the data according to the configuration.
 
     Args:
@@ -97,11 +88,12 @@ def main(data: str, config_yaml: str, out_path: str) -> None:
         out_path: Path to output transformed CSV.
     """
     try:
-        dataset = datasets.load_dataset("parquet", data_files=data)
-    except pyarrow.ArrowInvalid:
+        dataset = datasets.load_dataset("parquet", data_files=data_csv)
+    except pa.ArrowInvalid:
         logger.info("Data is not in parquet format, trying csv")
-        dataset = datasets.load_dataset("csv", data_files=data)
+        dataset = datasets.load_dataset("csv", data_files=data_csv)
 
+    dataset.set_format(type="numpy")
     # Create a DatasetProcessor object from the config and the csv
     transforms = load_transforms_from_config(config_yaml)
     logger.info("Transforms initialized successfully.")
@@ -112,5 +104,6 @@ def main(data: str, config_yaml: str, out_path: str) -> None:
         batched=True,
         fn_kwargs={"transforms_config": transforms},
     )
-
-    dataset = dataset.filter(lambda example: not any(np.isnan(value) for value in example.values()))
+    logger.debug(f"Dataset type: {type(dataset)}")
+    dataset["train"] = dataset["train"].filter(lambda example: not any(pd.isna(value) for value in example.values()))
+    dataset["train"].to_csv(out_path)
