@@ -3,8 +3,10 @@
 
 import logging
 import os
+from typing import Optional
 
 import optuna
+import torch
 import yaml
 
 from stimulus.data import data_handlers
@@ -55,6 +57,7 @@ def check_model(
     data_config_path: str,
     model_config_path: str,
     optuna_results_dirpath: str = "./optuna_results",
+    force_device: Optional[str] = None,
 ) -> tuple[str, str]:
     """Run the main model checking pipeline.
 
@@ -87,7 +90,16 @@ def check_model(
     storage = optuna.storages.JournalStorage(
         optuna.storages.journal.JournalFileBackend(f"{base_path}/optuna_journal_storage.log"),
     )
-    device = optuna_tune.get_device()
+
+    if force_device is not None:
+        try:
+            device = torch.device(force_device)
+        except RuntimeError as e:
+            raise RuntimeError(
+                f"Forced device {force_device} is not available. Please use a valid device as argument to check_model cli.",
+            ) from e
+    else:
+        device = optuna_tune.get_device()
     objective = optuna_tune.Objective(
         model_class=model_class,
         network_params=model_config.network_params,

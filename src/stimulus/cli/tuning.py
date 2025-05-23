@@ -4,7 +4,7 @@
 import logging
 import os
 import shutil
-from typing import Any
+from typing import Any, Optional
 
 import optuna
 import torch
@@ -59,6 +59,7 @@ def tune(
     best_model_path: str = "best_model.safetensors",
     best_optimizer_path: str = "best_optimizer.pt",
     best_config_path: str = "best_config.json",
+    force_device: Optional[str] = None,
 ) -> None:
     """Run model hyperparameter tuning.
 
@@ -99,7 +100,15 @@ def tune(
         optuna.storages.journal.JournalFileBackend(f"{base_path}/optuna_journal_storage.log"),
     )
 
-    device = optuna_tune.get_device()
+    if force_device is not None:
+        try:
+            device = torch.device(force_device)
+        except RuntimeError as e:
+            raise RuntimeError(
+                f"Forced device {force_device} is not available. Please use a valid device as argument to check_model cli.",
+            ) from e
+    else:
+        device = optuna_tune.get_device()
 
     objective = optuna_tune.Objective(
         model_class=model_class,
