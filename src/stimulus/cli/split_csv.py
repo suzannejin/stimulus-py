@@ -24,7 +24,6 @@ def load_splitters_from_config_from_path(data_config_path: str) -> data_handlers
     """Load the data config from a path.
 
     Args:
-        data_path: Path to the data file.
         data_config_path: Path to the data config file.
 
     Returns:
