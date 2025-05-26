@@ -92,6 +92,10 @@ def test_cli_invocation(
         original_dataset = datasets.load_dataset("csv", data_files=csv_path)
         # Assert that the original and transformed datasets are different
         # We'll compare the "train" split as that's the default for datasets.load_dataset with csv
-        original_df = original_dataset["train"].to_pandas()
-        transformed_df = transformed_dataset["train"].to_pandas()
-        assert not original_df.equals(transformed_df), "Transformed dataset is identical to the original dataset"
+        try:
+            original_df = original_dataset["train"].to_pandas()
+            transformed_df = transformed_dataset["train"].to_pandas()
+            assert not original_df.equals(transformed_df), "Transformed dataset is identical to the original dataset"
+        finally:
+            del transformed_dataset
+            del original_dataset
