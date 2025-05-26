@@ -75,5 +75,5 @@ transforms:
 split:
   split_method: RandomSplit
   params:
-    split: [0.7, 0.15, 0.15]
+    split: [0.7, 0.3]
   split_input_columns: [age]

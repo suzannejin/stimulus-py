@@ -138,4 +138,4 @@ split:
   - split_method: RandomSplit
     split_input_columns: ["Age"]
     params:
-      split: [0.8, 0.1, 0.1]
+      split: [0.8, 0.2]
