@@ -185,7 +185,7 @@ def test_create_splitter(load_full_config: ConfigDict) -> None:
     splitter = create_splitter(load_full_config.split[0])
 
     assert splitter.__class__.__name__ == "RandomSplit"
-    assert splitter.split == [0.7, 0.15, 0.15]
+    assert splitter.split == [0.7, 0.3]
 
 
 def test_parse_split_transform_config(load_transform_config: SplitTransformDict) -> None:
