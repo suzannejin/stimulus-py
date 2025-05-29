@@ -258,6 +258,43 @@ def transform_csv(
     "--data",
     type=click.Path(exists=True),
     required=True,
+    help="Path to input data file or directory (CSV, parquet, or HuggingFace dataset)",
+)
+@click.option(
+    "-y",
+    "--yaml",
+    type=click.Path(exists=True),
+    required=True,
+    help="The YAML config file that holds encoder parameters",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    required=True,
+    help="The output directory path to save the encoded dataset",
+)
+def encode_csv(
+    data: str,
+    yaml: str,
+    output: str,
+) -> None:
+    """Encode data according to configuration."""
+    from stimulus.cli.encode_csv import main as encode_csv_func
+
+    encode_csv_func(
+        data_path=data,
+        config_yaml=yaml,
+        out_path=output,
+    )
+
+
+@cli.command()
+@click.option(
+    "-d",
+    "--data",
+    type=click.Path(exists=True),
+    required=True,
     help="Path to input csv file",
 )
 @click.option(
