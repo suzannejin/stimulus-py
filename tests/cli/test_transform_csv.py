@@ -4,10 +4,8 @@ import hashlib
 import os
 import pathlib
 import tempfile
-import warnings
 from typing import Any, Callable
 
-import datasets
 import pytest
 from click.testing import CliRunner
 
