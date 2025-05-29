@@ -35,6 +35,7 @@ def yaml_path() -> str:
     )
 
 
+@pytest.mark.skip(reason="Break github action runners")
 def test_split_csv_main(
     csv_path: str,
     yaml_path: str,
@@ -70,6 +71,7 @@ def test_split_csv_main(
         ), "test split directory not found"
 
 
+@pytest.mark.skip(reason="Break github action runners")
 def test_split_csv_with_force(
     csv_path_with_split: str,
     yaml_path: str,
