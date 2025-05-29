@@ -22,51 +22,20 @@ class AbstractEncoder(ABC):
     Different encoders may take different types of data as input.
 
     Methods:
-        encode: encodes a single data point
-        encode_all: encodes a list of data points into a torch.tensor
-        encode_multiprocess: encodes a list of data points using multiprocessing
-        decode: decodes a single data point
+        batch_encode: encodes a list of data points into a numpy.ndarray
     """
 
     @abstractmethod
-    def encode(self, data: Any) -> Any:
-        """Encode a single data point.
+    def batch_encode(self, data: np.ndarray) -> np.ndarray:
+        """Encode a batch of data points.
 
         This is an abstract method, child classes should overwrite it.
 
         Args:
-            data (Any): a single data point
+            data (np.ndarray): a batch of data points
 
         Returns:
-            encoded_data_point (Any): the encoded data point
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def encode_all(self, data: list[Any]) -> torch.Tensor:
-        """Encode a list of data points.
-
-        This is an abstract method, child classes should overwrite it.
-
-        Args:
-            data (list[Any]): a list of data points
-
-        Returns:
-            encoded_data (torch.Tensor): encoded data points
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def decode(self, data: Any) -> Any:
-        """Decode a single data point.
-
-        This is an abstract method, child classes should overwrite it.
-
-        Args:
-            data (Any): a single encoded data point
-
-        Returns:
-            decoded_data_point (Any): the decoded data point
+            encoded_data (np.ndarray): encoded data points
         """
         raise NotImplementedError
 
@@ -132,22 +101,23 @@ class TextOneHotEncoder(AbstractEncoder):
         # Set the last position (for invalid characters) to zero
         self.alphabet_mask[-1] = 0.0
 
-    def encode_all(self, data: Union[str, list[str]]) -> torch.Tensor:
+    def batch_encode(self, data: np.ndarray) -> np.ndarray:
         """Encode all sequences in a batch using fully vectorized operations.
 
         Args:
-            data (Union[str, list[str]]): A single sequence or list of sequences
+            data (np.ndarray): A 1D numpy array of strings (sequences).
 
         Returns:
-            torch.Tensor: Tensor of shape (batch_size, max_seq_length, alphabet_size)
+            np.ndarray: Array of shape (batch_size, max_seq_length, alphabet_size)
         """
-        # Handle single string case
-        if isinstance(data, str):
-            data = [data]
-        elif not isinstance(data, list):
-            error_msg = f"Expected list or string input for data, got {type(data).__name__}"
-            logger.error(error_msg)
-            raise TypeError(error_msg)
+        # Handle single string case by ensuring data is a 1D array
+        if data.ndim == 0: # handles case where a single string is passed as a 0-d array
+            data = np.array([str(data)])
+        elif not (data.ndim == 1 and data.dtype.kind in ['U', 'S']):
+             error_msg = f"Expected 1D numpy array of strings for data, got array with shape {data.shape} and dtype {data.dtype}"
+             logger.error(error_msg)
+             raise TypeError(error_msg)
+
 
         # Early check for sequence length consistency when padding=False
         if not self.padding:
@@ -158,7 +128,11 @@ class TextOneHotEncoder(AbstractEncoder):
                 raise ValueError(error_msg)
 
         # Find max length for processing all sequences at once
-        max_length = max(len(seq) for seq in data)
+        # Ensure that data is not empty before calling max()
+        if data.size == 0:
+            return np.array([]).reshape(0, 0, self.alphabet_size) # Or handle as an error
+        
+        max_length = max(len(seq) for seq in data) if data.size > 0 else 0
         batch_size = len(data)
 
         # OPTIMIZATION: Process all sequences as a single byte array
@@ -166,13 +140,14 @@ class TextOneHotEncoder(AbstractEncoder):
         ascii_array = np.zeros((batch_size, max_length), dtype=np.uint8)
 
         # Convert sequences to bytes more efficiently
-        for i, seq_input in enumerate(data):
+        for i, seq_input_bytes in enumerate(data):
+            seq_input = seq_input_bytes.decode('utf-8') if isinstance(seq_input_bytes, bytes) else str(seq_input_bytes)
             seq = seq_input.lower() if self.convert_lowercase else seq_input
 
             # OPTIMIZATION: Use numpy byte array conversion to avoid Python loop
             seq_bytes = np.frombuffer(seq.encode("ascii", errors="ignore"), dtype=np.uint8)
             ascii_array[i, : len(seq_bytes)] = seq_bytes
-
+        
         # Transfer to GPU in one operation
         # OPTIMIZATION: Use torch.tensor directly on device rather than to() to avoid copy
         ascii_tensor = torch.tensor(ascii_array, dtype=torch.int64, device=self.device)
@@ -200,70 +175,9 @@ class TextOneHotEncoder(AbstractEncoder):
         # This creates zeros for unknown characters
         result = one_hot.clone()
         result[~valid_indices_mask] = 0.0
-
+        
         # Remove the last dimension (sentinel value) to get the final shape
-        return result[:, :, : self.alphabet_size]
-
-    def encode(self, data: str) -> torch.Tensor:
-        """Encode a single sequence by delegating to encode_all.
-
-        Args:
-            data (str): The sequence to encode
-
-        Returns:
-            torch.Tensor: One-hot encoded tensor of shape (sequence_length, alphabet_size)
-        """
-        result = self.encode_all([data])
-        return result.squeeze(0)
-
-    def decode(self, data: torch.Tensor) -> Union[str, list[str]]:
-        """Decode a one-hot encoded tensor back to sequences.
-
-        Args:
-            data (torch.Tensor): 2D or 3D tensor of one-hot encoded sequences
-                - 2D shape: (sequence_length, alphabet_size)
-                - 3D shape: (batch_size, sequence_length, alphabet_size)
-
-        Returns:
-            decoded_data (Union[str, list[str]]): decoded data points
-        """
-        # Check if we have a batch or single sequence
-        is_batch = len(data.shape) == self.TENSOR_3D_SHAPE
-
-        if not is_batch:
-            # Add batch dimension if single sequence
-            data = data.unsqueeze(0)
-
-        # Get indices of maximum values along the alphabet dimension
-        indices = torch.argmax(data, dim=2)
-
-        # Check if any row is all zeros (unknown character)
-        all_zeros = data.sum(dim=2) == 0
-
-        # Convert to CPU for processing
-        indices = indices.cpu().numpy()
-        all_zeros = all_zeros.cpu().numpy()
-
-        # Decode each sequence
-        result = []
-        for i, seq_indices in enumerate(indices):
-            chars = []
-            for j, idx in enumerate(seq_indices):
-                # If the row is all zeros (unknown char) or no valid one-hot encoding
-                if all_zeros[i, j]:
-                    chars.append("-")
-                # Only add valid characters from the alphabet
-                elif 0 <= idx < len(self.alphabet):
-                    chars.append(self.alphabet[idx])
-                else:
-                    chars.append("-")
-            result.append("".join(chars))
-
-        # Return a single string if input was a single sequence
-        if not is_batch:
-            return result[0]
-
-        return result
+        return result[:, :, : self.alphabet_size].cpu().numpy()
 
 
 class TextAsciiEncoder(AbstractEncoder):
@@ -275,9 +189,7 @@ class TextAsciiEncoder(AbstractEncoder):
         padding (bool): whether to pad the sequences with zeros. Default = False
 
     Methods:
-        encode: encodes a single data point
-        encode_all: encodes a list of data points into a torch.tensor
-        decode: decodes a single data point
+        batch_encode: encodes a list of data points into a numpy.ndarray
     """
 
     def __init__(
@@ -298,89 +210,56 @@ class TextAsciiEncoder(AbstractEncoder):
         self.dtype = dtype
         self.max_len = max_len
 
-    def encode(self, data: str, length: Optional[int] = None, *, slice_long: bool = False) -> torch.Tensor:
+    def batch_encode(self, data: np.ndarray, *, slice_long: bool = False) -> np.ndarray:
         """Encodes the data.
 
-        This method takes as input a single data point, should be mappable to a single output.
+        This method takes as input a 1D numpy array of strings and returns a numpy array.
 
         Args:
-            data (str): a single data point
-            length (Optional[int]): the length to pad the data to. Default = None
+            data (np.ndarray): a 1D numpy array of strings
             slice_long (bool): whether to slice the data into chunks of the specified length if it is too long. Default = False
 
         Returns:
-            encoded_data_point (torch.Tensor): the encoded data point
+            encoded_data (np.ndarray): the encoded data
 
         Raises:
-            TypeError: If the input data is not a string
-            ValueError: If the data contains characters with ASCII values greater than vocab_size - 1
-            ValueError: If the data length is greater than the specified length
+            TypeError: If the input data is not a 1D numpy array of strings.
+            ValueError: If any string in data contains characters with ASCII values greater than vocab_size - 1
         """
-        if not isinstance(data, str):
-            raise TypeError(f"Expected input data to be a string, got {type(data).__name__}")
+        if not (isinstance(data, np.ndarray) and data.ndim == 1 and data.dtype.kind in ['U', 'S']):
+            raise TypeError(f"Expected input data to be a 1D numpy array of strings, got {type(data).__name__} with dtype {data.dtype if hasattr(data, 'dtype') else 'N/A'}")
 
-        if any(ord(c) >= self.vocab_size for c in data):
-            raise ValueError(f"Data contains characters with ASCII values greater than {self.vocab_size - 1}")
+        encoded_data_list = []
+        for s_bytes in data:
+            s = s_bytes.decode('utf-8') if isinstance(s_bytes, bytes) else str(s_bytes) # Ensure it's a string
+            if any(ord(c) >= self.vocab_size for c in s):
+                raise ValueError(f"Data string '{s}' contains characters with ASCII values greater than {self.vocab_size - 1}")
 
-        values = np.frombuffer(data.encode(), dtype=np.uint8)
-        values_arr = [values]
+            values = np.frombuffer(s.encode('ascii', errors='ignore'), dtype=np.uint8)
+            
+            current_max_len = self.max_len
+            if current_max_len is None: # If no global max_len, use the length of the current string
+                current_max_len = len(values)
 
-        if length is not None:
-            if len(values) > length:
+
+            if len(values) > current_max_len:
                 if not slice_long:
-                    raise ValueError(f"Data length {len(values)} is greater than the specified length {length}")
-                values_arr = np.array_split(values, len(values) // length + 1)
-                values_arr = [np.pad(v, (length - len(v), 0), mode="constant") for v in values_arr]
+                    raise ValueError(f"Data length {len(values)} is greater than the specified max_len {current_max_len}")
+                # Split and pad each chunk
+                num_chunks = len(values) // current_max_len + (1 if len(values) % current_max_len != 0 else 0)
+                for i in range(num_chunks):
+                    chunk = values[i * current_max_len:(i + 1) * current_max_len]
+                    padded_chunk = np.pad(chunk, (0, current_max_len - len(chunk)), mode="constant")
+                    encoded_data_list.append(padded_chunk)
             else:
-                values_arr = [np.pad(values, (length - len(values), 0), mode="constant")]
+                # Pad the single array/chunk
+                padded_values = np.pad(values, (0, current_max_len - len(values)), mode="constant")
+                encoded_data_list.append(padded_values)
+        
+        if not encoded_data_list: # Handle empty input data
+            return np.array([], dtype=self.dtype)
 
-        return torch.tensor(np.array(values_arr), dtype=self.dtype)
-
-    def encode_all(self, data: list[str], *, slice_long: bool = False) -> torch.Tensor:
-        """Encodes the data.
-
-        This method takes as input a list of data points, or a single string, and returns a torch.tensor.
-
-        Args:
-            data (list[str]): a list of strings or a single string
-            slice_long (bool): whether to slice the data into chunks of the specified length if it is too long. Default = False
-
-        Returns:
-            encoded_data (torch.Tensor): the encoded data
-
-        Raises:
-            TypeError: If the input data is not a list of strings
-        """
-        if not isinstance(data, list):
-            raise TypeError(f"Expected input data to be a list of strings, got {type(data).__name__}")
-
-        encoded_data = [self.encode(d, self.max_len, slice_long=slice_long).flatten(end_dim=1) for d in data]
-        return torch.stack(encoded_data)
-
-    def decode(self, data: torch.Tensor) -> Union[str, list[str]]:
-        """Decodes the data.
-
-        Args:
-            data (torch.Tensor): the encoded data
-
-        Returns:
-            decoded_data (list[str]): the decoded data
-
-        Raises:
-            ValueError: If the input data is not a 1D or 2D tensor
-        """
-        if type(data) is not torch.Tensor:
-            raise TypeError(f"Expected input data to be a tensor, got {type(data).__name__}")
-
-        tensor_1d = 1
-        tensor_2d = 2
-
-        if data.dim() == tensor_1d:
-            return "".join([chr(int(x)) for x in data.numpy() if x != 0])
-        if data.dim() == tensor_2d:
-            return ["".join([chr(int(x)) for x in d if x != 0]) for d in data.numpy().tolist()]
-
-        raise ValueError(f"Expected 1D or 2D tensor, got {data.dim()}D")
+        return np.array(encoded_data_list, dtype=self.dtype)
 
 
 class NumericEncoder(AbstractEncoder):
@@ -398,59 +277,36 @@ class NumericEncoder(AbstractEncoder):
         """
         self.dtype = dtype
 
-    def encode(self, data: float) -> torch.Tensor:
+    def batch_encode(self, data: np.ndarray) -> np.ndarray:
         """Encodes the data.
 
-        This method takes as input a single data point, should be mappable to a single output.
+        This method takes as input a 1D numpy array of numbers and returns a numpy array.
 
         Args:
-            data (float): a single data point
+            data (np.ndarray): a 1D numpy array of numbers
 
         Returns:
-            encoded_data_point (torch.Tensor): the encoded data point
+            encoded_data (np.ndarray): the encoded data
         """
-        return self.encode_all([data])
-
-    def encode_all(self, data: list[float]) -> torch.Tensor:
-        """Encodes the data.
-
-        This method takes as input a list of data points, or a single float, and returns a torch.tensor.
-
-        Args:
-            data (list[float]): a list of data points or a single data point
-
-        Returns:
-            encoded_data (torch.Tensor): the encoded data
-        """
-        if not isinstance(data, list):
-            data = [data]
+        if not isinstance(data, np.ndarray): # Check if it's a numpy array first
+            data = np.array(data) # Convert if it's a list or other compatible type
 
         self._check_input_dtype(data)
+        # Ensure correct dtype for the output array, consistent with torch.tensor behavior
+        return data.astype(self.dtype.name if hasattr(self.dtype, 'name') else np.float32)
 
-        return torch.tensor(data, dtype=self.dtype)
 
-    def decode(self, data: torch.Tensor) -> list[float]:
-        """Decodes the data.
-
-        Args:
-            data (torch.Tensor): the encoded data
-
-        Returns:
-            decoded_data (list[float]): the decoded data
-        """
-        return data.cpu().numpy().tolist()
-
-    def _check_input_dtype(self, data: list[float]) -> None:
+    def _check_input_dtype(self, data: np.ndarray) -> None:
         """Check if the input data is int or float data.
 
         Args:
-            data (list[float]): a list of float data points
+            data (np.ndarray): a numpy array of numeric data points
 
         Raises:
             ValueError: If the input data contains a non-integer or non-float data point
         """
-        if not all(isinstance(d, (int, float)) for d in data):
-            err_msg = "Expected input data to be a float or int"
+        if not np.issubdtype(data.dtype, np.number):
+            err_msg = "Expected input data to be numeric (int or float)"
             logger.error(err_msg)
             raise ValueError(err_msg)
 
@@ -464,15 +320,7 @@ class StrClassificationEncoder(AbstractEncoder):
         scale (bool): Whether to scale the labels to be between 0 and 1. Default = False
 
     Methods:
-        encode(data: str) -> int:
-            Raises a NotImplementedError, as encoding a single string is not meaningful in this context.
-        encode_all(data: list[str]) -> torch.tensor:
-            Encodes an entire list of string data into a numeric representation using LabelEncoder and
-            returns a torch tensor. Ensures that the provided data items are valid strings prior to encoding.
-        decode(data: Any) -> Any:
-            Raises a NotImplementedError, as decoding is not supported with the current design.
-        _check_dtype(data: list[str]) -> None:
-            Validates that all items in the data list are strings, raising a ValueError otherwise.
+        batch_encode: encodes a list of data points into a numpy.ndarray
     """
 
     def __init__(self, *, scale: bool = False, dtype: torch.dtype = torch.int16) -> None:
@@ -484,53 +332,47 @@ class StrClassificationEncoder(AbstractEncoder):
         self.scale = scale
         self.dtype = dtype
 
-    def encode(self, data: str) -> int:
-        """Returns an error since encoding a single string does not make sense.
-
-        Args:
-            data (str): a single string
-        """
-        raise NotImplementedError("Encoding a single string does not make sense. Use encode_all instead.")
-
-    def encode_all(self, data: Union[str, list[str]]) -> torch.Tensor:
+    def batch_encode(self, data: np.ndarray) -> np.ndarray:
         """Encodes the data.
 
-        This method takes as input a list of data points, should be mappable to a single output, using LabelEncoder from scikit learn and returning a numpy array.
+        This method takes as input a 1D numpy array of strings,
+        should be mappable to a single output, using LabelEncoder from scikit learn and returning a numpy array.
         For more info visit : https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.LabelEncoder.html
 
         Args:
-            data (Union[str, list[str]]): a list of strings or single string
+            data (np.ndarray): a 1D numpy array of strings
 
         Returns:
-            encoded_data (torch.tensor): the encoded data
+            encoded_data (np.ndarray): the encoded data
         """
-        if not isinstance(data, list):
-            data = [data]
+        if not (isinstance(data, np.ndarray) and data.ndim == 1 and data.dtype.kind in ['U', 'S']): # Check for 1D array of strings
+            raise TypeError(f"Expected input data to be a 1D numpy array of strings, got {type(data).__name__} with dtype {data.dtype if hasattr(data, 'dtype') else 'N/A'}")
+
 
         self._check_dtype(data)
 
         encoder = preprocessing.LabelEncoder()
-        encoded_data = torch.tensor(encoder.fit_transform(data))
+        # scikit-learn's LabelEncoder expects a list or 1D array-like of strings
+        encoded_data_np = encoder.fit_transform(data)
         if self.scale:
-            encoded_data = encoded_data / max(len(encoded_data) - 1, 1)
+            encoded_data_np = encoded_data_np / max(len(encoded_data_np) - 1, 1)
+        
+        # Convert to specified torch dtype, then to numpy array
+        # This is a bit roundabout but ensures consistency if torch dtypes were specific
+        return torch.tensor(encoded_data_np).to(self.dtype).cpu().numpy()
 
-        return encoded_data.to(self.dtype)
 
-    def decode(self, data: Any) -> Any:
-        """Returns an error since decoding does not make sense without encoder information, which is not yet supported."""
-        raise NotImplementedError("Decoding is not yet supported for StrClassification.")
-
-    def _check_dtype(self, data: list[str]) -> None:
+    def _check_dtype(self, data: np.ndarray) -> None:
         """Check if the input data is string data.
 
         Args:
-            data (list[str]): a list of strings
+            data (np.ndarray): a 1D numpy array of strings
 
         Raises:
-            ValueError: If the input data is not a string
+            ValueError: If the input data is not a 1D numpy array of strings
         """
-        if not all(isinstance(d, str) for d in data):
-            err_msg = "Expected input data to be a list of strings"
+        if not (data.ndim == 1 and data.dtype.kind in ['U', 'S']):
+            err_msg = "Expected input data to be a 1D numpy array of strings"
             logger.error(err_msg)
             raise ValueError(err_msg)
 
@@ -542,10 +384,7 @@ class NumericRankEncoder(AbstractEncoder):
         scale (bool): whether to scale the ranks to be between 0 and 1. Default = False
 
     Methods:
-        encode: encodes a single data point
-        encode_all: encodes a list of data points into a torch.tensor
-        decode: decodes a single data point
-        _check_input_dtype: checks if the input data is int or float data
+        batch_encode: encodes a list of data points into a numpy.ndarray
     """
 
     def __init__(self, *, scale: bool = False, dtype: torch.dtype = torch.int16) -> None:
@@ -557,48 +396,43 @@ class NumericRankEncoder(AbstractEncoder):
         self.scale = scale
         self.dtype = dtype
 
-    def encode(self, data: Any) -> torch.Tensor:
-        """Returns an error since encoding a single float does not make sense."""
-        raise NotImplementedError("Encoding a single float does not make sense. Use encode_all instead.")
-
-    def encode_all(self, data: list[Union[int, float]]) -> torch.Tensor:
+    def batch_encode(self, data: np.ndarray) -> np.ndarray:
         """Encodes the data.
 
-        This method takes as input a list of data points, and returns the ranks of the data points.
+        This method takes as input a 1D numpy array of numbers, and returns the ranks of the data points.
         The ranks are normalized to be between 0 and 1, when scale is set to True.
 
         Args:
-            data (list[Union[int, float]]): a list of numeric values
+            data (np.ndarray): a 1D numpy array of numeric values
 
         Returns:
-            encoded_data (torch.Tensor): the encoded data
+            encoded_data (np.ndarray): the encoded data
         """
-        if not isinstance(data, list):
-            data = [data]
+        if not isinstance(data, np.ndarray): # Check if it's a numpy array
+             data = np.array(data) # Convert if it's a list or other compatible type
+
+
         self._check_input_dtype(data)
 
         # Get ranks (0 is lowest, n-1 is highest)
         # and normalize to be between 0 and 1
-        array_data: np.ndarray = np.array(data)
-        ranks: np.ndarray = np.argsort(np.argsort(array_data))
+        ranks: np.ndarray = np.argsort(np.argsort(data))
         if self.scale:
             ranks = ranks / max(len(ranks) - 1, 1)
-        return torch.tensor(ranks).to(self.dtype)
+        
+        # Convert to specified torch dtype, then to numpy array
+        return torch.tensor(ranks).to(self.dtype).cpu().numpy()
 
-    def decode(self, data: Any) -> Any:
-        """Returns an error since decoding does not make sense without encoder information, which is not yet supported."""
-        raise NotImplementedError("Decoding is not yet supported for NumericRank.")
-
-    def _check_input_dtype(self, data: list[Union[int, float]]) -> None:
+    def _check_input_dtype(self, data: np.ndarray) -> None:
         """Check if the input data is int or float data.
 
         Args:
-            data (list[Union[int, float]]): a list of numeric values
+            data (np.ndarray): a 1D numpy array of numeric values
 
         Raises:
-            ValueError: If the input data is not a float
+            ValueError: If the input data is not numeric
         """
-        if not all(isinstance(d, (int, float)) for d in data):
-            err_msg = f"Expected input data to be a float or int, got {type(data).__name__}"
+        if not np.issubdtype(data.dtype, np.number):
+            err_msg = f"Expected input data to be numeric (int or float), got dtype {data.dtype}"
             logger.error(err_msg)
             raise ValueError(err_msg)
