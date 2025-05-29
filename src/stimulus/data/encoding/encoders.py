@@ -263,26 +263,35 @@ class TextAsciiEncoder(AbstractEncoder):
                 encoded_data_list.append(padded_values)
 
         if not encoded_data_list:  # Handle empty input data
-            return np.array([], dtype=self.dtype)
+            # Convert torch dtype to numpy dtype for empty array
+            if str(self.dtype) == "torch.int8":
+                return np.array([], dtype=np.int8)
+            if str(self.dtype) == "torch.int16":
+                return np.array([], dtype=np.int16)
+            if str(self.dtype) == "torch.int32":
+                return np.array([], dtype=np.int32)
+            if str(self.dtype) == "torch.int64":
+                return np.array([], dtype=np.int64)
+            if str(self.dtype) == "torch.float32":
+                return np.array([], dtype=np.float32)
+            if str(self.dtype) == "torch.float64":
+                return np.array([], dtype=np.float64)
+            return np.array([], dtype=np.int8)  # default
 
         # Convert torch dtype to numpy dtype if needed
-        numpy_dtype = self.dtype
-        if hasattr(self.dtype, "numpy_dtype"):
-            numpy_dtype = self.dtype.numpy_dtype
-        elif str(self.dtype) == "torch.int8":
-            numpy_dtype = np.int8
-        elif str(self.dtype) == "torch.int16":
-            numpy_dtype = np.int16
-        elif str(self.dtype) == "torch.int32":
-            numpy_dtype = np.int32
-        elif str(self.dtype) == "torch.int64":
-            numpy_dtype = np.int64
-        elif str(self.dtype) == "torch.float32":
-            numpy_dtype = np.float32
-        elif str(self.dtype) == "torch.float64":
-            numpy_dtype = np.float64
-
-        return np.array(encoded_data_list, dtype=numpy_dtype)
+        if str(self.dtype) == "torch.int8":
+            return np.array(encoded_data_list, dtype=np.int8)
+        if str(self.dtype) == "torch.int16":
+            return np.array(encoded_data_list, dtype=np.int16)
+        if str(self.dtype) == "torch.int32":
+            return np.array(encoded_data_list, dtype=np.int32)
+        if str(self.dtype) == "torch.int64":
+            return np.array(encoded_data_list, dtype=np.int64)
+        if str(self.dtype) == "torch.float32":
+            return np.array(encoded_data_list, dtype=np.float32)
+        if str(self.dtype) == "torch.float64":
+            return np.array(encoded_data_list, dtype=np.float64)
+        return np.array(encoded_data_list, dtype=np.int8)  # default
 
 
 class NumericEncoder(AbstractEncoder):
@@ -317,21 +326,19 @@ class NumericEncoder(AbstractEncoder):
         self._check_input_dtype(data)
 
         # Convert torch dtype to numpy dtype
-        numpy_dtype = np.float32  # default
         if str(self.dtype) == "torch.int8":
-            numpy_dtype = np.int8
-        elif str(self.dtype) == "torch.int16":
-            numpy_dtype = np.int16
-        elif str(self.dtype) == "torch.int32":
-            numpy_dtype = np.int32
-        elif str(self.dtype) == "torch.int64":
-            numpy_dtype = np.int64
-        elif str(self.dtype) == "torch.float32":
-            numpy_dtype = np.float32
-        elif str(self.dtype) == "torch.float64":
-            numpy_dtype = np.float64
-
-        return data.astype(numpy_dtype)
+            return data.astype(np.int8)
+        if str(self.dtype) == "torch.int16":
+            return data.astype(np.int16)
+        if str(self.dtype) == "torch.int32":
+            return data.astype(np.int32)
+        if str(self.dtype) == "torch.int64":
+            return data.astype(np.int64)
+        if str(self.dtype) == "torch.float32":
+            return data.astype(np.float32)
+        if str(self.dtype) == "torch.float64":
+            return data.astype(np.float64)
+        return data.astype(np.float32)  # default
 
     def _check_input_dtype(self, data: np.ndarray) -> None:
         """Check if the input data is int or float data.

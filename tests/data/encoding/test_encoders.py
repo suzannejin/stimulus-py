@@ -156,7 +156,7 @@ class TestTextAsciiEncoder:
         """Test that encoding a non-string array raises a TypeError."""
         encoder = TextAsciiEncoder()
         with pytest.raises(TypeError):
-            encoder.batch_encode(np.array([42]))  # type: ignore[arg-type]
+            encoder.batch_encode(np.array([42]))
 
     def test_batch_encode_unicode_raises(self) -> None:
         """Test that encoding a unicode string raises a ValueError."""
