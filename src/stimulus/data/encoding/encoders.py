@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Optional, Union
+from typing import Optional
 
 import numpy as np
 import torch
@@ -111,13 +111,14 @@ class TextOneHotEncoder(AbstractEncoder):
             np.ndarray: Array of shape (batch_size, max_seq_length, alphabet_size)
         """
         # Handle single string case by ensuring data is a 1D array
-        if data.ndim == 0: # handles case where a single string is passed as a 0-d array
+        if data.ndim == 0:  # handles case where a single string is passed as a 0-d array
             data = np.array([str(data)])
-        elif not (data.ndim == 1 and data.dtype.kind in ['U', 'S']):
-             error_msg = f"Expected 1D numpy array of strings for data, got array with shape {data.shape} and dtype {data.dtype}"
-             logger.error(error_msg)
-             raise TypeError(error_msg)
-
+        elif not (data.ndim == 1 and data.dtype.kind in ["U", "S"]):
+            error_msg = (
+                f"Expected 1D numpy array of strings for data, got array with shape {data.shape} and dtype {data.dtype}"
+            )
+            logger.error(error_msg)
+            raise TypeError(error_msg)
 
         # Early check for sequence length consistency when padding=False
         if not self.padding:
@@ -130,8 +131,8 @@ class TextOneHotEncoder(AbstractEncoder):
         # Find max length for processing all sequences at once
         # Ensure that data is not empty before calling max()
         if data.size == 0:
-            return np.array([]).reshape(0, 0, self.alphabet_size) # Or handle as an error
-        
+            return np.array([]).reshape(0, 0, self.alphabet_size)  # Or handle as an error
+
         max_length = max(len(seq) for seq in data) if data.size > 0 else 0
         batch_size = len(data)
 
@@ -141,13 +142,13 @@ class TextOneHotEncoder(AbstractEncoder):
 
         # Convert sequences to bytes more efficiently
         for i, seq_input_bytes in enumerate(data):
-            seq_input = seq_input_bytes.decode('utf-8') if isinstance(seq_input_bytes, bytes) else str(seq_input_bytes)
+            seq_input = seq_input_bytes.decode("utf-8") if isinstance(seq_input_bytes, bytes) else str(seq_input_bytes)
             seq = seq_input.lower() if self.convert_lowercase else seq_input
 
             # OPTIMIZATION: Use numpy byte array conversion to avoid Python loop
             seq_bytes = np.frombuffer(seq.encode("ascii", errors="ignore"), dtype=np.uint8)
             ascii_array[i, : len(seq_bytes)] = seq_bytes
-        
+
         # Transfer to GPU in one operation
         # OPTIMIZATION: Use torch.tensor directly on device rather than to() to avoid copy
         ascii_tensor = torch.tensor(ascii_array, dtype=torch.int64, device=self.device)
@@ -175,7 +176,7 @@ class TextOneHotEncoder(AbstractEncoder):
         # This creates zeros for unknown characters
         result = one_hot.clone()
         result[~valid_indices_mask] = 0.0
-        
+
         # Remove the last dimension (sentinel value) to get the final shape
         return result[:, :, : self.alphabet_size].cpu().numpy()
 
@@ -226,40 +227,62 @@ class TextAsciiEncoder(AbstractEncoder):
             TypeError: If the input data is not a 1D numpy array of strings.
             ValueError: If any string in data contains characters with ASCII values greater than vocab_size - 1
         """
-        if not (isinstance(data, np.ndarray) and data.ndim == 1 and data.dtype.kind in ['U', 'S']):
-            raise TypeError(f"Expected input data to be a 1D numpy array of strings, got {type(data).__name__} with dtype {data.dtype if hasattr(data, 'dtype') else 'N/A'}")
+        if not (isinstance(data, np.ndarray) and data.ndim == 1 and data.dtype.kind in ["U", "S"]):
+            raise TypeError(
+                f"Expected input data to be a 1D numpy array of strings, got {type(data).__name__} with dtype {data.dtype if hasattr(data, 'dtype') else 'N/A'}",
+            )
 
         encoded_data_list = []
         for s_bytes in data:
-            s = s_bytes.decode('utf-8') if isinstance(s_bytes, bytes) else str(s_bytes) # Ensure it's a string
+            s = s_bytes.decode("utf-8") if isinstance(s_bytes, bytes) else str(s_bytes)  # Ensure it's a string
             if any(ord(c) >= self.vocab_size for c in s):
-                raise ValueError(f"Data string '{s}' contains characters with ASCII values greater than {self.vocab_size - 1}")
+                raise ValueError(
+                    f"Data string '{s}' contains characters with ASCII values greater than {self.vocab_size - 1}",
+                )
 
-            values = np.frombuffer(s.encode('ascii', errors='ignore'), dtype=np.uint8)
-            
+            values = np.frombuffer(s.encode("ascii", errors="ignore"), dtype=np.uint8)
+
             current_max_len = self.max_len
-            if current_max_len is None: # If no global max_len, use the length of the current string
+            if current_max_len is None:  # If no global max_len, use the length of the current string
                 current_max_len = len(values)
-
 
             if len(values) > current_max_len:
                 if not slice_long:
-                    raise ValueError(f"Data length {len(values)} is greater than the specified max_len {current_max_len}")
+                    raise ValueError(
+                        f"Data length {len(values)} is greater than the specified max_len {current_max_len}",
+                    )
                 # Split and pad each chunk
                 num_chunks = len(values) // current_max_len + (1 if len(values) % current_max_len != 0 else 0)
                 for i in range(num_chunks):
-                    chunk = values[i * current_max_len:(i + 1) * current_max_len]
+                    chunk = values[i * current_max_len : (i + 1) * current_max_len]
                     padded_chunk = np.pad(chunk, (0, current_max_len - len(chunk)), mode="constant")
                     encoded_data_list.append(padded_chunk)
             else:
                 # Pad the single array/chunk
                 padded_values = np.pad(values, (0, current_max_len - len(values)), mode="constant")
                 encoded_data_list.append(padded_values)
-        
-        if not encoded_data_list: # Handle empty input data
+
+        if not encoded_data_list:  # Handle empty input data
             return np.array([], dtype=self.dtype)
 
-        return np.array(encoded_data_list, dtype=self.dtype)
+        # Convert torch dtype to numpy dtype if needed
+        numpy_dtype = self.dtype
+        if hasattr(self.dtype, "numpy_dtype"):
+            numpy_dtype = self.dtype.numpy_dtype
+        elif str(self.dtype) == "torch.int8":
+            numpy_dtype = np.int8
+        elif str(self.dtype) == "torch.int16":
+            numpy_dtype = np.int16
+        elif str(self.dtype) == "torch.int32":
+            numpy_dtype = np.int32
+        elif str(self.dtype) == "torch.int64":
+            numpy_dtype = np.int64
+        elif str(self.dtype) == "torch.float32":
+            numpy_dtype = np.float32
+        elif str(self.dtype) == "torch.float64":
+            numpy_dtype = np.float64
+
+        return np.array(encoded_data_list, dtype=numpy_dtype)
 
 
 class NumericEncoder(AbstractEncoder):
@@ -288,13 +311,27 @@ class NumericEncoder(AbstractEncoder):
         Returns:
             encoded_data (np.ndarray): the encoded data
         """
-        if not isinstance(data, np.ndarray): # Check if it's a numpy array first
-            data = np.array(data) # Convert if it's a list or other compatible type
+        if not isinstance(data, np.ndarray):  # Check if it's a numpy array first
+            data = np.array(data)  # Convert if it's a list or other compatible type
 
         self._check_input_dtype(data)
-        # Ensure correct dtype for the output array, consistent with torch.tensor behavior
-        return data.astype(self.dtype.name if hasattr(self.dtype, 'name') else np.float32)
 
+        # Convert torch dtype to numpy dtype
+        numpy_dtype = np.float32  # default
+        if str(self.dtype) == "torch.int8":
+            numpy_dtype = np.int8
+        elif str(self.dtype) == "torch.int16":
+            numpy_dtype = np.int16
+        elif str(self.dtype) == "torch.int32":
+            numpy_dtype = np.int32
+        elif str(self.dtype) == "torch.int64":
+            numpy_dtype = np.int64
+        elif str(self.dtype) == "torch.float32":
+            numpy_dtype = np.float32
+        elif str(self.dtype) == "torch.float64":
+            numpy_dtype = np.float64
+
+        return data.astype(numpy_dtype)
 
     def _check_input_dtype(self, data: np.ndarray) -> None:
         """Check if the input data is int or float data.
@@ -345,9 +382,12 @@ class StrClassificationEncoder(AbstractEncoder):
         Returns:
             encoded_data (np.ndarray): the encoded data
         """
-        if not (isinstance(data, np.ndarray) and data.ndim == 1 and data.dtype.kind in ['U', 'S']): # Check for 1D array of strings
-            raise TypeError(f"Expected input data to be a 1D numpy array of strings, got {type(data).__name__} with dtype {data.dtype if hasattr(data, 'dtype') else 'N/A'}")
-
+        if not (
+            isinstance(data, np.ndarray) and data.ndim == 1 and data.dtype.kind in ["U", "S"]
+        ):  # Check for 1D array of strings
+            raise TypeError(
+                f"Expected input data to be a 1D numpy array of strings, got {type(data).__name__} with dtype {data.dtype if hasattr(data, 'dtype') else 'N/A'}",
+            )
 
         self._check_dtype(data)
 
@@ -356,11 +396,10 @@ class StrClassificationEncoder(AbstractEncoder):
         encoded_data_np = encoder.fit_transform(data)
         if self.scale:
             encoded_data_np = encoded_data_np / max(len(encoded_data_np) - 1, 1)
-        
+
         # Convert to specified torch dtype, then to numpy array
         # This is a bit roundabout but ensures consistency if torch dtypes were specific
         return torch.tensor(encoded_data_np).to(self.dtype).cpu().numpy()
-
 
     def _check_dtype(self, data: np.ndarray) -> None:
         """Check if the input data is string data.
@@ -371,7 +410,7 @@ class StrClassificationEncoder(AbstractEncoder):
         Raises:
             ValueError: If the input data is not a 1D numpy array of strings
         """
-        if not (data.ndim == 1 and data.dtype.kind in ['U', 'S']):
+        if not (data.ndim == 1 and data.dtype.kind in ["U", "S"]):
             err_msg = "Expected input data to be a 1D numpy array of strings"
             logger.error(err_msg)
             raise ValueError(err_msg)
@@ -408,9 +447,8 @@ class NumericRankEncoder(AbstractEncoder):
         Returns:
             encoded_data (np.ndarray): the encoded data
         """
-        if not isinstance(data, np.ndarray): # Check if it's a numpy array
-             data = np.array(data) # Convert if it's a list or other compatible type
-
+        if not isinstance(data, np.ndarray):  # Check if it's a numpy array
+            data = np.array(data)  # Convert if it's a list or other compatible type
 
         self._check_input_dtype(data)
 
@@ -419,7 +457,7 @@ class NumericRankEncoder(AbstractEncoder):
         ranks: np.ndarray = np.argsort(np.argsort(data))
         if self.scale:
             ranks = ranks / max(len(ranks) - 1, 1)
-        
+
         # Convert to specified torch dtype, then to numpy array
         return torch.tensor(ranks).to(self.dtype).cpu().numpy()
 
