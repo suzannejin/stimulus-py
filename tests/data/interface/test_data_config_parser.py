@@ -2,8 +2,8 @@
 
 import logging
 
+import numpy as np
 import pytest
-import torch
 import yaml
 
 import stimulus.data.encoding.encoders as encoders_module  # TODO: should be imported from stimulus.typing instead.
@@ -134,9 +134,9 @@ def test_create_encoders(load_full_config: ConfigDict) -> None:
     assert len(encoders) == len(config.columns)
 
     # Test encoder parameters
-    assert encoders["passenger_id"].dtype == torch.int32
-    assert encoders["age"].dtype == torch.int8
-    assert encoders["fare"].dtype == torch.float32
+    assert encoders["passenger_id"].dtype == np.int32
+    assert encoders["age"].dtype == np.int8
+    assert encoders["fare"].dtype == np.float32
 
     # Test config is not overwritten
     col_passenger_id = 0

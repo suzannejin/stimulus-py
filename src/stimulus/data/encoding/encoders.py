@@ -54,7 +54,7 @@ class TextOneHotEncoder(AbstractEncoder):
     def __init__(
         self,
         alphabet: str = "acgt",
-        dtype: torch.dtype = torch.float32,
+        dtype: Optional[np.dtype[np.floating]] = None,
         *,
         convert_lowercase: bool = False,
         force_cpu: bool = True,
@@ -64,11 +64,13 @@ class TextOneHotEncoder(AbstractEncoder):
 
         Args:
             alphabet (str): the alphabet to one hot encode the data with.
-            dtype (torch.dtype): the data type of the encoded data. Default = torch.float32 (32-bit floating point)
+            dtype (np.dtype): the data type of the encoded data. Default = np.dtype(np.float32)
             convert_lowercase (bool): whether to convert sequences to lowercase.
             force_cpu (bool): whether to force the encoder to run on CPU.
             padding (bool): whether to pad sequences of different lengths.
         """
+        if dtype is None:
+            dtype = np.dtype(np.float32)
         if convert_lowercase:
             alphabet = alphabet.lower()
         self.convert_lowercase = convert_lowercase
@@ -97,7 +99,14 @@ class TextOneHotEncoder(AbstractEncoder):
 
         # Pre-allocate a mask for invalid characters to avoid nonzero operations
         # Initialize with ones to mark valid positions by default
-        self.alphabet_mask = torch.ones(self.alphabet_size + 1, dtype=self.dtype, device=self.device)
+        torch_dtype = (
+            torch.float32
+            if dtype == np.dtype(np.float32)
+            else torch.float64
+            if dtype == np.dtype(np.float64)
+            else torch.float32
+        )
+        self.alphabet_mask = torch.ones(self.alphabet_size + 1, dtype=torch_dtype, device=self.device)
         # Set the last position (for invalid characters) to zero
         self.alphabet_mask[-1] = 0.0
 
@@ -170,7 +179,14 @@ class TextOneHotEncoder(AbstractEncoder):
         safe_indices[~valid_indices_mask] = 0  # Temporary index for one_hot
 
         # Apply one-hot encoding - FIX: removed the 'out' parameter
-        one_hot = F.one_hot(safe_indices, num_classes=self.alphabet_size + 1).to(self.dtype)
+        torch_dtype = (
+            torch.float32
+            if self.dtype == np.dtype(np.float32)
+            else torch.float64
+            if self.dtype == np.dtype(np.float64)
+            else torch.float32
+        )
+        one_hot = F.one_hot(safe_indices, num_classes=self.alphabet_size + 1).to(torch_dtype)
 
         # Apply alphabet mask to zero out invalid indices
         # This creates zeros for unknown characters
@@ -178,7 +194,7 @@ class TextOneHotEncoder(AbstractEncoder):
         result[~valid_indices_mask] = 0.0
 
         # Remove the last dimension (sentinel value) to get the final shape
-        return result[:, :, : self.alphabet_size].cpu().numpy()
+        return result[:, :, : self.alphabet_size].cpu().numpy().astype(self.dtype)
 
 
 class TextAsciiEncoder(AbstractEncoder):
@@ -186,8 +202,8 @@ class TextAsciiEncoder(AbstractEncoder):
 
     Attributes:
         vocab_size (int): The size of the vocabulary. Default = 256 (ASCII characters)
-        dtype (torch.dtype): The data type of the encoded data. Default = torch.int64
-        padding (bool): whether to pad the sequences with zeros. Default = False
+        dtype (np.dtype): The data type of the encoded data. Default = np.dtype(np.int8)
+        max_len (Optional[int]): the length to pad the sequences to. No padding is done if set to None. Default = None
 
     Methods:
         batch_encode: encodes a list of data points into a numpy.ndarray
@@ -196,7 +212,7 @@ class TextAsciiEncoder(AbstractEncoder):
     def __init__(
         self,
         vocab_size: int = 256,
-        dtype: torch.dtype = torch.int8,
+        dtype: Optional[np.dtype[np.signedinteger]] = None,
         *,
         max_len: Optional[int] = None,
     ) -> None:
@@ -204,9 +220,11 @@ class TextAsciiEncoder(AbstractEncoder):
 
         Args:
             vocab_size (int): the size of the vocabulary. Default = 256 (ASCII characters)
-            dtype (torch.dtype): the data type of the encoded data. Default = torch.int8 (8-bit integer)
+            dtype (np.dtype): the data type of the encoded data. Default = np.dtype(np.int8)
             max_len (Optional[int]): the length to pad the sequences to. No padding is done if set to None. Default = None
         """
+        if dtype is None:
+            dtype = np.dtype(np.int8)
         self.vocab_size = vocab_size
         self.dtype = dtype
         self.max_len = max_len
@@ -263,50 +281,26 @@ class TextAsciiEncoder(AbstractEncoder):
                 encoded_data_list.append(padded_values)
 
         if not encoded_data_list:  # Handle empty input data
-            # Convert torch dtype to numpy dtype for empty array
-            if str(self.dtype) == "torch.int8":
-                return np.array([], dtype=np.int8)
-            if str(self.dtype) == "torch.int16":
-                return np.array([], dtype=np.int16)
-            if str(self.dtype) == "torch.int32":
-                return np.array([], dtype=np.int32)
-            if str(self.dtype) == "torch.int64":
-                return np.array([], dtype=np.int64)
-            if str(self.dtype) == "torch.float32":
-                return np.array([], dtype=np.float32)
-            if str(self.dtype) == "torch.float64":
-                return np.array([], dtype=np.float64)
-            return np.array([], dtype=np.int8)  # default
+            return np.array([], dtype=self.dtype)
 
-        # Convert torch dtype to numpy dtype if needed
-        if str(self.dtype) == "torch.int8":
-            return np.array(encoded_data_list, dtype=np.int8)
-        if str(self.dtype) == "torch.int16":
-            return np.array(encoded_data_list, dtype=np.int16)
-        if str(self.dtype) == "torch.int32":
-            return np.array(encoded_data_list, dtype=np.int32)
-        if str(self.dtype) == "torch.int64":
-            return np.array(encoded_data_list, dtype=np.int64)
-        if str(self.dtype) == "torch.float32":
-            return np.array(encoded_data_list, dtype=np.float32)
-        if str(self.dtype) == "torch.float64":
-            return np.array(encoded_data_list, dtype=np.float64)
-        return np.array(encoded_data_list, dtype=np.int8)  # default
+        return np.array(encoded_data_list, dtype=self.dtype)
 
 
 class NumericEncoder(AbstractEncoder):
     """Encoder for float/int data.
 
     Attributes:
-        dtype (torch.dtype): The data type of the encoded data. Default = torch.float32 (32-bit floating point)
+        dtype (np.dtype): The data type of the encoded data. Default = np.dtype(np.float32)
     """
 
-    def __init__(self, dtype: torch.dtype = torch.float32) -> None:
+    def __init__(self, dtype: Optional[np.dtype[np.number]] = None) -> None:
         """Initialize the NumericEncoder class.
 
         Args:
-            dtype (torch.dtype): the data type of the encoded data. Default = torch.float (32-bit floating point)
+            dtype (np.dtype): the data type of the encoded data. Default = np.dtype(np.float32)
         """
+        if dtype is None:
+            dtype = np.dtype(np.float32)
         self.dtype = dtype
 
     def batch_encode(self, data: np.ndarray) -> np.ndarray:
@@ -325,20 +319,7 @@ class NumericEncoder(AbstractEncoder):
 
         self._check_input_dtype(data)
 
-        # Convert torch dtype to numpy dtype
-        if str(self.dtype) == "torch.int8":
-            return data.astype(np.int8)
-        if str(self.dtype) == "torch.int16":
-            return data.astype(np.int16)
-        if str(self.dtype) == "torch.int32":
-            return data.astype(np.int32)
-        if str(self.dtype) == "torch.int64":
-            return data.astype(np.int64)
-        if str(self.dtype) == "torch.float32":
-            return data.astype(np.float32)
-        if str(self.dtype) == "torch.float64":
-            return data.astype(np.float64)
-        return data.astype(np.float32)  # default
+        return data.astype(self.dtype)
 
     def _check_input_dtype(self, data: np.ndarray) -> None:
         """Check if the input data is int or float data.
@@ -362,17 +343,21 @@ class StrClassificationEncoder(AbstractEncoder):
 
     Attributes:
         scale (bool): Whether to scale the labels to be between 0 and 1. Default = False
+        dtype (np.dtype): The data type of the encoded data. Default = np.dtype(np.int16)
 
     Methods:
         batch_encode: encodes a list of data points into a numpy.ndarray
     """
 
-    def __init__(self, *, scale: bool = False, dtype: torch.dtype = torch.int16) -> None:
+    def __init__(self, *, scale: bool = False, dtype: Optional[np.dtype[np.signedinteger]] = None) -> None:
         """Initialize the StrClassificationEncoder class.
 
         Args:
             scale (bool): whether to scale the labels to be between 0 and 1. Default = False
+            dtype (np.dtype): the data type of the encoded data. Default = np.dtype(np.int16)
         """
+        if dtype is None:
+            dtype = np.dtype(np.int16)
         self.scale = scale
         self.dtype = dtype
 
@@ -404,9 +389,7 @@ class StrClassificationEncoder(AbstractEncoder):
         if self.scale:
             encoded_data_np = encoded_data_np / max(len(encoded_data_np) - 1, 1)
 
-        # Convert to specified torch dtype, then to numpy array
-        # This is a bit roundabout but ensures consistency if torch dtypes were specific
-        return torch.tensor(encoded_data_np).to(self.dtype).cpu().numpy()
+        return encoded_data_np.astype(self.dtype)
 
     def _check_dtype(self, data: np.ndarray) -> None:
         """Check if the input data is string data.
@@ -428,17 +411,21 @@ class NumericRankEncoder(AbstractEncoder):
 
     Attributes:
         scale (bool): whether to scale the ranks to be between 0 and 1. Default = False
+        dtype (np.dtype): The data type of the encoded data. Default = np.dtype(np.int16)
 
     Methods:
         batch_encode: encodes a list of data points into a numpy.ndarray
     """
 
-    def __init__(self, *, scale: bool = False, dtype: torch.dtype = torch.int16) -> None:
+    def __init__(self, *, scale: bool = False, dtype: Optional[np.dtype[np.signedinteger]] = None) -> None:
         """Initialize the NumericRankEncoder class.
 
         Args:
             scale (bool): whether to scale the ranks to be between 0 and 1. Default = False
+            dtype (np.dtype): the data type of the encoded data. Default = np.dtype(np.int16)
         """
+        if dtype is None:
+            dtype = np.dtype(np.int16)
         self.scale = scale
         self.dtype = dtype
 
@@ -465,8 +452,7 @@ class NumericRankEncoder(AbstractEncoder):
         if self.scale:
             ranks = ranks / max(len(ranks) - 1, 1)
 
-        # Convert to specified torch dtype, then to numpy array
-        return torch.tensor(ranks).to(self.dtype).cpu().numpy()
+        return ranks.astype(self.dtype)
 
     def _check_input_dtype(self, data: np.ndarray) -> None:
         """Check if the input data is int or float data.

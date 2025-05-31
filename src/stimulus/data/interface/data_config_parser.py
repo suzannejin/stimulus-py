@@ -3,7 +3,7 @@
 import copy
 from typing import Any
 
-import torch
+import numpy as np
 import yaml
 
 from stimulus.data.encoding import encoders as encoders_module
@@ -40,12 +40,13 @@ def create_encoders(column_config: list[Columns]) -> dict[str, encoders_module.A
     """Factory for creating encoders from config."""
 
     def get_params(params: dict) -> dict:
-        """Get the params with the dtype string converted to torch dtype."""
+        """Get the params with the dtype string converted to numpy dtype."""
         try:
             params_new = copy.deepcopy(params)
-            params_new["dtype"] = getattr(torch, params["dtype"])
+            dtype_str = params["dtype"]
+            params_new["dtype"] = getattr(np, dtype_str)
         except AttributeError as e:
-            raise ValueError(f"Invalid dtype {params_new['dtype']} in encoder params") from e
+            raise ValueError(f"Invalid dtype {dtype_str} in encoder params") from e
         return params_new
 
     return {
