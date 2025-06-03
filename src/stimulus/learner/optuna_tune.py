@@ -87,15 +87,14 @@ class Objective:
 
         while batch_idx * batch_size < self.max_samples:
             nb_computed_samples = 0
-            for x, y, _meta in train_loader:
+            for batch in train_loader:
                 # set model in train mode
                 model_instance.train()
                 try:
-                    device_x = {key: value.to(self.device, non_blocking=True) for key, value in x.items()}
-                    device_y = {key: value.to(self.device, non_blocking=True) for key, value in y.items()}
+                    device_batch = {key: value.to(self.device, non_blocking=True) for key, value in batch.items()}
 
                     # Perform a batch update
-                    _loss, _metrics = model_instance.batch(x=device_x, y=device_y, optimizer=optimizer, **loss_dict)
+                    _loss, _metrics = model_instance.batch(batch=device_batch, optimizer=optimizer, **loss_dict)
 
                 except RuntimeError as e:
                     if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
@@ -106,10 +105,9 @@ class Objective:
                         temp_device = torch.device("cpu")
                         model_instance = model_instance.to(temp_device)
                         # Consider adjusting batch size or other parameters
-                        device_x = {key: value.to(temp_device) for key, value in x.items()}
-                        device_y = {key: value.to(temp_device) for key, value in y.items()}
+                        device_batch = {key: value.to(temp_device) for key, value in batch.items()}
                         # Retry the batch
-                        _loss, _metrics = model_instance.batch(x=device_x, y=device_y, optimizer=optimizer, **loss_dict)
+                        _loss, _metrics = model_instance.batch(batch=device_batch, optimizer=optimizer, **loss_dict)
                     else:
                         raise
 
@@ -325,13 +323,12 @@ class Objective:
 
         metric_dict: dict = {}
 
-        for x, y, _meta in data_loader:
+        for batch in data_loader:
             try:
-                device_x = {key: value.to(device, non_blocking=True) for key, value in x.items()}
-                device_y = {key: value.to(device, non_blocking=True) for key, value in y.items()}
+                device_batch = {key: value.to(device, non_blocking=True) for key, value in batch.items()}
 
                 # Perform a batch update
-                loss, metrics = model_instance.batch(x=device_x, y=device_y, **loss_dict)
+                loss, metrics = model_instance.batch(batch=device_batch, **loss_dict)
 
             except RuntimeError as e:
                 if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
@@ -342,10 +339,9 @@ class Objective:
                     temp_device = torch.device("cpu")
                     model_instance = model_instance.to(temp_device)
                     # Consider adjusting batch size or other parameters
-                    device_x = {key: value.to(temp_device) for key, value in x.items()}
-                    device_y = {key: value.to(temp_device) for key, value in y.items()}
+                    device_batch = {key: value.to(temp_device) for key, value in batch.items()}
                     # Retry the batch
-                    loss, metrics = model_instance.batch(x=device_x, y=device_y, **loss_dict)
+                    loss, metrics = model_instance.batch(batch=device_batch, **loss_dict)
                 else:
                     raise
 
