@@ -22,14 +22,6 @@ def data_path() -> str:
 
 
 @pytest.fixture
-def data_config() -> str:
-    """Get path to test data config YAML."""
-    return str(
-        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_unique_transform.yaml",
-    )
-
-
-@pytest.fixture
 def model_path() -> str:
     """Get path to test model file."""
     return str(Path(__file__).parent.parent / "test_model" / "titanic_model.py")
@@ -59,7 +51,6 @@ def test_check_model_main(
             base_path, file_path = check_model.check_model(
                 data_path=data_path,
                 model_path=model_path,
-                data_config_path=data_config,
                 model_config_path=model_config,
                 optuna_results_dirpath=temp_dir,
             )
