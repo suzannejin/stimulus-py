@@ -5,12 +5,11 @@ import logging
 import os
 from typing import Optional
 
+import datasets
 import optuna
 import torch
 import yaml
 
-from stimulus.data import data_handlers
-from stimulus.data.interface import data_config_parser
 from stimulus.learner import optuna_tune
 from stimulus.learner.interface import model_schema
 from stimulus.utils import model_file_interface
@@ -22,39 +21,9 @@ COMPUTE_OBJECTIVE_EVERY_N_SAMPLES = 100
 N_TRIALS = 5
 
 
-def load_data_config_from_path(data_path: str, data_config_path: str, split: int) -> data_handlers.TorchDataset:
-    """Load the data config from a path.
-
-    Args:
-        data_config_path: Path to the data config file.
-
-    Returns:
-        A tuple of the parsed configuration.
-    """
-    with open(data_config_path) as file:
-        data_config_dict = yaml.safe_load(file)
-        data_config_obj = data_config_parser.SplitTransformDict(**data_config_dict)
-
-    encoders, input_columns, label_columns, meta_columns = data_config_parser.parse_split_transform_config(
-        data_config_obj,
-    )
-
-    return data_handlers.TorchDataset(
-        loader=data_handlers.DatasetLoader(
-            encoders=encoders,
-            input_columns=input_columns,
-            label_columns=label_columns,
-            meta_columns=meta_columns,
-            csv_path=data_path,
-            split=split,
-        ),
-    )
-
-
 def check_model(
     data_path: str,
     model_path: str,
-    data_config_path: str,
     model_config_path: str,
     optuna_results_dirpath: str = "./optuna_results",
     force_device: Optional[str] = None,
@@ -64,12 +33,14 @@ def check_model(
     Args:
         data_path: Path to input data file.
         model_path: Path to model file.
-        data_config_path: Path to data config file.
         model_config_path: Path to model config file.
         optuna_results_dirpath: Directory for optuna results.
+        force_device: Force the device to use.
     """
-    train_data = load_data_config_from_path(data_path, data_config_path, split=0)
-    val_data = load_data_config_from_path(data_path, data_config_path, split=1)
+    dataset_dict = datasets.load_from_disk(data_path)
+    dataset_dict.set_format("torch")
+    train_dataset = dataset_dict["train"]
+    validation_dataset = dataset_dict["test"]
     logger.info("Dataset loaded successfully.")
 
     model_class = model_file_interface.import_class_from_file(model_path)
@@ -106,8 +77,8 @@ def check_model(
         optimizer_params=model_config.optimizer_params,
         data_params=model_config.data_params,
         loss_params=model_config.loss_params,
-        train_torch_dataset=train_data,
-        val_torch_dataset=val_data,
+        train_torch_dataset=train_dataset,
+        val_torch_dataset=validation_dataset,
         artifact_store=artifact_store,
         max_samples=model_config.max_samples,
         compute_objective_every_n_samples=model_config.compute_objective_every_n_samples,

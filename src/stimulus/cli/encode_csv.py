@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any
+from typing import Any, Optional
 
 import datasets
 import numpy as np
@@ -102,13 +102,14 @@ def load_dataset_from_path(data_path: str) -> datasets.DatasetDict:
     return dataset
 
 
-def main(data_path: str, config_yaml: str, out_path: str) -> None:
+def main(data_path: str, config_yaml: str, out_path: str, num_proc: Optional[int] = None) -> None:
     """Encode the data according to the configuration.
 
     Args:
         data_path: Path to input data (CSV, parquet, or HuggingFace dataset directory).
         config_yaml: Path to config YAML file.
         out_path: Path to output encoded dataset directory.
+        num_proc: Number of processes to use for encoding.
     """
     # Load the dataset
     dataset = load_dataset_from_path(data_path)
@@ -121,11 +122,21 @@ def main(data_path: str, config_yaml: str, out_path: str) -> None:
     logger.info("Encoders initialized successfully.")
     logger.info(f"Loaded encoders for columns: {list(encoders.keys())}")
 
+    # Identify columns that aren't in the encoder configuration
+    columns_to_remove = set()
+    for split_name, split_dataset in dataset.items():
+        dataset_columns = set(split_dataset.column_names)
+        encoder_columns = set(encoders.keys())
+        columns_to_remove.update(dataset_columns - encoder_columns)
+        logger.info(f"Removing columns not in encoder configuration from {split_name} split: {list(columns_to_remove)}")
+
     # Apply the encoders to the data
     dataset = dataset.map(
         encode_batch,
         batched=True,
         fn_kwargs={"encoders_config": encoders},
+        remove_columns=list(columns_to_remove),
+        num_proc=num_proc,
     )
 
     logger.info(f"Dataset encoded successfully. Saving to: {out_path}")

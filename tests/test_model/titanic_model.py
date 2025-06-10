@@ -44,6 +44,7 @@ class ModelTitanic(torch.nn.Module):
         parch: torch.Tensor,
         fare: torch.Tensor,
         embarked: torch.Tensor,
+        **kwargs: torch.Tensor,  # noqa: ARG002
     ) -> torch.Tensor:
         """Forward pass of the model.
 
@@ -82,22 +83,20 @@ class ModelTitanic(torch.nn.Module):
 
     def batch(
         self,
-        x: dict[str, torch.Tensor],
-        y: dict[str, torch.Tensor],
+        batch: dict[str, torch.Tensor],
         loss_fn: Callable,
         optimizer: Optional[Optimizer] = None,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Perform one batch step.
 
-        `x` is a dictionary with the input tensors.
-        `y` is a dictionary with the target tensors.
+        `batch` is a dictionary with the input and label tensors.
         `loss_fn` is the loss function to be used.
 
         If `optimizer` is passed, it will perform the optimization step -> training step
         Otherwise, only return the forward pass output and loss -> evaluation step
         """
-        output = self.forward(**x)
-        loss = self.compute_loss(output, **y, loss_fn=loss_fn)
+        output = self.forward(**batch)
+        loss = self.compute_loss(output, batch["survived"], loss_fn=loss_fn)
 
         if optimizer is not None:
             optimizer.zero_grad()

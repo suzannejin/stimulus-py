@@ -34,7 +34,7 @@ class AbstractSplitter(ABC):
         This is an abstract method that should be implemented by the child class.
 
         Args:
-            data (pl.DataFrame): the data to be split
+            data (dict): the data to be split
 
         Returns:
             split_indices (list): the indices for train and test sets

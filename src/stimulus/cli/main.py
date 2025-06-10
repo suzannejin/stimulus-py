@@ -274,10 +274,18 @@ def transform_csv(
     required=True,
     help="The output directory path to save the encoded dataset",
 )
+@click.option(
+    "-p",
+    "--num-proc",
+    type=int,
+    default=None,
+    help="Number of processes to use for encoding [default: None (disable multiprocessing)]",
+)
 def encode_csv(
     data: str,
     yaml: str,
     output: str,
+    num_proc: Optional[int] = None,
 ) -> None:
     """Encode data according to configuration."""
     from stimulus.cli.encode_csv import main as encode_csv_func
@@ -286,6 +294,7 @@ def encode_csv(
         data_path=data,
         config_yaml=yaml,
         out_path=output,
+        num_proc=num_proc,
     )
 
 
