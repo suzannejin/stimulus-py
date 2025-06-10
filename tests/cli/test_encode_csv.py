@@ -113,6 +113,7 @@ def test_encode_csv_with_parquet_input(
         assert isinstance(loaded_dataset, datasets.DatasetDict), "Failed to load encoded dataset"
 
 
+@pytest.mark.skip(reason="Break github action runners")
 def test_encode_csv_with_dataset_directory_input(
     csv_path: str,
     yaml_path: str,
