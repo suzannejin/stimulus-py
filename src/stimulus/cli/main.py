@@ -111,43 +111,6 @@ def split_split(
     "--csv",
     type=click.Path(exists=True),
     required=True,
-    help="The file path for the csv containing the data in csv format",
-)
-@click.option(
-    "-y",
-    "--yaml",
-    type=click.Path(exists=True),
-    required=True,
-    help="The YAML data config",
-)
-@click.option(
-    "-o",
-    "--output",
-    type=click.Path(),
-    required=True,
-    help="The output file path to write the shuffled csv",
-)
-def shuffle_csv(
-    csv: str,
-    yaml: str,
-    output: str,
-) -> None:
-    """Shuffle rows in a CSV data file."""
-    from stimulus.cli.shuffle_csv import shuffle_csv as shuffle_csv_func
-
-    shuffle_csv_func(
-        data_csv=csv,
-        config_yaml=yaml,
-        out_path=output,
-    )
-
-
-@cli.command()
-@click.option(
-    "-c",
-    "--csv",
-    type=click.Path(exists=True),
-    required=True,
     help="The file path for the csv containing all data",
 )
 @click.option(
