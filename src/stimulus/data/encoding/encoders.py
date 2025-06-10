@@ -317,23 +317,7 @@ class NumericEncoder(AbstractEncoder):
         if not isinstance(data, np.ndarray):  # Check if it's a numpy array first
             data = np.array(data)  # Convert if it's a list or other compatible type
 
-        self._check_input_dtype(data)
-
         return data.astype(self.dtype)
-
-    def _check_input_dtype(self, data: np.ndarray) -> None:
-        """Check if the input data is int or float data.
-
-        Args:
-            data (np.ndarray): a numpy array of numeric data points
-
-        Raises:
-            ValueError: If the input data contains a non-integer or non-float data point
-        """
-        if not np.issubdtype(data.dtype, np.number):
-            err_msg = "Expected input data to be numeric (int or float)"
-            logger.error(err_msg)
-            raise ValueError(err_msg)
 
 
 class StrClassificationEncoder(AbstractEncoder):
