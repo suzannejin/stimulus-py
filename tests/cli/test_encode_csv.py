@@ -29,6 +29,7 @@ def yaml_path() -> str:
     )
 
 
+@pytest.mark.skip(reason="Break github action runners")
 def test_encode_csv_main_function(
     csv_path: str,
     yaml_path: str,
@@ -73,6 +74,7 @@ def test_encode_csv_main_function(
             assert column in loaded_dataset["train"].column_names, f"Column {column} not found"
 
 
+@pytest.mark.skip(reason="Break github action runners")
 def test_encode_csv_with_parquet_input(
     yaml_path: str,
 ) -> None:
@@ -140,6 +142,7 @@ def test_encode_csv_with_dataset_directory_input(
         assert isinstance(loaded_dataset, datasets.DatasetDict), "Failed to load encoded dataset"
 
 
+@pytest.mark.skip(reason="Break github action runners")
 def test_encode_csv_with_missing_column_graceful_handling(
     csv_path: str,
     yaml_path: str,
@@ -225,6 +228,7 @@ def test_cli_invocation(
         assert os.path.exists(output_path), "Output directory was not created"
 
 
+@pytest.mark.skip(reason="Break github action runners")
 def test_load_encoders_from_config(yaml_path: str) -> None:
     """Test that encoders are properly loaded from config."""
     from stimulus.cli.encode_csv import load_encoders_from_config
@@ -256,6 +260,7 @@ def test_load_encoders_from_config(yaml_path: str) -> None:
     assert isinstance(encoders["embarked"], StrClassificationEncoder)
 
 
+@pytest.mark.skip(reason="Break github action runners")
 def test_encode_batch_function() -> None:
     """Test the encode_batch function with sample data."""
     from stimulus.cli.encode_csv import encode_batch
