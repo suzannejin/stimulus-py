@@ -40,6 +40,7 @@ class ModelTitanicPerformance(torch.nn.Module):
         Title_Mr: torch.Tensor,
         Title_Mrs: torch.Tensor,
         Title_Rev: torch.Tensor,
+        **kwargs: torch.Tensor,  # noqa: ARG002
     ):
         x = torch.stack(
             [
@@ -97,30 +98,23 @@ class ModelTitanicPerformance(torch.nn.Module):
 
     def batch(
         self,
-        x: dict[str, torch.Tensor],
-        y: dict[str, torch.Tensor],
-        loss_fn: Optional[Callable] = None,
+        batch: dict[str, torch.Tensor],
+        loss_fn: Callable,
         optimizer: Optional[torch.optim.Optimizer] = None,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Perform one batch step.
 
-        Args:
-            x: Input tensor of shape [batch_size, in_features]
-            y: Target tensor of shape [batch_size, out_features]
-            loss_fn: Loss function
-            optimizer: Optimizer
+        `batch` is a dictionary with the input and label tensors.
+        `loss_fn` is the loss function to be used.
 
-        Returns:
-            Tuple of (loss, metrics)
+        If `optimizer` is passed, it will perform the optimization step -> training step
+        Otherwise, only return the forward pass output and loss -> evaluation step
         """
         # Forward pass
-        output = self.forward(**x).squeeze(-1)
+        output = self.forward(**batch).squeeze(-1)
 
         # Compute loss
-        if loss_fn is None:
-            loss = torch.tensor(0.0)
-        else:
-            loss = self.compute_loss(output, **y, loss_fn=loss_fn)
+        loss = self.compute_loss(output, batch["Survived"], loss_fn=loss_fn)
 
         # Backward pass and optimization
         if optimizer is not None:
@@ -128,5 +122,5 @@ class ModelTitanicPerformance(torch.nn.Module):
             loss.backward()
             optimizer.step()
 
-        accuracy = self.compute_accuracy(output, **y)
+        accuracy = self.compute_accuracy(output, batch["Survived"])
         return loss, {"accuracy": accuracy, "predictions": output}

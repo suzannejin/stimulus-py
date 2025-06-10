@@ -37,7 +37,8 @@ def check_model(
         optuna_results_dirpath: Directory for optuna results.
         force_device: Force the device to use.
     """
-    dataset_dict = datasets.load_from_disk(data_path).set_format("torch")
+    dataset_dict = datasets.load_from_disk(data_path)
+    dataset_dict.set_format("torch")
     train_dataset = dataset_dict["train"]
     validation_dataset = dataset_dict["test"]
     logger.info("Dataset loaded successfully.")

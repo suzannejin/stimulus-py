@@ -15,34 +15,32 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture
 def data_path() -> str:
-    """Get path to test data CSV file."""
+    """Get path to test data directory."""
     return str(
-        Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_stimulus_split.csv",
+        Path(__file__).parent.parent / "test_data" / "titanic_performant" / "titanic_encoded_hf",
     )
 
 
 @pytest.fixture
 def model_path() -> str:
     """Get path to test model file."""
-    return str(Path(__file__).parent.parent / "test_model" / "titanic_model.py")
+    return str(Path(__file__).parent.parent / "test_model" / "titanic_perf_model.py")
 
 
 @pytest.fixture
 def model_config() -> str:
     """Get path to test model config YAML."""
-    return str(Path(__file__).parent.parent / "test_model" / "titanic_model.yaml")
+    return str(Path(__file__).parent.parent / "test_model" / "titanic_perf_model.yaml")
 
 
 def test_check_model_main(
     data_path: str,
-    data_config: str,
     model_path: str,
     model_config: str,
 ) -> None:
     """Test that check_model.main runs without errors."""
     with tempfile.TemporaryDirectory() as temp_dir:
         assert os.path.exists(data_path), f"Data file not found at {data_path}"
-        assert os.path.exists(data_config), f"Data config not found at {data_config}"
         assert os.path.exists(model_path), f"Model file not found at {model_path}"
         assert os.path.exists(model_config), f"Model config not found at {model_config}"
 

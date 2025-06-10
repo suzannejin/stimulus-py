@@ -40,7 +40,8 @@ def tune(
         force_device: Force the device to use.
     """
     # Load train and validation datasets
-    dataset_dict = datasets.load_from_disk(data_path).set_format("torch")
+    dataset_dict = datasets.load_from_disk(data_path)
+    dataset_dict.set_format("torch")
     train_dataset = dataset_dict["train"]
     validation_dataset = dataset_dict["test"]
 

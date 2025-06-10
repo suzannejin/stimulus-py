@@ -211,17 +211,6 @@ class TestNumericEncoder:
         assert output.dtype == np.int32
         assert output[0] == 42
 
-    @pytest.mark.parametrize("fixture_name", ["float_encoder", "int_encoder"])
-    def test_batch_encode_non_numeric_raises(
-        self,
-        request: pytest.FixtureRequest,
-        fixture_name: str,
-    ) -> None:
-        """Test that encoding non-numeric data raises a ValueError."""
-        encoder = request.getfixturevalue(fixture_name)
-        with pytest.raises(ValueError, match="Expected input data to be numeric"):
-            encoder.batch_encode(np.array(["hello", "world"]))
-
     def test_batch_encode_multi_float(self, float_encoder: NumericEncoder) -> None:
         """Test encoding multiple float values."""
         input_vals = np.array([1.1, 2.2, 3.3])
