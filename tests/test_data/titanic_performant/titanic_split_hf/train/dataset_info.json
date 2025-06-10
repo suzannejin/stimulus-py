@@ -1,0 +1,102 @@
+{
+  "builder_name": "csv",
+  "citation": "",
+  "config_name": "default",
+  "dataset_name": "csv",
+  "dataset_size": 58032,
+  "description": "",
+  "download_checksums": {
+    "/Users/mgrapotte/Labwork/stimulus-py/tests/test_data/titanic_performant/processed_perf_titanic.csv": {
+      "num_bytes": 158081,
+      "checksum": null
+    }
+  },
+  "download_size": 158081,
+  "features": {
+    "Age": {
+      "dtype": "float64",
+      "_type": "Value"
+    },
+    "Fare": {
+      "dtype": "float64",
+      "_type": "Value"
+    },
+    "Parch": {
+      "dtype": "float64",
+      "_type": "Value"
+    },
+    "Pclass": {
+      "dtype": "float64",
+      "_type": "Value"
+    },
+    "Sex": {
+      "dtype": "int64",
+      "_type": "Value"
+    },
+    "SibSp": {
+      "dtype": "float64",
+      "_type": "Value"
+    },
+    "Survived": {
+      "dtype": "float64",
+      "_type": "Value"
+    },
+    "Family_Size": {
+      "dtype": "float64",
+      "_type": "Value"
+    },
+    "Embarked_C": {
+      "dtype": "bool",
+      "_type": "Value"
+    },
+    "Embarked_Q": {
+      "dtype": "bool",
+      "_type": "Value"
+    },
+    "Embarked_S": {
+      "dtype": "bool",
+      "_type": "Value"
+    },
+    "Title_Dr": {
+      "dtype": "bool",
+      "_type": "Value"
+    },
+    "Title_Master": {
+      "dtype": "bool",
+      "_type": "Value"
+    },
+    "Title_Miss": {
+      "dtype": "bool",
+      "_type": "Value"
+    },
+    "Title_Mr": {
+      "dtype": "bool",
+      "_type": "Value"
+    },
+    "Title_Mrs": {
+      "dtype": "bool",
+      "_type": "Value"
+    },
+    "Title_Rev": {
+      "dtype": "bool",
+      "_type": "Value"
+    }
+  },
+  "homepage": "",
+  "license": "",
+  "size_in_bytes": 216113,
+  "splits": {
+    "train": {
+      "name": "train",
+      "num_bytes": 58032,
+      "num_examples": 891,
+      "dataset_name": "csv"
+    }
+  },
+  "version": {
+    "version_str": "0.0.0",
+    "major": 0,
+    "minor": 0,
+    "patch": 0
+  }
+}
