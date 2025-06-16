@@ -2,14 +2,17 @@
 """CLI module for model prediction on datasets."""
 
 import json
+import logging
+import os
 
+import datasets
+import pyarrow as pa
 import safetensors
 import torch
-import yaml
 
-from stimulus.data import data_handlers
-from stimulus.data.interface import data_config_parser
 from stimulus.utils.model_file_interface import import_class_from_file
+
+logger = logging.getLogger(__name__)
 
 
 def load_model(model_path: str, model_config_path: str, weight_path: str) -> torch.nn.Module:
@@ -26,33 +29,29 @@ def load_model(model_path: str, model_config_path: str, weight_path: str) -> tor
     return model_instance
 
 
-def load_data_config_from_path(data_path: str, data_config_path: str) -> torch.utils.data.Dataset:
-    """Load the data config from a path.
+def load_dataset_from_path(data_path: str) -> datasets.DatasetDict:
+    """Load dataset from various formats.
 
     Args:
-        data_path: Path to the input data file.
-        data_config_path: Path to the data config file.
+        data_path: Path to the dataset (CSV, parquet, or HuggingFace dataset directory)
 
     Returns:
-        A TorchDataset with the configured data.
+        A DatasetDict containing the loaded dataset
     """
-    with open(data_config_path) as file:
-        data_config_dict = yaml.safe_load(file)
-        data_config_obj = data_config_parser.SplitTransformDict(**data_config_dict)
+    # Check if it's a directory (HuggingFace dataset)
+    if os.path.isdir(data_path):
+        logger.info(f"Loading dataset from directory: {data_path}")
+        return datasets.load_from_disk(data_path)
 
-    encoders, input_columns, label_columns, meta_columns = data_config_parser.parse_split_transform_config(
-        data_config_obj,
-    )
+    # Try to load as parquet first, then CSV
+    try:
+        logger.info(f"Attempting to load as parquet: {data_path}")
+        dataset = datasets.load_dataset("parquet", data_files=data_path)
+    except pa.ArrowInvalid:
+        logger.info("Data is not in parquet format, trying CSV")
+        dataset = datasets.load_dataset("csv", data_files=data_path)
 
-    return data_handlers.TorchDataset(
-        loader=data_handlers.DatasetLoader(
-            encoders=encoders,
-            input_columns=input_columns,
-            label_columns=label_columns,
-            meta_columns=meta_columns,
-            csv_path=data_path,
-        ),
-    )
+    return dataset
 
 
 def update_statistics(statistics: dict, temp_statistics: dict) -> dict:
@@ -105,11 +104,11 @@ def convert_dict_to_tensor(data: dict) -> dict:
 
 def predict(
     data_path: str,
-    data_config_path: str,
     model_path: str,
     model_config_path: str,
     weight_path: str,
     output: str,
+    batch_size: int = 256,
 ) -> None:
     """Run model prediction pipeline.
 
@@ -121,8 +120,11 @@ def predict(
     """
     # Get the best model with best architecture and weights
     model = load_model(model_path, model_config_path, weight_path)
-    dataset = load_data_config_from_path(data_path, data_config_path)
-    loader = torch.utils.data.DataLoader(dataset, batch_size=256, shuffle=False)
+    dataset = load_dataset_from_path(data_path)
+    dataset.set_format(type="torch")
+    splits = [dataset[split_name] for split_name in dataset]
+    all_splits = datasets.concatenate_datasets(splits)
+    loader = torch.utils.data.DataLoader(all_splits, batch_size=batch_size, shuffle=False)
 
     # create empty tensor for predictions
     is_first_batch = True

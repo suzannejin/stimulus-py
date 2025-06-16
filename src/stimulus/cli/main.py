@@ -365,33 +365,32 @@ def tune(
     help="Path to model config file",
 )
 @click.option(
-    "-e",
-    "--data-config",
-    type=click.Path(exists=True),
-    required=True,
-    help="Path to data config file",
-)
-@click.option(
     "-w",
     "--model-weight",
     type=click.Path(exists=True),
     required=True,
-    default="best_model.safetensors",
-    help="Path to save the best model [default: best_model.safetensors]",
+    help="Path to model weight file in safetensors format",
+)
+@click.option(
+    "-b",
+    "--batch-size",
+    type=int,
+    default=256,
+    help="Batch size for prediction [default: 256]",
 )
 @click.option(
     "-o",
     "--output",
     type=click.Path(),
-    default="best_model.safetensors",
-    help="Path to save the best model [default: best_model.safetensors]",
+    default="predictions.safetensors",
+    help="Path to save the predictions [default: predictions.safetensors]",
 )
 def predict(
     data: str,
-    data_config: str,
     model: str,
     model_config: str,
     model_weight: str,
+    batch_size: int = 256,
     output: str = "predictions.safetensors",
 ) -> None:
     """Use model to predict on data."""
@@ -399,11 +398,11 @@ def predict(
 
     predict_func(
         data_path=data,
-        data_config_path=data_config,
         model_path=model,
         model_config_path=model_config,
         weight_path=model_weight,
         output=output,
+        batch_size=batch_size,
     )
 
 
