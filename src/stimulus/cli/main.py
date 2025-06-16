@@ -111,43 +111,6 @@ def split_split(
     "--csv",
     type=click.Path(exists=True),
     required=True,
-    help="The file path for the csv containing the data in csv format",
-)
-@click.option(
-    "-y",
-    "--yaml",
-    type=click.Path(exists=True),
-    required=True,
-    help="The YAML data config",
-)
-@click.option(
-    "-o",
-    "--output",
-    type=click.Path(),
-    required=True,
-    help="The output file path to write the shuffled csv",
-)
-def shuffle_csv(
-    csv: str,
-    yaml: str,
-    output: str,
-) -> None:
-    """Shuffle rows in a CSV data file."""
-    from stimulus.cli.shuffle_csv import shuffle_csv as shuffle_csv_func
-
-    shuffle_csv_func(
-        data_csv=csv,
-        config_yaml=yaml,
-        out_path=output,
-    )
-
-
-@cli.command()
-@click.option(
-    "-c",
-    "--csv",
-    type=click.Path(exists=True),
-    required=True,
     help="The file path for the csv containing all data",
 )
 @click.option(
@@ -258,6 +221,52 @@ def transform_csv(
     "--data",
     type=click.Path(exists=True),
     required=True,
+    help="Path to input data file or directory (CSV, parquet, or HuggingFace dataset)",
+)
+@click.option(
+    "-y",
+    "--yaml",
+    type=click.Path(exists=True),
+    required=True,
+    help="The YAML config file that holds encoder parameters",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    required=True,
+    help="The output directory path to save the encoded dataset",
+)
+@click.option(
+    "-p",
+    "--num-proc",
+    type=int,
+    default=None,
+    help="Number of processes to use for encoding [default: None (disable multiprocessing)]",
+)
+def encode_csv(
+    data: str,
+    yaml: str,
+    output: str,
+    num_proc: Optional[int] = None,
+) -> None:
+    """Encode data according to configuration."""
+    from stimulus.cli.encode_csv import main as encode_csv_func
+
+    encode_csv_func(
+        data_path=data,
+        config_yaml=yaml,
+        out_path=output,
+        num_proc=num_proc,
+    )
+
+
+@cli.command()
+@click.option(
+    "-d",
+    "--data",
+    type=click.Path(exists=True),
+    required=True,
     help="Path to input csv file",
 )
 @click.option(
@@ -356,33 +365,32 @@ def tune(
     help="Path to model config file",
 )
 @click.option(
-    "-e",
-    "--data-config",
-    type=click.Path(exists=True),
-    required=True,
-    help="Path to data config file",
-)
-@click.option(
     "-w",
     "--model-weight",
     type=click.Path(exists=True),
     required=True,
-    default="best_model.safetensors",
-    help="Path to save the best model [default: best_model.safetensors]",
+    help="Path to model weight file in safetensors format",
+)
+@click.option(
+    "-b",
+    "--batch-size",
+    type=int,
+    default=256,
+    help="Batch size for prediction [default: 256]",
 )
 @click.option(
     "-o",
     "--output",
     type=click.Path(),
-    default="best_model.safetensors",
-    help="Path to save the best model [default: best_model.safetensors]",
+    default="predictions.safetensors",
+    help="Path to save the predictions [default: predictions.safetensors]",
 )
 def predict(
     data: str,
-    data_config: str,
     model: str,
     model_config: str,
     model_weight: str,
+    batch_size: int = 256,
     output: str = "predictions.safetensors",
 ) -> None:
     """Use model to predict on data."""
@@ -390,11 +398,11 @@ def predict(
 
     predict_func(
         data_path=data,
-        data_config_path=data_config,
         model_path=model,
         model_config_path=model_config,
         weight_path=model_weight,
         output=output,
+        batch_size=batch_size,
     )
 
 

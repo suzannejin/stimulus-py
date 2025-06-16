@@ -1,0 +1,83 @@
+global_params:
+  seed: 42
+
+columns:
+  - column_name: passenger_id
+    column_type: meta
+    encoder:
+      - name: NumericEncoder
+        params:
+          dtype: int32
+  - column_name: survived
+    column_type: label
+    encoder:
+      - name: NumericEncoder
+        params:
+          dtype: int8
+  - column_name: pclass
+    column_type: input
+    encoder:
+      - name: StrClassificationEncoder
+        params:
+          dtype: int8
+          scale: True
+  - column_name: sex
+    column_type: input
+    encoder:
+      - name: StrClassificationEncoder
+        params:
+          dtype: int8 
+          scale: True
+  - column_name: age
+    column_type: input
+    encoder:
+      - name: NumericRankEncoder
+        params:
+          dtype: int8
+          scale: True
+  - column_name: sibsp
+    column_type: input
+    encoder:
+      - name: NumericRankEncoder
+        params:
+          dtype: int8
+          scale: True
+  - column_name: parch
+    column_type: input
+    encoder:
+      - name: NumericEncoder
+        params:
+          dtype: int8
+  - column_name: fare
+    column_type: input
+    encoder:
+      - name: NumericEncoder
+        params:
+          dtype: float32
+  - column_name: embarked
+    column_type: input
+    encoder:
+      - name: StrClassificationEncoder
+        params:
+          dtype: int8
+
+transforms:
+  transformation_name: noise
+  columns:
+    - column_name: age
+      transformations:
+        - name: GaussianNoise
+          params:
+            std: 0.1
+    - column_name: fare
+      transformations:
+        - name: GaussianNoise
+          params:
+            std: 0.1
+
+split:
+  split_method: RandomSplit
+  params:
+    split: [0.7, 0.3]
+  split_input_columns: [age]
+

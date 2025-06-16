@@ -221,7 +221,10 @@ class DatasetLoader(DatasetHandler):
             >>> print(encoded["dna_seq"].shape)
             torch.Size([2, 4, 4])  # 2 sequences, length 4, one-hot encoded
         """
-        return {col: self.encoders[col].encode_all(dataframe[col].to_list()) for col in dataframe.columns}
+        return {
+            col: torch.from_numpy(self.encoders[col].batch_encode(np.array(dataframe[col].to_list())))
+            for col in dataframe.columns
+        }
 
     def get_all_items(self) -> tuple[dict, dict, dict]:
         """Get the full dataset as three separate dictionaries for inputs, labels and metadata.

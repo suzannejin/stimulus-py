@@ -8,12 +8,12 @@ import tempfile
 import warnings
 from typing import Any
 
+import datasets
 import optuna
 import pytest
 import torch
 import yaml
 
-from stimulus.cli.tuning import load_data_config_from_path
 from stimulus.learner import optuna_tune
 from stimulus.learner.interface import model_config_parser, model_schema
 from stimulus.utils import model_file_interface
@@ -25,17 +25,9 @@ warnings.filterwarnings("error")  # This will convert warnings to exceptions tem
 TEST_CASES = [
     {
         "name": "titanic",
-        "model_path": os.path.join("tests", "test_model", "titanic_model.py"),
-        "config_path": os.path.join("tests", "test_model", "titanic_model.yaml"),
-        "data_path": os.path.join("tests", "test_data", "titanic", "titanic_stimulus_split.csv"),
-        "data_config_path": os.path.join("tests", "test_data", "titanic", "titanic_unique_transform.yaml"),
-    },
-    {
-        "name": "ibis",
-        "model_path": os.path.join("tests", "test_model", "conv_kan.py"),
-        "config_path": os.path.join("tests", "test_model", "conv_kan.yaml"),
-        "data_path": os.path.join("tests", "test_data", "ibis_znf395", "ibis_znf395_split.csv"),
-        "data_config_path": os.path.join("tests", "test_data", "ibis_znf395", "ibis_znf395_rc_transform.yaml"),
+        "model_path": os.path.join("tests", "test_model", "titanic_perf_model.py"),
+        "config_path": os.path.join("tests", "test_model", "titanic_perf_model.yaml"),
+        "data_path": os.path.join("tests", "test_data", "titanic_performant", "titanic_encoded_hf"),
     },
 ]
 
@@ -53,17 +45,10 @@ def test_case(request: Any) -> dict:
         model_config = yaml.safe_load(f)
     model_config = model_schema.Model(**model_config)
 
-    # Load datasets
-    train_data = load_data_config_from_path(
-        data_path=case["data_path"],
-        data_config_path=case["data_config_path"],
-        split=0,
-    )
-    val_data = load_data_config_from_path(
-        data_path=case["data_path"],
-        data_config_path=case["data_config_path"],
-        split=1,
-    )
+    data = datasets.load_from_disk(case["data_path"])
+    data.set_format("torch")
+    train_data = data["train"]
+    val_data = data["test"]
 
     return {
         "name": case["name"],

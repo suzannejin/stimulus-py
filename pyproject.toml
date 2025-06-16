@@ -32,7 +32,7 @@ classifiers = [
 ]
 dependencies = [
     "matplotlib>=3.9.0",
-    "multiprocess==0.70.17",
+    "multiprocess==0.70.16",
     "numpy>=1.26.0,<2.0.0",
     "pandas>=2.2.0",
     "polars>=1.26.0",
@@ -46,6 +46,7 @@ dependencies = [
     "optuna>=4.0.0",
     "click>=8.1.0",
     "importlib_metadata",
+    "datasets>=3.6.0",
 ]
 
 [project.scripts]
@@ -119,6 +120,11 @@ dev-dependencies = [
     "mkdocs-material>=9.5",
     "mkdocs-minify-plugin>=0.8",
     "mkdocstrings[python]>=0.25",
-    # YORE: EOL 3.10: Remove line.
     "tomli>=2.0; python_version < '3.11'",
+]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # Ignore deprecation warning from datasets library using dill
+    "ignore:co_lnotab is deprecated, use co_lines instead:DeprecationWarning:.*_dill.*",
 ]

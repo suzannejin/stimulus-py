@@ -19,7 +19,7 @@ class ColumnsEncoder(BaseModel):
 
     @field_validator("params")
     def validate_dtype(cls, params: dict) -> dict:  # noqa: N805
-        """Validate that the 'dtype' key is present in the encoder parameters and convert the str into torch dtype."""
+        """Validate that the 'dtype' key is present in the encoder parameters."""
         if "dtype" not in params:
             raise ValueError("params must contain 'dtype' key")
         return params
