@@ -61,7 +61,6 @@ def cli() -> None:
 def check_model(
     data: str,
     model: str,
-    data_config: str,
     model_config: str,
     optuna_results_dirpath: str,
     force_device: Optional[str] = None,
@@ -72,7 +71,6 @@ def check_model(
     check_model_func(
         data_path=data,
         model_path=model,
-        data_config_path=data_config,
         model_config_path=model_config,
         optuna_results_dirpath=optuna_results_dirpath,
         force_device=force_device,
