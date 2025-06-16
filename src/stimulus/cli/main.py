@@ -32,13 +32,6 @@ def cli() -> None:
     help="Path to model file",
 )
 @click.option(
-    "-e",
-    "--data-config",
-    type=click.Path(exists=True),
-    required=True,
-    help="Path to data config file",
-)
-@click.option(
     "-c",
     "--model-config",
     type=click.Path(exists=True),
@@ -61,7 +54,6 @@ def cli() -> None:
 def check_model(
     data: str,
     model: str,
-    data_config: str,
     model_config: str,
     optuna_results_dirpath: str,
     force_device: Optional[str] = None,
@@ -72,7 +64,6 @@ def check_model(
     check_model_func(
         data_path=data,
         model_path=model,
-        data_config_path=data_config,
         model_config_path=model_config,
         optuna_results_dirpath=optuna_results_dirpath,
         force_device=force_device,
@@ -277,13 +268,6 @@ def encode_csv(
     help="Path to model file",
 )
 @click.option(
-    "-e",
-    "--data-config",
-    type=click.Path(exists=True),
-    required=True,
-    help="Path to data config file",
-)
-@click.option(
     "-c",
     "--model-config",
     type=click.Path(exists=True),
@@ -320,7 +304,6 @@ def encode_csv(
 def tune(
     data: str,
     model: str,
-    data_config: str,
     model_config: str,
     output: str,
     best_optimizer: str,
@@ -333,7 +316,6 @@ def tune(
     tune_func(
         data_path=data,
         model_path=model,
-        data_config_path=data_config,
         model_config_path=model_config,
         optuna_results_dirpath=optuna_results_dirpath,
         best_model_path=output,
