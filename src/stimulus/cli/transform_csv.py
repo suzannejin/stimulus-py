@@ -128,4 +128,5 @@ def main(data_csv: str, config_yaml: str, out_path: str) -> None:
     )
     logger.debug(f"Dataset type: {type(dataset)}")
     dataset["train"] = dataset["train"].filter(lambda example: not any(pd.isna(value) for value in example.values()))
-    dataset["train"].to_csv(out_path)
+    dataset["test"] = dataset["test"].filter(lambda example: not any(pd.isna(value) for value in example.values()))
+    dataset.save_to_disk(out_path)
