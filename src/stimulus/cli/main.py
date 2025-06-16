@@ -32,13 +32,6 @@ def cli() -> None:
     help="Path to model file",
 )
 @click.option(
-    "-e",
-    "--data-config",
-    type=click.Path(exists=True),
-    required=True,
-    help="Path to data config file",
-)
-@click.option(
     "-c",
     "--model-config",
     type=click.Path(exists=True),
