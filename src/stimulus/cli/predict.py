@@ -7,7 +7,7 @@ import os
 
 import datasets
 import pyarrow as pa
-import safetensors
+import safetensors.torch as safetensors
 import torch
 
 from stimulus.utils.model_file_interface import import_class_from_file
@@ -24,7 +24,7 @@ def load_model(model_path: str, model_config_path: str, weight_path: str) -> tor
     model = import_class_from_file(model_path)
     model_instance = model(**best_config)
 
-    weights = safetensors.torch.load_file(weight_path)
+    weights = safetensors.load_file(weight_path)
     model_instance.load_state_dict(weights)
     return model_instance
 
@@ -128,13 +128,13 @@ def predict(
 
     # create empty tensor for predictions
     is_first_batch = True
-    for x, y, _meta in loader:
+    for batch in loader:
         if is_first_batch:
-            _loss, statistics = model.batch(x, y)
+            _loss, statistics = model.batch(batch)
             is_first_batch = False
-        _loss, temp_statistics = model.batch(x, y)
+        _loss, temp_statistics = model.batch(batch)
         statistics = update_statistics(statistics, temp_statistics)
 
     to_return: dict = convert_dict_to_tensor(statistics)
     # Predict the data
-    safetensors.torch.save_file(to_return, output)
+    safetensors.save_file(to_return, output)
