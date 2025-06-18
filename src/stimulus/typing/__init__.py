@@ -11,12 +11,7 @@ The aliases from this module should be used for typing purposes only.
 from typing import Any, TypeAlias, TypeVar
 
 # these imports mostly alias everything
-from stimulus.data.data_handlers import (
-    DatasetHandler,
-    DatasetLoader,
-    DatasetProcessor,
-    TorchDataset,
-)
+# Note: DatasetHandler, DatasetLoader, DatasetProcessor, TorchDataset removed as they were unused
 from stimulus.data.encoding.encoders import AbstractEncoder as Encoder
 from stimulus.data.interface.data_config_parser import (
     create_encoders,
@@ -38,8 +33,8 @@ from stimulus.data.interface.data_config_schema import (
 )
 from stimulus.data.splitting import AbstractSplitter as Splitter
 from stimulus.data.transforming.transforms import AbstractTransform as Transform
-from stimulus.learner.predict import PredictWrapper
-from stimulus.utils.performance import Performance
+
+# Note: PredictWrapper and Performance imports removed due to missing modules
 from stimulus.utils.yaml_model_schema import (
     CustomTunableParameter,
     Data,

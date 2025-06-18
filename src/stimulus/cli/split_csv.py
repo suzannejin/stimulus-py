@@ -14,20 +14,22 @@ import datasets
 import pyarrow as pa
 import yaml
 
-from stimulus.data import data_handlers
 from stimulus.data.interface import data_config_parser
+from stimulus.data.splitting import splitters
 
 logger = logging.getLogger(__name__)
 
 
-def load_splitters_from_config_from_path(data_config_path: str) -> data_handlers.DatasetProcessor:
+def load_splitters_from_config_from_path(
+    data_config_path: str,
+) -> tuple[splitters.Splitter, data_config_parser.SplitConfigDict]:
     """Load the data config from a path.
 
     Args:
         data_config_path: Path to the data config file.
 
     Returns:
-        A DatasetProcessor instance configured with the data.
+        A tuple containing the splitter instance and split input columns.
     """
     with open(data_config_path) as file:
         data_config_dict = yaml.safe_load(file)
@@ -45,7 +47,7 @@ def split_csv(data_csv: str, config_yaml: str, out_path: str, *, force: bool = F
         out_path: Path to output split CSV.
         force: Overwrite the validation field if it already exists.
     """
-    # create a DatasetProcessor object from the config and the csv
+    # create a splitter object from the config
     splitter, split_columns = load_splitters_from_config_from_path(config_yaml)
     try:
         dataset_dict = datasets.load_dataset("parquet", data_files=data_csv)
