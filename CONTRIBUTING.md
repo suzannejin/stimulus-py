@@ -57,7 +57,7 @@ From there, you should first try to load the dataset in a data_handler class (se
 
 Then, you can try to load the dataset in the pytorch dataset utility (see `stimulus.data.handlertorch.py`). And run the model on a few examples to see what is going on. 
 
-Finally, you can call tuning scripts (see `stimulus.learner.raytune_learner.py`) - make sure you import ray and call ray.init() first - and run a hyper parameter tuning run on the model using the model config `tests/test_model/titanic_model_{gpu/cpu}.yaml`. 
+Finally, you can call tuning scripts using the Optuna-based hyperparameter tuning system. Run hyperparameter tuning experiments using the model config `tests/test_model/titanic_perf_model.yaml`. 
 
 Since this is not so well documented, it is possible you encounter issues, bugs, things that are weird to you, unintuitive, etc. I will be here to answer questions, either on nf-core slack or on discord. Those questions are extremely valuable to get the documentation up to speed.
 

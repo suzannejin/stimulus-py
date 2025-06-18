@@ -27,7 +27,6 @@ class Splitter3(AbstractSplitter):
         return "splitter_3"
 
 
-
 @EncoderRegistry.register("EnCOdEr_ClAss3")
 class Encoder3(AbstractEncoder):
     """A mock class."""
@@ -35,6 +34,7 @@ class Encoder3(AbstractEncoder):
     def echo(self) -> str:
         """Returns just class3."""
         return "encoder_3"
+
 
 @TransformRegistry.register("TranSFOrM_CLASs3")
 class Transform3(AbstractTransform):

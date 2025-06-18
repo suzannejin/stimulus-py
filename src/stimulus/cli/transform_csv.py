@@ -22,7 +22,7 @@ def load_transforms_from_config(data_config_path: str) -> dict[str, list[Any]]:
         data_config_path: Path to the data config file.
 
     Returns:
-        A DatasetProcessor instance configured with the data.
+        A dictionary mapping column names to lists of transform objects.
     """
     with open(data_config_path) as file:
         data_config_dict = yaml.safe_load(file)
@@ -116,7 +116,7 @@ def main(data_csv: str, config_yaml: str, out_path: str) -> None:
     dataset = load_dataset_from_path(data_csv)
 
     dataset.set_format(type="numpy")
-    # Create a DatasetProcessor object from the config and the csv
+    # Create transforms from the config
     transforms = load_transforms_from_config(config_yaml)
     logger.info("Transforms initialized successfully.")
 

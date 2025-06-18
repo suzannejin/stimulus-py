@@ -1,41 +1,73 @@
-model_params:
-  param_to_optimize_1: # name of the parameter to optimize, should match the name of the parameter in the model
-    space: ['space to optimize param 1', 'space to optimize param 2'] # space to optimize definition, as given to Ray
-    mode: RayFunction # mode to define the space, for instance choice, randint, loguniform, uniform... check Ray documentation
+# Optuna Hyperparameter Tuning Configuration Template
+# This template shows how to configure hyperparameter tuning using Optuna
 
-optimizer:
-  method:
-    space: ['optimizer1', 'optimizer2'] # a choice of optimizers to use for optimization
-    mode: choice
+max_samples: 1000  # Maximum number of training samples per trial
+compute_objective_every_n_samples: 100  # How often to evaluate the objective metric
+n_trials: 10  # Number of hyperparameter trials to run
+
+network_params:
+  # Example: Variable list parameter (e.g., number and size of layers)
+  layers:
+    mode: variable_list
+    length:
+      mode: int
+      params:
+        low: 1
+        high: 3
+    values:
+      mode: int
+      params:
+        low: 10
+        high: 100
+  
+  # Example: Simple integer parameter
+  dropout_rate:
+    mode: float
+    params:
+      low: 0.0
+      high: 0.5
 
 optimizer_params:
+  method:
+    mode: categorical
+    params:
+      choices: ["Adam", "SGD", "RMSprop"]
   lr:
-    space: ['lower_bound', 'upper_bound'] # defining the space for learning rate search
-    mode: loguniform
+    mode: float
+    params:
+      low: 0.0001
+      high: 0.1
+      log: true  # Use log scale for learning rate
 
 loss_params:
-  loss_fn: # loss function name, should match the name of the loss function in the model "batch" method
-    space: ['loss_fn1', 'loss_fn2'] # a choice of loss functions to use for optimization
-    mode: choice
+  loss_fn:
+    mode: categorical
+    params:
+      choices: ["CrossEntropyLoss", "MSELoss", "BCEWithLogitsLoss"]
 
 data_params:
   batch_size:
-    space: [16, 32, 64, 128, 256] # defining the space for batch size search
-    mode: choice
-
-tune:
-  config_name: "name of Ray config"
-  tune_params:
-    metric: "name of metric to optimize" # should match available metrics as defined in the raytune_learner.py (currently only "val_loss" is available)
-    mode: "max" # max or min
-    num_samples: 10 # number of samples to try
-  scheduler:
-    name: "name of Ray scheduler"
+    mode: categorical
     params:
-      param1: value1
-      param2: value2
-      param3: value3
-  step_size: 1
+      choices: [16, 32, 64, 128, 256]
+
+# Optuna pruner configuration
+pruner:
+  name: MedianPruner
+  params:
+    n_warmup_steps: 10
+    n_startup_trials: 5
+
+# Optuna sampler configuration  
+sampler:
+  name: TPESampler
+  params:
+    seed: 42
+
+# Optimization objective
+objective:
+  metric: "val_loss"  # Metric to optimize (should match model output)
+  direction: minimize  # "minimize" or "maximize"
   
 
 

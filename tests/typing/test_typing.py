@@ -6,19 +6,7 @@ As the typing module only contains types, the tests only check imports.
 
 import pytest
 
-
-@pytest.mark.skip(reason="Skipping typing tests")
-def test_data_handlers_types() -> None:
-    """Test the data handlers types."""
-    try:
-        from stimulus.typing import (
-            DatasetHandler,
-            DatasetLoader,
-            DatasetProcessor,
-            TorchDataset,
-        )
-    except ImportError:
-        pytest.fail("Failed to import Data Handlers types")
+# Note: test_data_handlers_types removed as data_handlers.py was deleted
 
 
 @pytest.mark.skip(reason="Skipping typing tests")
@@ -42,23 +30,8 @@ def test_data_config_schema_types() -> None:
         pytest.fail("Failed to import Data Config Schema types")
 
 
-@pytest.mark.skip(reason="Skipping typing tests")
-def test_yaml_model_schema_types() -> None:
-    """Test the YAML model schema types."""
-    try:
-        from stimulus.typing import (
-            CustomTunableParameter,
-            Data,
-            Loss,
-            Model,
-            RunParams,
-            Scheduler,
-            TunableParameter,
-            Tune,
-            TuneParams,
-        )
-    except ImportError:
-        pytest.fail("Failed to import YAML Model Schema types")
+# Note: test_yaml_model_schema_types removed as yaml_model_schema.py was deleted
+# The codebase now uses Optuna exclusively for hyperparameter tuning
 
 
 @pytest.mark.skip(reason="Skipping typing tests")

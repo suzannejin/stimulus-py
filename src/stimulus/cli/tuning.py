@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CLI module for running raytune tuning experiment."""
+"""CLI module for running Optuna hyperparameter tuning experiments."""
 
 import logging
 import os
