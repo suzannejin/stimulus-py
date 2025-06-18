@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def load_splitters_from_config_from_path(
     data_config_path: str,
-) -> tuple[splitters.Splitter, data_config_parser.SplitConfigDict]:
+) -> tuple[splitters.AbstractSplitter, data_config_parser.SplitConfigDict]:
     """Load the data config from a path.
 
     Args:
