@@ -35,19 +35,8 @@ from stimulus.data.splitting import AbstractSplitter as Splitter
 from stimulus.data.transforming.transforms import AbstractTransform as Transform
 
 # Note: PredictWrapper and Performance imports removed due to missing modules
-from stimulus.utils.yaml_model_schema import (
-    CustomTunableParameter,
-    Data,
-    Loss,
-    Model,
-    RayConfigLoader,
-    RayTuneModel,
-    RunParams,
-    Scheduler,
-    TunableParameter,
-    Tune,
-    TuneParams,
-)
+# Note: yaml_model_schema imports removed as they contained unused Ray-related classes
+# The codebase now uses Optuna exclusively for hyperparameter tuning
 
 # data/interface/data_config_schema.py
 
@@ -66,7 +55,7 @@ YamlData: TypeAlias = (
 )
 
 # Replace these problematic imports
-# from stimulus.learner.raytune_learner import CheckpointDict, TuneModel, TuneWrapper
+# Note: raytune_learner imports removed as the module was replaced with optuna_tune
 
 # Replace with type aliases if needed
 CheckpointDict = dict[str, Any]

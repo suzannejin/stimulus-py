@@ -36,7 +36,7 @@ Stimulus provides those functionalities
    Modify training data to test model's robustness to perturbations and uncover which pre-processing steps increase performance
 
 2. **Hyperparameter Optimization**:  
-   Perform tuning on model architecture with user-defined search spaces using Ray[tune] to ensure comparable performance across data transformations
+   Perform tuning on model architecture with user-defined search spaces using Optuna to ensure comparable performance across data transformations
 
 3. **Comprehensive Analysis**:  
    Generate all-against-all model report to guide data pre-processing decisions
@@ -94,8 +94,8 @@ src/stimulus/ 🧪
 │       └── data_transformation_generators.py
 ├── learner/ 🧠
 │   ├── predict.py
-│   ├── raytune_learner.py
-│   └── raytune_parser.py
+│   ├── optuna_tune.py
+│   └── predict.py
 └── utils/ 🛠️
     ├── json_schema.py
     ├── launch_utils.py
