@@ -159,7 +159,8 @@ class PredictWrapper:
                     device_x = {key: value.to(self.device) for key, value in x.items()}
                     device_y = {key: value.to(self.device) for key, value in y.items()}
                     # the loss_dict could be unpacked with ** and the function declaration handle it differently like **kwargs. to be decided, personally find this more clean and understable.
-                    current_loss = self.model.batch(x=device_x, y=device_y, **self.loss_dict)[0]
+                    batch_combined = {**device_x, **device_y}
+                    current_loss = self.model.inference(batch=batch_combined, **self.loss_dict)[0]
                 except RuntimeError as e:
                     if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
                         "MPS backend out of memory" in str(e) and self.device.type == "mps"
@@ -172,7 +173,8 @@ class PredictWrapper:
                         y_cpu = {key: value.to(temp_device) for key, value in y.items()}
                         # Move model to CPU temporarily
                         model_on_cpu = self.model.to(temp_device)
-                        current_loss = model_on_cpu.batch(x=x_cpu, y=y_cpu, **self.loss_dict)[0]
+                        batch_combined = {**x_cpu, **y_cpu}
+                        current_loss = model_on_cpu.inference(batch=batch_combined, **self.loss_dict)[0]
                         # Move model back to original device for next batches
                         try:
                             self.model = self.model.to(self.device)
