@@ -5,11 +5,14 @@ import pathlib
 import tempfile
 
 import datasets
+import pandas as pd
 import pytest
+import yaml
 from click.testing import CliRunner
 
-from stimulus.cli.encode_csv import main
+from stimulus.cli.encode_csv import encode_batch, load_encoders_from_config, main
 from stimulus.cli.main import cli
+from stimulus.data.encoding.encoders import NumericEncoder, StrClassificationEncoder
 
 
 # Fixtures
@@ -82,8 +85,6 @@ def test_encode_csv_with_parquet_input(
     # Create a temporary parquet file for testing
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Create a simple dataset and save as parquet
-        import pandas as pd
-
         test_data = {
             "passenger_id": [1, 2, 3],
             "survived": [1, 0, 1],
@@ -148,8 +149,6 @@ def test_encode_csv_with_missing_column_graceful_handling(
     yaml_path: str,
 ) -> None:
     """Test that encode_csv handles missing columns gracefully without crashing."""
-    import yaml
-
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Create a modified config with a non-existent column
         with open(yaml_path) as f:
@@ -231,8 +230,6 @@ def test_cli_invocation(
 @pytest.mark.skip(reason="Break github action runners")
 def test_load_encoders_from_config(yaml_path: str) -> None:
     """Test that encoders are properly loaded from config."""
-    from stimulus.cli.encode_csv import load_encoders_from_config
-
     encoders = load_encoders_from_config(yaml_path)
 
     # Check that encoders were created for all columns
@@ -252,8 +249,6 @@ def test_load_encoders_from_config(yaml_path: str) -> None:
         assert column in encoders, f"Encoder for column {column} not found"
 
     # Check that the encoders are the correct types
-    from stimulus.data.encoding.encoders import NumericEncoder, StrClassificationEncoder
-
     assert isinstance(encoders["passenger_id"], NumericEncoder)
     assert isinstance(encoders["survived"], NumericEncoder)
     assert isinstance(encoders["sex"], StrClassificationEncoder)
@@ -263,9 +258,6 @@ def test_load_encoders_from_config(yaml_path: str) -> None:
 @pytest.mark.skip(reason="Break github action runners")
 def test_encode_batch_function() -> None:
     """Test the encode_batch function with sample data."""
-    from stimulus.cli.encode_csv import encode_batch
-    from stimulus.data.encoding.encoders import NumericEncoder, StrClassificationEncoder
-
     # Create sample batch data
     batch = {
         "numeric_col": [1.0, 2.0, 3.0],

@@ -264,7 +264,7 @@ def test_balance_sampler() -> None:
     nb_a = len([x for x in transformed_data if x == "a"])
     nb_b = len([x for x in transformed_data if x == "b"])
     nb_c = len([x for x in transformed_data if x == "c"])
-    nb_nan = len([x for x in transformed_data if x is np.nan])
+    nb_nan = len([x for x in transformed_data if isinstance(x, float) and np.isnan(x)])
     assert nb_a == nb_b == nb_c == 2
     assert nb_nan == 4
 
