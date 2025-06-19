@@ -100,7 +100,7 @@ class ModelTitanicPerformance(torch.nn.Module):
         self,
         batch: dict[str, torch.Tensor],
         optimizer: torch.optim.Optimizer,
-        **kwargs,
+        loss_fn: Callable,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Perform one training batch step.
 
@@ -110,9 +110,6 @@ class ModelTitanicPerformance(torch.nn.Module):
         """
         # Forward pass
         output = self.forward(**batch).squeeze(-1)
-
-        # Extract loss function from kwargs (should have only one key-value pair)
-        loss_fn = list(kwargs.values())[0]
 
         # Compute loss
         loss = self.compute_loss(output, batch["Survived"], loss_fn=loss_fn)
@@ -128,7 +125,7 @@ class ModelTitanicPerformance(torch.nn.Module):
     def inference(
         self,
         batch: dict[str, torch.Tensor],
-        **kwargs,
+        loss_fn: Callable,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Perform one inference batch step.
 
@@ -137,9 +134,6 @@ class ModelTitanicPerformance(torch.nn.Module):
         """
         # Forward pass only
         output = self.forward(**batch).squeeze(-1)
-
-        # Extract loss function from kwargs (should have only one key-value pair)
-        loss_fn = list(kwargs.values())[0]
 
         # Compute loss
         loss = self.compute_loss(output, batch["Survived"], loss_fn=loss_fn)
