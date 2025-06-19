@@ -12,14 +12,18 @@ import json
 import logging
 import os
 import tempfile
+from collections import defaultdict
 from typing import Any, Optional
 
 import datasets
 import optuna
+import pandas as pd
 import torch
 from safetensors.torch import load_file
 
 from stimulus.cli import encode_csv as encode_csv_cli
+from stimulus.cli.compare_tensors import compare_tensors as compare_tensors_impl
+from stimulus.cli.transform_csv import transform_batch
 from stimulus.data.interface import data_config_parser
 from stimulus.data.splitting import splitters
 from stimulus.data.transforming import transforms
@@ -202,10 +206,6 @@ def transform(
     logger.info("Transforms initialized successfully.")
 
     # Apply the transformations to the data
-    import pandas as pd
-
-    from stimulus.cli.transform_csv import transform_batch
-
     dataset = dataset.map(
         transform_batch,
         batched=True,
@@ -338,10 +338,6 @@ def compare_tensors(
         >>> results = compare_tensors([pred1, pred2], mode="cosine_similarity")
         >>> print(results["cosine_similarity"])
     """
-    from collections import defaultdict
-
-    from stimulus.cli.compare_tensors import compare_tensors as compare_tensors_impl
-
     results: dict[str, list[float]] = defaultdict(list)
 
     for i in range(len(tensor_dicts)):

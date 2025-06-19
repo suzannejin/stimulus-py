@@ -9,6 +9,16 @@ from typing import Optional
 
 import click
 
+from stimulus.cli.check_model import check_model as check_model_func
+from stimulus.cli.compare_tensors import compare_tensors_and_save
+from stimulus.cli.encode_csv import main as encode_csv_func
+from stimulus.cli.predict import predict as predict_func
+from stimulus.cli.split_csv import split_csv as split_csv_func
+from stimulus.cli.split_split import split_split as split_split_func
+from stimulus.cli.split_transforms import split_transforms as split_transforms_func
+from stimulus.cli.transform_csv import main as transform_csv_func
+from stimulus.cli.tuning import tune as tune_func
+
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(version("stimulus-py"), "-v", "--version")
@@ -59,8 +69,6 @@ def check_model(
     force_device: Optional[str] = None,
 ) -> None:
     """Check model configuration and run initial tests."""
-    from stimulus.cli.check_model import check_model as check_model_func
-
     check_model_func(
         data_path=data,
         model_path=model,
@@ -91,8 +99,6 @@ def split_split(
     out_dir: str,
 ) -> None:
     """Split a YAML configuration file into multiple YAML files, each containing a unique split."""
-    from stimulus.cli.split_split import split_split as split_split_func
-
     split_split_func(config_yaml=yaml, out_dir_path=out_dir)
 
 
@@ -133,8 +139,6 @@ def split_csv(
     force: bool,
 ) -> None:
     """Split rows in a CSV data file."""
-    from stimulus.cli.split_csv import split_csv as split_csv_func
-
     split_csv_func(
         data_csv=csv,
         config_yaml=yaml,
@@ -164,8 +168,6 @@ def split_transforms(
     out_dir: str,
 ) -> None:
     """Split a YAML configuration file into multiple YAML files, each containing a unique transform."""
-    from stimulus.cli.split_transforms import split_transforms as split_transforms_func
-
     split_transforms_func(config_yaml=yaml, out_dir_path=out_dir)
 
 
@@ -197,8 +199,6 @@ def transform_csv(
     output: str,
 ) -> None:
     """Transform data in a CSV file according to configuration."""
-    from stimulus.cli.transform_csv import main as transform_csv_func
-
     transform_csv_func(
         data_csv=csv,
         config_yaml=yaml,
@@ -242,8 +242,6 @@ def encode_csv(
     num_proc: Optional[int] = None,
 ) -> None:
     """Encode data according to configuration."""
-    from stimulus.cli.encode_csv import main as encode_csv_func
-
     encode_csv_func(
         data_path=data,
         config_yaml=yaml,
@@ -311,8 +309,6 @@ def tune(
     force_device: Optional[str] = None,
 ) -> None:
     """Run hyperparameter tuning for a model."""
-    from stimulus.cli.tuning import tune as tune_func
-
     tune_func(
         data_path=data,
         model_path=model,
@@ -376,8 +372,6 @@ def predict(
     output: str = "predictions.safetensors",
 ) -> None:
     """Use model to predict on data."""
-    from stimulus.cli.predict import predict as predict_func
-
     predict_func(
         data_path=data,
         model_path=model,
@@ -416,8 +410,6 @@ def compare_tensors(
     Example:
         stimulus compare-tensors tensor1.safetensors tensor2.safetensors tensor3.safetensors --mode cosine_similarity
     """
-    from stimulus.cli.compare_tensors import compare_tensors_and_save
-
     if len(tensor_paths) < 2:  # noqa: PLR2004
         click.echo("Error: At least two tensor files are required for comparison.")
         return

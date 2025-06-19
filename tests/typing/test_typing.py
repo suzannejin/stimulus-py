@@ -6,6 +6,21 @@ As the typing module only contains types, the tests only check imports.
 
 import pytest
 
+from stimulus.typing import (
+    Columns,
+    ColumnsEncoder,
+    ConfigDict,
+    Data,
+    GlobalParams,
+    Schema,
+    Split,
+    SplitConfigDict,
+    SplitTransformDict,
+    Transform,
+    TransformColumns,
+    TransformColumnsTransformation,
+)
+
 # Note: test_data_handlers_types removed as data_handlers.py was deleted
 
 
@@ -13,19 +28,18 @@ import pytest
 def test_data_config_schema_types() -> None:
     """Test the data config schema types."""
     try:
-        from stimulus.typing import (
-            Columns,
-            ColumnsEncoder,
-            ConfigDict,
-            GlobalParams,
-            Schema,
-            Split,
-            SplitConfigDict,
-            SplitTransformDict,
-            Transform,
-            TransformColumns,
-            TransformColumnsTransformation,
-        )
+        # Test that imports work - already imported at top level
+        assert Columns is not None
+        assert ColumnsEncoder is not None
+        assert ConfigDict is not None
+        assert GlobalParams is not None
+        assert Schema is not None
+        assert Split is not None
+        assert SplitConfigDict is not None
+        assert SplitTransformDict is not None
+        assert Transform is not None
+        assert TransformColumns is not None
+        assert TransformColumnsTransformation is not None
     except ImportError:
         pytest.fail("Failed to import Data Config Schema types")
 
@@ -38,6 +52,7 @@ def test_data_config_schema_types() -> None:
 def test_type_aliases() -> None:
     """Test the type aliases."""
     try:
-        from stimulus.typing import Data
+        # Test that imports work - already imported at top level
+        assert Data is not None
     except ImportError:
         pytest.fail("Failed to import Type Aliases")
