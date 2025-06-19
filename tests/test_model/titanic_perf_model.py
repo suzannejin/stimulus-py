@@ -96,20 +96,23 @@ class ModelTitanicPerformance(torch.nn.Module):
         accuracy = ((output > 0) == target).float().mean()
         return accuracy
 
-    def train(
+    def train_batch(
         self,
         batch: dict[str, torch.Tensor],
-        loss_fn: Callable,
         optimizer: torch.optim.Optimizer,
+        **kwargs,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Perform one training batch step.
 
         `batch` is a dictionary with the input and label tensors.
-        `loss_fn` is the loss function to be used.
         `optimizer` is the optimizer for the training step.
+        **kwargs contains the loss functions.
         """
         # Forward pass
         output = self.forward(**batch).squeeze(-1)
+
+        # Extract loss function from kwargs (should have only one key-value pair)
+        loss_fn = list(kwargs.values())[0]
 
         # Compute loss
         loss = self.compute_loss(output, batch["Survived"], loss_fn=loss_fn)
@@ -125,15 +128,18 @@ class ModelTitanicPerformance(torch.nn.Module):
     def inference(
         self,
         batch: dict[str, torch.Tensor],
-        loss_fn: Callable,
+        **kwargs,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
         """Perform one inference batch step.
 
         `batch` is a dictionary with the input and label tensors.
-        `loss_fn` is the loss function to be used.
+        **kwargs contains the loss functions.
         """
         # Forward pass only
         output = self.forward(**batch).squeeze(-1)
+
+        # Extract loss function from kwargs (should have only one key-value pair)
+        loss_fn = list(kwargs.values())[0]
 
         # Compute loss
         loss = self.compute_loss(output, batch["Survived"], loss_fn=loss_fn)
