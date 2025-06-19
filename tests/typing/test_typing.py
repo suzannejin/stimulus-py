@@ -2,7 +2,6 @@
 
 As the typing module only contains types, the tests only check imports.
 """
-# ruff: noqa: F401
 
 import pytest
 
