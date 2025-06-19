@@ -107,6 +107,6 @@ def suggest_parameters(
             logger.error(
                 f"Unsupported parameter type: {type(param)}, available types: {model_schema.TunableParameter, model_schema.VariableList}",
             )
-            raise TypeError(f"Unsupported parameter type: {type(param)}")
+            raise TypeError(f"Unsupported parameter type: {type(param)} for parameter {name} with value {param}")
         suggestions[name] = suggestion
     return suggestions

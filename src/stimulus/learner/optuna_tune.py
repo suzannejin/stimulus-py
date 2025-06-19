@@ -138,6 +138,19 @@ class Objective:
                 if batch_idx * batch_size >= self.max_samples:
                     break
 
+        # Ensure we have computed metrics at least once before returning
+        if not metric_dict:
+            logger.info("Computing final objective metrics before returning")
+            metric_dict = self.objective(
+                model_instance=model_instance,
+                train_loader=train_loader,
+                val_loader=val_loader,
+                loss_dict=loss_dict,
+                device=self.device,
+            )
+            for metric_name, metric_value in metric_dict.items():
+                trial.set_user_attr(metric_name, metric_value)
+
         # Final checkpoint and return objective value
         self.save_checkpoint(trial, model_instance, optimizer, model_suggestions)
         return metric_dict[self.target_metric]
