@@ -271,8 +271,8 @@ def tune(
         # Create objective function
         objective = optuna_tune.Objective(
             model_class=model_class,
-            network_params=model_config.model_params,
-            optimizer_params=model_config.optimizer,
+            network_params=model_config.network_params,
+            optimizer_params=model_config.optimizer_params,
             data_params=model_config.data_params,
             loss_params=model_config.loss_params,
             train_torch_dataset=train_torch_dataset,
@@ -303,7 +303,7 @@ def tune(
         best_config = best_trial.params
 
         # Recreate best model
-        model_suggestions = model_config_parser.suggest_parameters(best_trial, model_config.model_params)
+        model_suggestions = model_config_parser.suggest_parameters(best_trial, model_config.network_params)
         best_model = model_class(**model_suggestions)
 
         # Load best weights if available
