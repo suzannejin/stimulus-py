@@ -10,7 +10,6 @@ from stimulus.typing import (
     Columns,
     ColumnsEncoder,
     ConfigDict,
-    Data,
     GlobalParams,
     Schema,
     Split,
@@ -19,6 +18,7 @@ from stimulus.typing import (
     Transform,
     TransformColumns,
     TransformColumnsTransformation,
+    YamlData,
 )
 
 # Note: test_data_handlers_types removed as data_handlers.py was deleted
@@ -53,6 +53,6 @@ def test_type_aliases() -> None:
     """Test the type aliases."""
     try:
         # Test that imports work - already imported at top level
-        assert Data is not None
+        assert YamlData is not None
     except ImportError:
         pytest.fail("Failed to import Type Aliases")
