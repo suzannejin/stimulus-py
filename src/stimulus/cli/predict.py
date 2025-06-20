@@ -104,9 +104,9 @@ def predict(
     is_first_batch = True
     for batch in loader:
         if is_first_batch:
-            _loss, statistics = model.batch(batch)
+            _loss, statistics = model.inference(batch)
             is_first_batch = False
-        _loss, temp_statistics = model.batch(batch)
+        _loss, temp_statistics = model.inference(batch)
         statistics = update_statistics(statistics, temp_statistics)
 
     to_return: dict = convert_dict_to_tensor(statistics)
