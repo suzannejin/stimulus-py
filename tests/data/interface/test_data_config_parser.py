@@ -12,8 +12,6 @@ from stimulus.data.interface.data_config_parser import (
     create_splitter,
     create_transforms,
     expand_transform_parameter_combinations,
-    generate_split_configs,
-    generate_split_transform_configs,
     parse_split_transform_config,
 )
 from stimulus.data.interface.data_config_schema import (
@@ -206,23 +204,3 @@ def test_expand_transform_parameter_combinations(load_split_config: SplitTransfo
     # Verify parameter unpacking
     first_params = expanded[0].columns[0].transformations[0].params
     assert first_params["std"] == 0.1
-
-
-def test_generate_split_configs(load_full_config: ConfigDict) -> None:
-    """Test split configuration generation."""
-    split_configs = generate_split_configs(load_full_config)
-    assert len(split_configs) == 1  # Only one split in the test YAML
-
-    cfg = split_configs[0]
-    assert isinstance(cfg, SplitConfigDict)
-    assert cfg.split.split_method == "RandomSplit"
-
-
-def test_generate_split_transform_configs(load_full_config: ConfigDict) -> None:
-    """Test combined split/transform config generation."""
-    split_configs = generate_split_configs(load_full_config)
-    combined_configs = generate_split_transform_configs(split_configs[0])
-
-    assert len(combined_configs) == 3  # 3 parameter combinations
-    assert all(isinstance(c, SplitTransformDict) for c in combined_configs)
-    assert combined_configs[0].transforms.columns[0].transformations[0].params["std"] == 0.1

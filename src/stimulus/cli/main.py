@@ -14,8 +14,7 @@ from stimulus.cli.compare_tensors import compare_tensors_and_save
 from stimulus.cli.encode_csv import main as encode_csv_func
 from stimulus.cli.predict import predict as predict_func
 from stimulus.cli.split_csv import split_csv as split_csv_func
-from stimulus.cli.split_split import split_split as split_split_func
-from stimulus.cli.split_transforms import split_transforms as split_transforms_func
+from stimulus.cli.split_yaml import split_yaml as split_yaml_func
 from stimulus.cli.transform_csv import main as transform_csv_func
 from stimulus.cli.tuning import tune as tune_func
 
@@ -80,30 +79,6 @@ def check_model(
 
 @cli.command()
 @click.option(
-    "-y",
-    "--yaml",
-    type=click.Path(exists=True),
-    required=True,
-    help="The YAML config file that hold all transform - split - parameter info",
-)
-@click.option(
-    "-d",
-    "--out-dir",
-    type=click.Path(),
-    required=False,
-    default="./",
-    help="The output dir where all the YAMLs are written to. Output YAML will be called split-#[number].yaml transform-#[number].yaml. Default -> ./",
-)
-def split_split(
-    yaml: str,
-    out_dir: str,
-) -> None:
-    """Split a YAML configuration file into multiple YAML files, each containing a unique split."""
-    split_split_func(config_yaml=yaml, out_dir_path=out_dir)
-
-
-@cli.command()
-@click.option(
     "-c",
     "--csv",
     type=click.Path(exists=True),
@@ -153,7 +128,7 @@ def split_csv(
     "--yaml",
     type=click.Path(exists=True),
     required=True,
-    help="The YAML config file that hold all the transform per split parameter info",
+    help="The YAML config file to split into component configs",
 )
 @click.option(
     "-d",
@@ -161,14 +136,20 @@ def split_csv(
     type=click.Path(),
     required=False,
     default="./",
-    help="The output dir where all the YAMLs are written to. Output YAML will be called split_transform-#[number].yaml. Default -> ./",
+    help="The output directory where component YAML files will be written [default: ./]",
 )
-def split_transforms(
+def split_yaml(
     yaml: str,
     out_dir: str,
 ) -> None:
-    """Split a YAML configuration file into multiple YAML files, each containing a unique transform."""
-    split_transforms_func(config_yaml=yaml, out_dir_path=out_dir)
+    """Split a YAML configuration into separate component configs.
+
+    Creates individual files for encoding, splits, and transforms:
+    - encode.yaml: Encoding configuration
+    - split1.yaml, split2.yaml, etc.: Individual split configurations
+    - transform1.yaml, transform2.yaml, etc.: Individual transform configurations
+    """
+    split_yaml_func(config_yaml=yaml, out_dir_path=out_dir)
 
 
 @cli.command()

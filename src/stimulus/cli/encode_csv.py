@@ -24,9 +24,9 @@ def load_encoders_from_config(data_config_path: str) -> dict[str, Any]:
     """
     with open(data_config_path) as file:
         data_config_dict = yaml.safe_load(file)
-        data_config_obj = data_config_parser.SplitTransformDict(**data_config_dict)
+        data_config_obj = data_config_parser.EncodingConfigDict(**data_config_dict)
 
-    encoders, _input_columns, _label_columns, _meta_columns = data_config_parser.parse_split_transform_config(
+    encoders, _input_columns, _label_columns, _meta_columns = data_config_parser.parse_encoding_config(
         data_config_obj,
     )
 

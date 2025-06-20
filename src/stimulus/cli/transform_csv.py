@@ -25,9 +25,9 @@ def load_transforms_from_config(data_config_path: str) -> dict[str, list[Any]]:
     """
     with open(data_config_path) as file:
         data_config_dict = yaml.safe_load(file)
-        data_config_obj = data_config_parser.SplitTransformDict(**data_config_dict)
+        data_config_obj = data_config_parser.IndividualTransformConfigDict(**data_config_dict)
 
-    return data_config_parser.create_transforms([data_config_obj.transforms])
+    return data_config_parser.parse_individual_transform_config(data_config_obj)
 
 
 def transform_batch(
@@ -102,5 +102,6 @@ def main(data_csv: str, config_yaml: str, out_path: str) -> None:
     )
     logger.debug(f"Dataset type: {type(dataset)}")
     dataset["train"] = dataset["train"].filter(lambda example: not any(pd.isna(value) for value in example.values()))
-    dataset["test"] = dataset["test"].filter(lambda example: not any(pd.isna(value) for value in example.values()))
+    if "test" in dataset:
+        dataset["test"] = dataset["test"].filter(lambda example: not any(pd.isna(value) for value in example.values()))
     dataset.save_to_disk(out_path)
