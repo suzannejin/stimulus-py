@@ -96,20 +96,25 @@ def main(data_path: str, config_yaml: str, out_path: str, num_proc: Optional[int
     logger.info("Encoders initialized successfully.")
     logger.info(f"Loaded encoders for columns: {list(encoders.keys())}")
 
-    # Identify columns that aren't in the encoder configuration
+    # Identify and remove columns that aren't in the encoder configuration
+    encoder_columns = set(encoders.keys())
     columns_to_remove = set()
+    
     for split_name, split_dataset in dataset.items():
         dataset_columns = set(split_dataset.column_names)
-        encoder_columns = set(encoders.keys())
-        columns_to_remove.update(dataset_columns - encoder_columns)
-        logger.info(f"Removing columns not in encoder configuration from {split_name} split: {list(columns_to_remove)}")
-
+        split_columns_to_remove = dataset_columns - encoder_columns
+        columns_to_remove.update(split_columns_to_remove)
+        logger.info(f"Split '{split_name}' columns to remove: {list(split_columns_to_remove)}")
+    
+    if columns_to_remove:
+        logger.info(f"Removing columns not in encoder configuration: {list(columns_to_remove)}")
+        dataset = dataset.remove_columns(list(columns_to_remove))
+    
     # Apply the encoders to the data
     dataset = dataset.map(
         encode_batch,
         batched=True,
         fn_kwargs={"encoders_config": encoders},
-        remove_columns=list(columns_to_remove),
         num_proc=num_proc,
     )
 
