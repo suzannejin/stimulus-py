@@ -72,11 +72,11 @@ def test_tuning_main(
             assert os.path.exists(best_config_path), "Best config file was not created"
 
             with open(best_config_path) as f:
-                best_config = json.load(f)
+                full_config = json.load(f)
 
             # Check that the model can be loaded
             model = model_file_interface.import_class_from_file(model_path)
-            model_instance = model(**best_config)
+            model_instance = model(**full_config["network_params"])
             assert model_instance is not None, "Model could not be loaded"
 
             log = safetensors.torch.load_model(model_instance, best_model_path)  # type: ignore[attr-defined]

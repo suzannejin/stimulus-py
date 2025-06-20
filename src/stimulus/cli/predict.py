@@ -21,11 +21,7 @@ def load_model(model_path: str, model_config_path: str, weight_path: str) -> tor
 
     # Extract network parameters from complete config
     # Handle both old format (direct params) and new format (nested params)
-    if "network_params" in complete_config:
-        network_params = complete_config["network_params"]
-    else:
-        # Backward compatibility with old format
-        network_params = complete_config
+    network_params = complete_config.get("network_params", complete_config)
 
     # Check that the model can be loaded
     model = import_class_from_file(model_path)
@@ -114,7 +110,7 @@ def predict(
     # Extract loss function name from optimized parameters
     # The loss function name should be directly available (e.g., {"loss_fn": "BCEWithLogitsLoss"})
     loss_fn_name = None
-    for param_name, param_value in loss_params.items():
+    for _param_name, param_value in loss_params.items():
         if isinstance(param_value, str):
             loss_fn_name = param_value
             break
