@@ -8,7 +8,6 @@ from typing import Any, Optional
 
 import datasets
 import optuna
-import torch
 import yaml
 
 from stimulus.learner import optuna_tune
@@ -69,15 +68,7 @@ def tune(
         optuna.storages.journal.JournalFileBackend(f"{base_path}/optuna_journal_storage.log"),
     )
 
-    if force_device is not None:
-        try:
-            device = torch.device(force_device)
-        except RuntimeError as e:
-            raise RuntimeError(
-                f"Forced device {force_device} is not available. Please use a valid device as argument to check_model cli.",
-            ) from e
-    else:
-        device = optuna_tune.get_device()
+    device = optuna_tune.resolve_device(force_device=force_device, config_device=model_config.device)
 
     objective = optuna_tune.Objective(
         model_class=model_class,

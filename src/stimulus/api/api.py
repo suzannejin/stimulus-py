@@ -257,7 +257,7 @@ def tune(
         ...     n_trials=50,
         ... )
     """
-    device = optuna_tune.get_device() if force_device is None else torch.device(force_device)
+    device = optuna_tune.resolve_device(force_device=force_device, config_device=model_config.device)
 
     # Convert HuggingFace dataset to torch datasets
     dataset.set_format(type="torch")

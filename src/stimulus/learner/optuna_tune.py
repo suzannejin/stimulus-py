@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import uuid
-from typing import Any
+from typing import Any, Optional
 
 import optuna
 import torch
@@ -370,6 +370,44 @@ class Objective:
 
         # Convert tensors to floats before returning
         return {k: v.item() if isinstance(v, torch.Tensor) else v for k, v in metric_dict.items()}
+
+
+def resolve_device(force_device: Optional[str] = None, config_device: Optional[str] = None) -> torch.device:
+    """Resolve device based on priority: force_device > config_device > auto-detection.
+
+    Args:
+        force_device: Device specified via CLI or function parameter (highest priority).
+        config_device: Device specified in model configuration (medium priority).
+
+    Returns:
+        torch.device: The resolved computation device.
+
+    Raises:
+        RuntimeError: If a forced or configured device is invalid or unavailable.
+    """
+    if force_device is not None:
+        try:
+            device = torch.device(force_device)
+        except RuntimeError as e:
+            raise RuntimeError(
+                f"Forced device '{force_device}' is not available. Please use a valid device.",
+            ) from e
+        else:
+            logger.info(f"Using force-specified device: {force_device}")
+            return device
+
+    if config_device is not None:
+        try:
+            device = torch.device(config_device)
+        except RuntimeError as e:
+            raise RuntimeError(
+                f"Device '{config_device}' specified in model configuration is not available. Please use a valid device.",
+            ) from e
+        else:
+            logger.info(f"Using config-specified device: {config_device}")
+            return device
+
+    return get_device()
 
 
 def get_device() -> torch.device:
