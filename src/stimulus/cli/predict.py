@@ -17,11 +17,19 @@ logger = logging.getLogger(__name__)
 def load_model(model_path: str, model_config_path: str, weight_path: str) -> torch.nn.Module:
     """Dynamically loads the model from a .py file."""
     with open(model_config_path) as f:
-        best_config = json.load(f)
+        complete_config = json.load(f)
+
+    # Extract network parameters from complete config
+    # Handle both old format (direct params) and new format (nested params)
+    if "network_params" in complete_config:
+        network_params = complete_config["network_params"]
+    else:
+        # Backward compatibility with old format
+        network_params = complete_config
 
     # Check that the model can be loaded
     model = import_class_from_file(model_path)
-    model_instance = model(**best_config)
+    model_instance = model(**network_params)
 
     weights = safetensors.load_file(weight_path)
     model_instance.load_state_dict(weights)
@@ -87,11 +95,41 @@ def predict(
     """Run model prediction pipeline.
 
     Args:
-        model_path: Path to the model file.
-        weight_path: Path to the model weights file.
         data_path: Path to the input data file.
+        model_path: Path to the model file.
+        model_config_path: Path to the model config YAML file.
+        weight_path: Path to the model weights file.
         output: Path to save the prediction results.
+        batch_size: Batch size for prediction.
     """
+    # Load model configuration to get loss function
+    with open(model_config_path) as file:
+        complete_config = json.load(file)
+
+    # Get loss function from the optimized config
+    loss_params = complete_config.get("loss_params", {})
+    if not loss_params:
+        raise ValueError(f"No loss_params found in model config: {model_config_path}")
+
+    # Extract loss function name from optimized parameters
+    # The loss function name should be directly available (e.g., {"loss_fn": "BCEWithLogitsLoss"})
+    loss_fn_name = None
+    for param_name, param_value in loss_params.items():
+        if isinstance(param_value, str):
+            loss_fn_name = param_value
+            break
+
+    if not loss_fn_name:
+        raise ValueError(f"Could not extract loss function from loss_params: {loss_params}")
+
+    # Create loss function instance
+    try:
+        loss_fn = getattr(torch.nn, loss_fn_name)()
+    except AttributeError as e:
+        raise ValueError(f"Invalid loss function '{loss_fn_name}' in config") from e
+
+    logger.info(f"Using loss function: {loss_fn_name}")
+
     # Get the best model with best architecture and weights
     model = load_model(model_path, model_config_path, weight_path)
     dataset = load_dataset_from_path(data_path)
@@ -104,9 +142,9 @@ def predict(
     is_first_batch = True
     for batch in loader:
         if is_first_batch:
-            _loss, statistics = model.batch(batch)
+            _loss, statistics = model.inference(batch, loss_fn)
             is_first_batch = False
-        _loss, temp_statistics = model.batch(batch)
+        _loss, temp_statistics = model.inference(batch, loss_fn)
         statistics = update_statistics(statistics, temp_statistics)
 
     to_return: dict = convert_dict_to_tensor(statistics)

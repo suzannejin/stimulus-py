@@ -75,8 +75,22 @@ class Objective:
 
     def __call__(self, trial: optuna.Trial):
         """Execute a full training trial and return the objective metric value."""
-        # Setup phase
+        # Setup phase - capture all parameter suggestions before conversion
         model_instance, model_suggestions = self._setup_model(trial)
+        
+        # Capture parameter suggestions before they're converted to instances
+        optimizer_suggestions = model_config_parser.suggest_parameters(trial, self.optimizer_params)
+        loss_suggestions = model_config_parser.suggest_parameters(trial, self.loss_params)
+        data_suggestions = model_config_parser.suggest_parameters(trial, self.data_params)
+        
+        # Create complete suggestions dictionary
+        complete_suggestions = {
+            "network_params": model_suggestions,
+            "optimizer_params": optimizer_suggestions,
+            "loss_params": loss_suggestions,
+            "data_params": data_suggestions,
+        }
+        
         optimizer = self._setup_optimizer(trial, model_instance)
         train_loader, val_loader, batch_size = self._setup_data_loaders(trial)
         loss_dict = self._setup_loss_functions(trial)
@@ -136,7 +150,7 @@ class Objective:
 
                     # Check if trial should be pruned
                     if trial.should_prune():
-                        self.save_checkpoint(trial, model_instance, optimizer, model_suggestions)
+                        self.save_checkpoint(trial, model_instance, optimizer, complete_suggestions)
                         raise optuna.TrialPruned()  # noqa: RSE102
 
                 if batch_idx * batch_size >= self.max_samples:
@@ -156,7 +170,7 @@ class Objective:
                 trial.set_user_attr(metric_name, metric_value)
 
         # Final checkpoint and return objective value
-        self.save_checkpoint(trial, model_instance, optimizer, model_suggestions)
+        self.save_checkpoint(trial, model_instance, optimizer, complete_suggestions)
         return metric_dict[self.target_metric]
 
     def _setup_model(self, trial: optuna.Trial) -> tuple[torch.nn.Module, dict]:
@@ -227,7 +241,7 @@ class Objective:
         trial: optuna.Trial,
         model_instance: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
-        model_suggestions: dict,
+        complete_suggestions: dict,
     ) -> None:
         """Save the model and optimizer to the trial."""
         # Convert model to CPU before saving to avoid device-specific tensors
@@ -246,7 +260,7 @@ class Objective:
         safe_save_model(model_instance, model_path)
         torch.save(optimizer_state, optimizer_path)
         with open(model_suggestions_path, "w") as f:
-            json.dump(model_suggestions, f)
+            json.dump(complete_suggestions, f)
         artifact_id_model = optuna.artifacts.upload_artifact(
             artifact_store=self.artifact_store,
             file_path=model_path,
