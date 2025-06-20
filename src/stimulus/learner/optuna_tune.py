@@ -77,12 +77,12 @@ class Objective:
         """Execute a full training trial and return the objective metric value."""
         # Setup phase - capture all parameter suggestions before conversion
         model_instance, model_suggestions = self._setup_model(trial)
-        
+
         # Capture parameter suggestions before they're converted to instances
         optimizer_suggestions = model_config_parser.suggest_parameters(trial, self.optimizer_params)
         loss_suggestions = model_config_parser.suggest_parameters(trial, self.loss_params)
         data_suggestions = model_config_parser.suggest_parameters(trial, self.data_params)
-        
+
         # Create complete suggestions dictionary
         complete_suggestions = {
             "network_params": model_suggestions,
@@ -90,7 +90,7 @@ class Objective:
             "loss_params": loss_suggestions,
             "data_params": data_suggestions,
         }
-        
+
         optimizer = self._setup_optimizer(trial, model_instance)
         train_loader, val_loader, batch_size = self._setup_data_loaders(trial)
         loss_dict = self._setup_loss_functions(trial)
