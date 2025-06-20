@@ -53,6 +53,12 @@ COPY --from=builder /usr/local/bin/stimulus /usr/local/bin/
 
 # Create a non-root user for running the app
 RUN useradd -m -s /bin/bash app
+
+# Set up Hugging Face cache directory with proper permissions
+ENV HF_HOME=/opt/hf_cache
+RUN mkdir -p $HF_HOME && chmod -R 777 $HF_HOME
+
+# Switch to non-root user
 USER app
 
 # Set working directory
