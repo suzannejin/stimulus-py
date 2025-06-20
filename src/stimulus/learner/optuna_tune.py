@@ -94,7 +94,7 @@ class Objective:
                     device_batch = {key: value.to(self.device, non_blocking=True) for key, value in batch.items()}
 
                     # Perform a batch update
-                    _loss, _metrics = model_instance.batch(batch=device_batch, optimizer=optimizer, **loss_dict)
+                    _loss, _metrics = model_instance.train_batch(batch=device_batch, optimizer=optimizer, **loss_dict)
 
                 except RuntimeError as e:
                     if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
@@ -107,7 +107,11 @@ class Objective:
                         # Consider adjusting batch size or other parameters
                         device_batch = {key: value.to(temp_device) for key, value in batch.items()}
                         # Retry the batch
-                        _loss, _metrics = model_instance.batch(batch=device_batch, optimizer=optimizer, **loss_dict)
+                        _loss, _metrics = model_instance.train_batch(
+                            batch=device_batch,
+                            optimizer=optimizer,
+                            **loss_dict,
+                        )
                     else:
                         raise
 
@@ -341,7 +345,7 @@ class Objective:
                 device_batch = {key: value.to(device, non_blocking=True) for key, value in batch.items()}
 
                 # Perform a batch update
-                loss, metrics = model_instance.batch(batch=device_batch, **loss_dict)
+                loss, metrics = model_instance.inference(batch=device_batch, **loss_dict)
 
             except RuntimeError as e:
                 if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
@@ -354,7 +358,7 @@ class Objective:
                     # Consider adjusting batch size or other parameters
                     device_batch = {key: value.to(temp_device) for key, value in batch.items()}
                     # Retry the batch
-                    loss, metrics = model_instance.batch(batch=device_batch, **loss_dict)
+                    loss, metrics = model_instance.inference(batch=device_batch, **loss_dict)
                 else:
                     raise
 

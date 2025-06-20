@@ -3,7 +3,7 @@
 # mypy: ignore-errors
 """This file contains the PyTorch model for the performance test of the Titanic dataset."""
 
-from typing import Callable, Optional
+from typing import Callable
 
 import torch
 
@@ -96,19 +96,17 @@ class ModelTitanicPerformance(torch.nn.Module):
         accuracy = ((output > 0) == target).float().mean()
         return accuracy
 
-    def batch(
+    def train_batch(
         self,
         batch: dict[str, torch.Tensor],
+        optimizer: torch.optim.Optimizer,
         loss_fn: Callable,
-        optimizer: Optional[torch.optim.Optimizer] = None,
     ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
-        """Perform one batch step.
+        """Perform one training batch step.
 
         `batch` is a dictionary with the input and label tensors.
-        `loss_fn` is the loss function to be used.
-
-        If `optimizer` is passed, it will perform the optimization step -> training step
-        Otherwise, only return the forward pass output and loss -> evaluation step
+        `optimizer` is the optimizer for the training step.
+        **kwargs contains the loss functions.
         """
         # Forward pass
         output = self.forward(**batch).squeeze(-1)
@@ -117,10 +115,28 @@ class ModelTitanicPerformance(torch.nn.Module):
         loss = self.compute_loss(output, batch["Survived"], loss_fn=loss_fn)
 
         # Backward pass and optimization
-        if optimizer is not None:
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        accuracy = self.compute_accuracy(output, batch["Survived"])
+        return loss, {"accuracy": accuracy, "predictions": output}
+
+    def inference(
+        self,
+        batch: dict[str, torch.Tensor],
+        loss_fn: Callable,
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+        """Perform one inference batch step.
+
+        `batch` is a dictionary with the input and label tensors.
+        **kwargs contains the loss functions.
+        """
+        # Forward pass only
+        output = self.forward(**batch).squeeze(-1)
+
+        # Compute loss
+        loss = self.compute_loss(output, batch["Survived"], loss_fn=loss_fn)
 
         accuracy = self.compute_accuracy(output, batch["Survived"])
         return loss, {"accuracy": accuracy, "predictions": output}

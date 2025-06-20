@@ -122,7 +122,7 @@ predictions = stimulus.predict(split_dataset, best_model)
 
 ## 🏗️ Model Requirements
 
-Your PyTorch models must implement a `batch()` method for integration with Stimulus:
+Your PyTorch models must implement `train_batch()` and `inference()` methods for integration with Stimulus:
 
 ```python
 import torch
@@ -141,19 +141,30 @@ class MyModel(torch.nn.Module):
         x = torch.stack([inputs[key] for key in sorted(inputs.keys())], dim=1)
         return self.layers(x)
     
-    def batch(self, batch, loss_fn, optimizer=None):
-        """Required method for Stimulus integration"""
+    def train_batch(self, batch, optimizer, loss_fn):
+        """Required method for training steps"""
         # Forward pass
         output = self.forward(**batch)
         
         # Compute loss
         loss = loss_fn(output, batch["target"])
         
-        # Training step
-        if optimizer is not None:
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        # Backward pass and optimization
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
+        # Return loss and metrics
+        accuracy = ((output > 0.5) == batch["target"]).float().mean()
+        return loss, {"accuracy": accuracy, "predictions": output}
+    
+    def inference(self, batch, loss_fn):
+        """Required method for inference steps"""
+        # Forward pass only
+        output = self.forward(**batch)
+        
+        # Compute loss for validation
+        loss = loss_fn(output, batch["target"])
         
         # Return loss and metrics
         accuracy = ((output > 0.5) == batch["target"]).float().mean()
