@@ -108,8 +108,8 @@ class Objective:
                         device_batch = {key: value.to(temp_device) for key, value in batch.items()}
                         # Retry the batch
                         _loss, _metrics = model_instance.train_batch(
-                            batch=device_batch, 
-                            optimizer=optimizer, 
+                            batch=device_batch,
+                            optimizer=optimizer,
                             **loss_dict,
                         )
                     else:
