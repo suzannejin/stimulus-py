@@ -456,7 +456,7 @@ class NumericRankEncoder(AbstractEncoder):
 
 class HuggingFaceEmbeddingEncoder(AbstractEncoder):
     """HuggingFace embedding encoder using CLS token from last layer."""
-    
+
     def __init__(
         self,
         model_repo_name: str,
@@ -465,7 +465,7 @@ class HuggingFaceEmbeddingEncoder(AbstractEncoder):
         layer_index: int = -1,
     ) -> None:
         """Initialize encoder with HuggingFace model.
-        
+
         Args:
             model_repo_name: HuggingFace model repository name
             batch_size: Batch size for processing
@@ -474,40 +474,40 @@ class HuggingFaceEmbeddingEncoder(AbstractEncoder):
         """
         if dtype is None:
             dtype = np.dtype(np.float32)
-            
+
         self.batch_size = batch_size
         self.dtype = dtype
         self.layer_index = layer_index
         self.device = get_device()
-        
+
         # Load model with output_hidden_states=True to access all layers
         self.tokenizer = AutoTokenizer.from_pretrained(model_repo_name)
         self.model = AutoModel.from_pretrained(model_repo_name)
         self.model.to(self.device)
         self.model.eval()
-    
+
     def batch_encode(self, data: np.ndarray) -> np.ndarray:
         """Encode sequences to embeddings using CLS token."""
         if data.size == 0:
             return np.array([]).reshape(0, 0)
-            
+
         # Convert to string list
         sequences = [str(s.decode("utf-8") if isinstance(s, bytes) else s) for s in data]
-        
+
         all_embeddings = []
         for i in range(0, len(sequences), self.batch_size):
-            batch_seq = sequences[i:i + self.batch_size]
-            
+            batch_seq = sequences[i : i + self.batch_size]
+
             # Tokenize and encode
             inputs = self.tokenizer(batch_seq, padding=True, truncation=True, return_tensors="pt")
             inputs = {k: v.to(self.device) for k, v in inputs.items()}
-            
+
             with torch.no_grad():
                 outputs = self.model(**inputs, output_hidden_states=True)
                 # Select layer and use CLS token (first token)
                 hidden_states = outputs.hidden_states[self.layer_index]
                 cls_embeddings = hidden_states[:, 0, :]
-            
+
             all_embeddings.append(cls_embeddings.cpu().numpy().astype(self.dtype))
-        
+
         return np.concatenate(all_embeddings, axis=0)
