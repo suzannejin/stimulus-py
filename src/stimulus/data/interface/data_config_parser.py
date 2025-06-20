@@ -10,6 +10,9 @@ from stimulus.data.encoding import encoders as encoders_module
 from stimulus.data.interface.data_config_schema import (
     Columns,
     ConfigDict,
+    EncodingConfigDict,
+    IndividualSplitConfigDict,
+    IndividualTransformConfigDict,
     Split,
     SplitConfigDict,
     SplitTransformDict,
@@ -361,3 +364,130 @@ def _clean_params(data: dict) -> dict:
     if isinstance(data, list):
         return [_clean_params(item) for item in data]
     return data
+
+
+def generate_encoding_config(config: ConfigDict) -> EncodingConfigDict:
+    """Generate encoding-only configuration from a master config.
+
+    Args:
+        config: The master configuration containing all components.
+
+    Returns:
+        EncodingConfigDict containing only global_params and columns.
+    """
+    return EncodingConfigDict(
+        global_params=config.global_params,
+        columns=config.columns,
+    )
+
+
+def generate_individual_split_configs(config: ConfigDict) -> list[IndividualSplitConfigDict]:
+    """Generate individual split configurations from a master config.
+
+    Args:
+        config: The master configuration containing multiple splits.
+
+    Returns:
+        List of IndividualSplitConfigDict, one for each split in the master config.
+    """
+    return [
+        IndividualSplitConfigDict(
+            global_params=config.global_params,
+            split=split,
+        )
+        for split in config.split
+    ]
+
+
+def generate_individual_transform_configs(config: ConfigDict) -> list[IndividualTransformConfigDict]:
+    """Generate individual transform configurations from a master config.
+
+    Expands parameter lists within transforms to create separate configs for each
+    parameter combination.
+
+    Args:
+        config: The master configuration containing transforms with parameter lists.
+
+    Returns:
+        List of IndividualTransformConfigDict, one for each expanded transform.
+    """
+    # Expand all transforms to handle parameter lists
+    expanded_transforms = expand_transform_list_combinations(config.transforms)
+
+    return [
+        IndividualTransformConfigDict(
+            global_params=config.global_params,
+            transforms=transform,
+        )
+        for transform in expanded_transforms
+    ]
+
+
+def split_config_into_components(config: ConfigDict, output_dir: str) -> None:
+    """Split a master config into separate component configs and save them.
+
+    Args:
+        config: The master configuration to split.
+        output_dir: Directory to save the component configs.
+    """
+    # Generate encoding config
+    encoding_config = generate_encoding_config(config)
+    encoding_data = _clean_params(encoding_config.model_dump(exclude_none=True))
+
+    # Generate split configs
+    split_configs = generate_individual_split_configs(config)
+
+    # Generate transform configs
+    transform_configs = generate_individual_transform_configs(config)
+
+    # Save encoding config
+    _save_single_yaml(encoding_data, f"{output_dir}/encode.yaml")
+
+    # Save split configs
+    for i, split_config in enumerate(split_configs, 1):
+        split_data = _clean_params(split_config.model_dump(exclude_none=True))
+        _save_single_yaml(split_data, f"{output_dir}/split{i}.yaml")
+
+    # Save transform configs
+    for i, transform_config in enumerate(transform_configs, 1):
+        transform_data = _clean_params(transform_config.model_dump(exclude_none=True))
+        _save_single_yaml(transform_data, f"{output_dir}/transform{i}.yaml")
+
+
+def _save_single_yaml(data: dict, file_path: str) -> None:
+    """Save a single YAML config to file with consistent formatting."""
+    # Maximum length for flow style numeric lists
+    max_flow_style_length = 5
+
+    def represent_dict(dumper: yaml.SafeDumper, data: dict) -> Any:
+        """Custom representer for dictionaries to ensure block style."""
+        return dumper.represent_mapping("tag:yaml.org,2002:map", data.items(), flow_style=False)
+
+    def represent_list(dumper: yaml.SafeDumper, data: list) -> Any:
+        """Custom representer for lists to control flow style based on content."""
+        # Use flow style only for simple numeric lists like split ratios
+        is_simple_numeric = all(isinstance(i, (int, float)) for i in data) and len(data) <= max_flow_style_length
+        return dumper.represent_sequence("tag:yaml.org,2002:seq", data, flow_style=is_simple_numeric)
+
+    # Create a dumper that preserves the document structure
+    class ReadableDumper(yaml.SafeDumper):
+        def ignore_aliases(self, _data: Any) -> bool:
+            return True  # Disable anchor/alias generation
+
+    # Register our custom representers
+    ReadableDumper.add_representer(dict, represent_dict)
+    ReadableDumper.add_representer(list, represent_list)
+    ReadableDumper.add_representer(type(None), lambda d, _: d.represent_scalar("tag:yaml.org,2002:null", ""))
+
+    with open(file_path, "w") as f:
+        yaml.dump(
+            data,
+            f,
+            Dumper=ReadableDumper,
+            default_flow_style=False,
+            sort_keys=False,
+            indent=2,
+            width=80,
+            explicit_start=False,
+            explicit_end=False,
+        )

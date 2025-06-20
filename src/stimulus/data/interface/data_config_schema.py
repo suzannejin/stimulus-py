@@ -137,6 +137,27 @@ class Schema(BaseModel):
     config: ConfigDict
 
 
+class EncodingConfigDict(BaseModel):
+    """Model for encoding-only configuration."""
+
+    global_params: GlobalParams
+    columns: list[Columns]
+
+
+class IndividualSplitConfigDict(BaseModel):
+    """Model for individual split configuration."""
+
+    global_params: GlobalParams
+    split: Split
+
+
+class IndividualTransformConfigDict(BaseModel):
+    """Model for individual transform configuration."""
+
+    global_params: GlobalParams
+    transforms: Transform
+
+
 class SplitSchema(BaseModel):
     """Model for validating a Split YAML schema."""
 
