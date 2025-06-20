@@ -31,7 +31,7 @@ RUN uv pip install pdm-backend pdm
 ENV PDM_BUILD_SCM_VERSION=0.3.0.dev
 
 # Build and install stimulus-py from local source using uv pip install
-RUN uv pip install --system --no-build-isolation --compile --no-cache .
+RUN uv pip install --system --compile --no-cache .
 
 # List the created entry points to debug
 RUN ls -la /usr/local/bin/
