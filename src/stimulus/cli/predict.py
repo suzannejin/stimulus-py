@@ -3,13 +3,12 @@
 
 import json
 import logging
-import os
 
 import datasets
-import pyarrow as pa
 import safetensors.torch as safetensors
 import torch
 
+from stimulus.data.interface.data_loading import load_dataset_from_path
 from stimulus.utils.model_file_interface import import_class_from_file
 
 logger = logging.getLogger(__name__)
@@ -27,31 +26,6 @@ def load_model(model_path: str, model_config_path: str, weight_path: str) -> tor
     weights = safetensors.load_file(weight_path)
     model_instance.load_state_dict(weights)
     return model_instance
-
-
-def load_dataset_from_path(data_path: str) -> datasets.DatasetDict:
-    """Load dataset from various formats.
-
-    Args:
-        data_path: Path to the dataset (CSV, parquet, or HuggingFace dataset directory)
-
-    Returns:
-        A DatasetDict containing the loaded dataset
-    """
-    # Check if it's a directory (HuggingFace dataset)
-    if os.path.isdir(data_path):
-        logger.info(f"Loading dataset from directory: {data_path}")
-        return datasets.load_from_disk(data_path)
-
-    # Try to load as parquet first, then CSV
-    try:
-        logger.info(f"Attempting to load as parquet: {data_path}")
-        dataset = datasets.load_dataset("parquet", data_files=data_path)
-    except pa.ArrowInvalid:
-        logger.info("Data is not in parquet format, trying CSV")
-        dataset = datasets.load_dataset("csv", data_files=data_path)
-
-    return dataset
 
 
 def update_statistics(statistics: dict, temp_statistics: dict) -> dict:
