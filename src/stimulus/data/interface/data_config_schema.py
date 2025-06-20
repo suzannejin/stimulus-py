@@ -156,9 +156,3 @@ class IndividualTransformConfigDict(BaseModel):
 
     global_params: GlobalParams
     transforms: Transform
-
-
-class SplitSchema(BaseModel):
-    """Model for validating a Split YAML schema."""
-
-    config: ConfigDict
