@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 def load_splitters_from_config_from_path(
     data_config_path: str,
-) -> tuple[splitters.AbstractSplitter, data_config_parser.SplitConfigDict]:
+) -> tuple[splitters.AbstractSplitter, list[str]]:
     """Load the data config from a path.
 
     Args:
@@ -33,9 +33,9 @@ def load_splitters_from_config_from_path(
     """
     with open(data_config_path) as file:
         data_config_dict = yaml.safe_load(file)
-        data_config_obj = data_config_parser.SplitConfigDict(**data_config_dict)
+        data_config_obj = data_config_parser.IndividualSplitConfigDict(**data_config_dict)
 
-    return data_config_parser.create_splitter(data_config_obj.split), data_config_obj.split.split_input_columns
+    return data_config_parser.parse_individual_split_config(data_config_obj)
 
 
 def split_csv(data_csv: str, config_yaml: str, out_path: str, *, force: bool = False) -> None:

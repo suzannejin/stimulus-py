@@ -1,6 +1,7 @@
 """Module for parsing data configs."""
 
 import copy
+import re
 from typing import Any
 
 import numpy as np
@@ -20,6 +21,98 @@ from stimulus.data.interface.data_config_schema import (
 )
 from stimulus.data.splitting import splitters as splitters_module
 from stimulus.data.transforming import transforms as transforms_module
+
+
+def _sanitize_filename(filename: str) -> str:
+    """Sanitize a string to be safe for use as a filename.
+
+    Args:
+        filename: The original filename string.
+
+    Returns:
+        A sanitized filename string.
+    """
+    # Replace spaces and special characters with underscores
+    sanitized = re.sub(r"[^\w\-_.]", "_", filename)
+    # Remove multiple consecutive underscores
+    sanitized = re.sub(r"_+", "_", sanitized)
+    # Remove leading/trailing underscores
+    return sanitized.strip("_")
+
+
+def _generate_split_filename(base_name: str, split_config: Split) -> str:
+    """Generate a descriptive filename for a split configuration.
+
+    Args:
+        base_name: Base name for the file.
+        split_config: The split configuration.
+
+    Returns:
+        A descriptive filename for the split.
+    """
+    # Extract split method
+    method = split_config.split_method
+
+    # Extract split ratios and convert to percentages
+    min_ratio_count = 2
+    if "split" in split_config.params:
+        ratios = split_config.params["split"]
+        if isinstance(ratios, list) and len(ratios) >= min_ratio_count:
+            # Convert to percentages and format
+            percentages = [int(r * 100) for r in ratios]
+            ratio_str = "-".join(map(str, percentages))
+        else:
+            ratio_str = "default"
+    else:
+        ratio_str = "default"
+
+    filename = f"{base_name}_{method}_{ratio_str}_split.yaml"
+    return _sanitize_filename(filename)
+
+
+def _generate_transform_filename(base_name: str, transform_config: Transform) -> str:
+    """Generate a descriptive filename for a transform configuration.
+
+    Args:
+        base_name: Base name for the file.
+        transform_config: The transform configuration.
+
+    Returns:
+        A descriptive filename for the transform.
+    """
+    # Extract transformation name
+    transform_name = transform_config.transformation_name
+
+    # Extract key parameter values for description
+    param_parts = []
+    seen_params = set()
+
+    # Look through columns and transformations to find key parameters
+    for column in transform_config.columns:
+        for transformation in column.transformations:
+            if transformation.params:
+                # Extract key parameters (prioritize common ones)
+                for param_name, param_value in transformation.params.items():
+                    if param_name in ["std", "rate", "alpha", "beta", "factor", "amount"]:
+                        # Format numeric values nicely
+                        if isinstance(param_value, (int, float)):
+                            if param_value == int(param_value):
+                                param_desc = f"{param_name}{int(param_value)}"
+                            else:
+                                param_desc = f"{param_name}{param_value}"
+                        else:
+                            param_desc = f"{param_name}{param_value}"
+
+                        # Only add if we haven't seen this parameter description before
+                        if param_desc not in seen_params:
+                            param_parts.append(param_desc)
+                            seen_params.add(param_desc)
+
+    # Create parameter string
+    param_str = "_".join(param_parts[:2]) if param_parts else "default"
+
+    filename = f"{base_name}_{transform_name}_{param_str}_transform.yaml"
+    return _sanitize_filename(filename)
 
 
 def _instantiate_component(module: Any, name: str, params: dict) -> Any:
@@ -116,6 +209,56 @@ def parse_split_transform_config(
     meta_columns = [column.column_name for column in config.columns if column.column_type == "meta"]
 
     return encoders, input_columns, label_columns, meta_columns
+
+
+def parse_encoding_config(
+    config: EncodingConfigDict,
+) -> tuple[
+    dict[str, encoders_module.AbstractEncoder],
+    list[str],
+    list[str],
+    list[str],
+]:
+    """Parse encoding-only configuration.
+
+    Args:
+        config: The encoding configuration to parse.
+
+    Returns:
+        A tuple of encoders and column lists.
+    """
+    encoders = create_encoders(config.columns)
+    input_columns = [column.column_name for column in config.columns if column.column_type == "input"]
+    label_columns = [column.column_name for column in config.columns if column.column_type == "label"]
+    meta_columns = [column.column_name for column in config.columns if column.column_type == "meta"]
+
+    return encoders, input_columns, label_columns, meta_columns
+
+
+def parse_individual_transform_config(config: IndividualTransformConfigDict) -> dict[str, list[Any]]:
+    """Parse individual transform configuration.
+
+    Args:
+        config: The individual transform configuration to parse.
+
+    Returns:
+        Dictionary mapping column names to lists of transform objects.
+    """
+    return create_transforms([config.transforms])
+
+
+def parse_individual_split_config(
+    config: IndividualSplitConfigDict,
+) -> tuple[splitters_module.AbstractSplitter, list[str]]:
+    """Parse individual split configuration.
+
+    Args:
+        config: The individual split configuration to parse.
+
+    Returns:
+        A tuple containing the splitter instance and split input columns.
+    """
+    return create_splitter(config.split), config.split.split_input_columns
 
 
 def extract_transform_parameters_at_index(
@@ -423,12 +566,13 @@ def generate_individual_transform_configs(config: ConfigDict) -> list[Individual
     ]
 
 
-def split_config_into_components(config: ConfigDict, output_dir: str) -> None:
+def split_config_into_components(config: ConfigDict, output_dir: str, base_name: str = "config") -> None:
     """Split a master config into separate component configs and save them.
 
     Args:
         config: The master configuration to split.
         output_dir: Directory to save the component configs.
+        base_name: Base name for generated files (default: "config").
     """
     # Generate encoding config
     encoding_config = generate_encoding_config(config)
@@ -441,17 +585,20 @@ def split_config_into_components(config: ConfigDict, output_dir: str) -> None:
     transform_configs = generate_individual_transform_configs(config)
 
     # Save encoding config
-    _save_single_yaml(encoding_data, f"{output_dir}/encode.yaml")
+    encoding_filename = f"{base_name}_encode.yaml"
+    _save_single_yaml(encoding_data, f"{output_dir}/{encoding_filename}")
 
     # Save split configs
-    for i, split_config in enumerate(split_configs, 1):
+    for split_config in split_configs:
         split_data = _clean_params(split_config.model_dump(exclude_none=True))
-        _save_single_yaml(split_data, f"{output_dir}/split{i}.yaml")
+        split_filename = _generate_split_filename(base_name, split_config.split)
+        _save_single_yaml(split_data, f"{output_dir}/{split_filename}")
 
     # Save transform configs
-    for i, transform_config in enumerate(transform_configs, 1):
+    for transform_config in transform_configs:
         transform_data = _clean_params(transform_config.model_dump(exclude_none=True))
-        _save_single_yaml(transform_data, f"{output_dir}/transform{i}.yaml")
+        transform_filename = _generate_transform_filename(base_name, transform_config.transforms)
+        _save_single_yaml(transform_data, f"{output_dir}/{transform_filename}")
 
 
 def _save_single_yaml(data: dict, file_path: str) -> None:

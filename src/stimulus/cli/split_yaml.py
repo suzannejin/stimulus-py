@@ -59,8 +59,11 @@ def split_yaml(config_yaml: str, out_dir_path: str) -> None:
 
     logger.info("YAML config loaded and validated successfully.")
 
+    # Extract base name from config file path
+    base_name = config_path.stem
+
     # Split the config into components
-    split_config_into_components(config_dict, str(output_dir))
+    split_config_into_components(config_dict, str(output_dir), base_name)
 
     # Count generated files for logging
     encoding_files = 1  # encode.yaml
@@ -87,7 +90,7 @@ def split_yaml(config_yaml: str, out_dir_path: str) -> None:
     total_files = encoding_files + split_files + transform_files
 
     logger.info(f"Successfully generated {total_files} component configs:")
-    logger.info("  - 1 encoding config (encode.yaml)")
-    logger.info(f"  - {split_files} split configs (split*.yaml)")
-    logger.info(f"  - {transform_files} transform configs (transform*.yaml)")
+    logger.info(f"  - 1 encoding config ({base_name}_encode.yaml)")
+    logger.info(f"  - {split_files} split configs ({base_name}_*_split.yaml)")
+    logger.info(f"  - {transform_files} transform configs ({base_name}_*_transform.yaml)")
     logger.info(f"All files saved to: {out_dir_path}")
