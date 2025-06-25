@@ -7,13 +7,19 @@ import os
 import uuid
 from typing import Any, Optional
 
+import datasets
 import optuna
 import torch
+from safetensors.torch import save_file
 from safetensors.torch import save_model as safe_save_model
 
 from stimulus.learner.interface import model_config_parser, model_schema
 
 logger = logging.getLogger(__name__)
+
+# Constants for model interface
+STANDARD_MODEL_RETURN_COUNT = 2  # (loss, metrics)
+EXTENDED_MODEL_RETURN_COUNT = 3  # (loss, metrics, per_sample_dict)
 
 
 class Objective:
@@ -26,8 +32,8 @@ class Objective:
         optimizer_params: dict[str, model_schema.TunableParameter],
         data_params: dict[str, model_schema.TunableParameter],
         loss_params: dict[str, model_schema.TunableParameter],
-        train_torch_dataset: torch.utils.data.Dataset,
-        val_torch_dataset: torch.utils.data.Dataset,
+        train_torch_dataset: datasets.Dataset,
+        val_torch_dataset: datasets.Dataset,
         artifact_store: Any,
         max_samples: int = 1000,
         compute_objective_every_n_samples: int = 50,
@@ -55,8 +61,17 @@ class Objective:
         self.optimizer_params = optimizer_params
         self.data_params = data_params
         self.loss_params = loss_params
-        self.train_torch_dataset = train_torch_dataset
-        self.val_torch_dataset = val_torch_dataset
+
+        # Add sample_id column to datasets for per-sample loss tracking (as integers)
+        self.train_torch_dataset = train_torch_dataset.add_column(
+            "sample_id",
+            list(range(len(train_torch_dataset))),
+        )
+        self.val_torch_dataset = val_torch_dataset.add_column(
+            "sample_id",
+            list(range(len(val_torch_dataset))),
+        )
+
         self.artifact_store = artifact_store
         self.target_metric = target_metric
         self.max_samples = max_samples
@@ -99,16 +114,43 @@ class Objective:
         batch_idx: int = 0
         metric_dict: dict = {}
 
+        # Per-sample loss tracking
+        completed_sample_trajectories: dict[str, list[torch.Tensor]] = {}
+
         while batch_idx * batch_size < self.max_samples:
             nb_computed_samples = 0
+            epoch_sample_lists: dict[str, list[torch.Tensor]] = {}  # Reset each epoch
+            epoch_completed = True
+
             for batch in train_loader:
                 # set model in train mode
                 model_instance.train()
                 try:
-                    device_batch = {key: value.to(self.device, non_blocking=True) for key, value in batch.items()}
+                    # Move all tensors to device (sample_id is now an integer tensor)
+                    device_batch = {}
+                    for key, value in batch.items():
+                        try:
+                            device_batch[key] = value.to(self.device, non_blocking=True)
+                        except AttributeError as e:
+                            raise AttributeError(
+                                f"Error moving '{key}' to device. Expected tensor but got {type(value)}. "
+                                f"This usually happens when dataset columns contain non-tensor data. "
+                                f"Original error: {e}",
+                            ) from e
 
                     # Perform a batch update
-                    _loss, _metrics = model_instance.train_batch(batch=device_batch, optimizer=optimizer, **loss_dict)
+                    result = model_instance.train_batch(batch=device_batch, optimizer=optimizer, **loss_dict)
+
+                    # Handle optional per-sample data (3rd return value)
+                    if len(result) == EXTENDED_MODEL_RETURN_COUNT:
+                        _loss, _metrics, per_sample_dict = result
+                        # Collect per-sample data for this epoch
+                        for sample_id, sample_loss in per_sample_dict.items():
+                            if sample_id not in epoch_sample_lists:
+                                epoch_sample_lists[sample_id] = []
+                            epoch_sample_lists[sample_id].append(sample_loss)
+                    else:
+                        _loss, _metrics = result
 
                 except RuntimeError as e:
                     if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
@@ -119,13 +161,34 @@ class Objective:
                         temp_device = torch.device("cpu")
                         model_instance = model_instance.to(temp_device)
                         # Consider adjusting batch size or other parameters
-                        device_batch = {key: value.to(temp_device) for key, value in batch.items()}
+                        # Move all tensors to device (sample_id is now an integer tensor)
+                        device_batch = {}
+                        for key, value in batch.items():
+                            try:
+                                device_batch[key] = value.to(temp_device)
+                            except AttributeError as e:
+                                raise AttributeError(
+                                    f"Error moving '{key}' to device during fallback. Expected tensor but got {type(value)}. "
+                                    f"This usually happens when dataset columns contain non-tensor data. "
+                                    f"Original error: {e}",
+                                ) from e
                         # Retry the batch
-                        _loss, _metrics = model_instance.train_batch(
+                        result = model_instance.train_batch(
                             batch=device_batch,
                             optimizer=optimizer,
                             **loss_dict,
                         )
+
+                        # Handle optional per-sample data in error recovery
+                        if len(result) == EXTENDED_MODEL_RETURN_COUNT:
+                            _loss, _metrics, per_sample_dict = result
+                            # Collect per-sample data for this epoch
+                            for sample_id, sample_loss in per_sample_dict.items():
+                                if sample_id not in epoch_sample_lists:
+                                    epoch_sample_lists[sample_id] = []
+                                epoch_sample_lists[sample_id].append(sample_loss)
+                        else:
+                            _loss, _metrics = result
                     else:
                         raise
 
@@ -154,7 +217,16 @@ class Objective:
                         raise optuna.TrialPruned()  # noqa: RSE102
 
                 if batch_idx * batch_size >= self.max_samples:
+                    epoch_completed = False  # Mark epoch as incomplete
                     break
+
+            # After epoch loop - check if epoch completed and save per-sample data
+            if epoch_completed and epoch_sample_lists:
+                # Epoch completed naturally - aggregate per-sample data
+                for sample_id, loss_list in epoch_sample_lists.items():
+                    if sample_id not in completed_sample_trajectories:
+                        completed_sample_trajectories[sample_id] = []
+                    completed_sample_trajectories[sample_id].extend(loss_list)
 
         # Ensure we have computed metrics at least once before returning
         if not metric_dict:
@@ -168,6 +240,35 @@ class Objective:
             )
             for metric_name, metric_value in metric_dict.items():
                 trial.set_user_attr(metric_name, metric_value)
+
+        # Save per-sample artifacts if data was collected
+        if completed_sample_trajectories:
+            # Convert lists to tensors
+            sample_trajectories = {
+                sample_id: torch.stack(loss_list) for sample_id, loss_list in completed_sample_trajectories.items()
+            }
+
+            # Save to safetensors
+            unique_id = str(uuid.uuid4())[:8]
+            per_sample_path = f"{trial.number}_{unique_id}_per_sample.safetensors"
+            save_file(sample_trajectories, per_sample_path)
+
+            # Upload to artifact store
+            artifact_id = optuna.artifacts.upload_artifact(
+                artifact_store=self.artifact_store,
+                file_path=per_sample_path,
+                study_or_trial=trial.study,
+            )
+
+            # Clean up local file
+            try:
+                os.remove(per_sample_path)
+            except FileNotFoundError:
+                logger.info(f"File was already deleted: {per_sample_path}")
+
+            # Store artifact reference
+            trial.set_user_attr("per_sample_artifact_id", artifact_id)
+            trial.set_user_attr("per_sample_artifact_path", per_sample_path)
 
         # Final checkpoint and return objective value
         self.save_checkpoint(trial, model_instance, optimizer, complete_suggestions)
@@ -356,7 +457,17 @@ class Objective:
 
         for batch in data_loader:
             try:
-                device_batch = {key: value.to(device, non_blocking=True) for key, value in batch.items()}
+                # Move all tensors to device (sample_id is now an integer tensor)
+                device_batch = {}
+                for key, value in batch.items():
+                    try:
+                        device_batch[key] = value.to(device, non_blocking=True)
+                    except AttributeError as e:
+                        raise AttributeError(
+                            f"Error moving '{key}' to device during inference. Expected tensor but got {type(value)}. "
+                            f"This usually happens when dataset columns contain non-tensor data. "
+                            f"Original error: {e}",
+                        ) from e
 
                 # Perform a batch update
                 loss, metrics = model_instance.inference(batch=device_batch, **loss_dict)

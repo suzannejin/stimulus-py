@@ -108,7 +108,7 @@ class ModelTitanicPerformance(torch.nn.Module):
         batch: dict[str, torch.Tensor],
         optimizer: torch.optim.Optimizer,
         loss_fn: Callable,
-    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
+    ) -> tuple[torch.Tensor, dict[str, torch.Tensor], dict[str, torch.Tensor]]:
         """Perform one training batch step.
 
         `batch` is a dictionary with the input and label tensors.
@@ -126,8 +126,23 @@ class ModelTitanicPerformance(torch.nn.Module):
         loss.backward()
         optimizer.step()
 
+        # Compute per-sample losses
+        per_sample_losses = {}
+        if "sample_id" in batch:
+            # Compute individual losses for each sample
+            target = batch["Survived"].squeeze(-1)
+
+            # Clone the loss function with reduction='none' for per-sample losses
+            per_sample_loss_fn = type(loss_fn)(reduction="none")
+            sample_losses = per_sample_loss_fn(output, target)  # Per-sample losses
+
+            # Convert integer sample_ids to strings for dict keys (required by safetensors)
+            for i, sample_id in enumerate(batch["sample_id"]):
+                sample_id_str = f"sample_{sample_id.item()}"
+                per_sample_losses[sample_id_str] = sample_losses[i]
+
         accuracy = self.compute_accuracy(output, batch["Survived"])
-        return loss, {"accuracy": accuracy, "predictions": output}
+        return loss, {"accuracy": accuracy, "predictions": output}, per_sample_losses
 
     def inference(
         self,
