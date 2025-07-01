@@ -201,6 +201,10 @@ stimulus predict --model-file model.py --model-config best_config.json --weights
 stimulus compare-tensors --input-dir predictions/ --mode cosine_similarity
 ```
 
+You can use the diagram below for quick reference on the available commands and their inputs.
+
+![A diagram demonstrating the flow of data in Stimulus CLI](assets/cheatsheet.png)
+
 ## 📋 Configuration Files
 
 ### Data Configuration
