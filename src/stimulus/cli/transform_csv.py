@@ -75,7 +75,7 @@ def transform_batch(
                             result_dict[key] = np.char.add(value, value)
                         else:
                             result_dict[key] = value + value
-                    else:
+                    else: # noqa: PLR5501
                         if isinstance(value, np.ndarray):
                             result_dict[key] = np.char.add(value, processed_values)
                         else:
