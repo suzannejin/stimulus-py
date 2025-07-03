@@ -203,7 +203,7 @@ stimulus compare-tensors --input-dir predictions/ --mode cosine_similarity
 
 You can use the diagram below for quick reference on the available commands and their inputs.
 
-![A diagram demonstrating the flow of data in Stimulus CLI](/docs/assets/cheatsheet.png)
+![A diagram demonstrating the flow of data in Stimulus CLI](assets/cheatsheet.png)
 
 ## 📋 Configuration Files
 
