@@ -75,11 +75,10 @@ def transform_batch(
                             result_dict[key] = np.char.add(value, value)
                         else:
                             result_dict[key] = value + value
-                    else:
-                        if isinstance(value, np.ndarray):
+                    elif isinstance(value, np.ndarray):
                             result_dict[key] = np.char.add(value, processed_values)
-                        else:
-                            result_dict[key] = value + processed_values
+                    else:
+                        result_dict[key] = value + processed_values
             else:
                 result_dict[column_name] = transform_obj.transform_all(result_dict[column_name])
 
