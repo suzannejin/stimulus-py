@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 import datasets
+import numpy as np
 import pandas as pd
 import yaml
 
@@ -70,9 +71,15 @@ def transform_batch(
                 processed_values = transform_obj.transform_all(original_values)
                 for key, value in result_dict.items():
                     if key != column_name:
-                        result_dict[key] = value + value
+                        if isinstance(value, np.ndarray):
+                            result_dict[key] = np.char.add(value, value)
+                        else:
+                            result_dict[key] = value + value
                     else:
-                        result_dict[key] = value + processed_values
+                        if isinstance(value, np.ndarray):
+                            result_dict[key] = np.char.add(value, processed_values)
+                        else:
+                            result_dict[key] = value + processed_values
             else:
                 result_dict[column_name] = transform_obj.transform_all(result_dict[column_name])
 
