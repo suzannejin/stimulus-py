@@ -216,6 +216,7 @@ class TextAsciiEncoder(AbstractEncoder):
         dtype: Optional[np.dtype[np.signedinteger]] = None,
         *,
         max_len: Optional[int] = None,
+        slice_long: bool = False,
     ) -> None:
         """Initialize the TextAsciiEncoder class.
 
@@ -223,21 +224,22 @@ class TextAsciiEncoder(AbstractEncoder):
             vocab_size (int): the size of the vocabulary. Default = 256 (ASCII characters)
             dtype (np.dtype): the data type of the encoded data. Default = np.dtype(np.int8)
             max_len (Optional[int]): the length to pad the sequences to. No padding is done if set to None. Default = None
+            slice_long (bool): whether to slice the data into chunks of the specified length if it is too long. Default = False
         """
         if dtype is None:
             dtype = np.dtype(np.int8)
         self.vocab_size = vocab_size
         self.dtype = dtype
         self.max_len = max_len
+        self.slice_long = slice_long
 
-    def batch_encode(self, data: np.ndarray, *, slice_long: bool = False) -> np.ndarray:
+    def batch_encode(self, data: np.ndarray) -> np.ndarray:
         """Encodes the data.
 
         This method takes as input a 1D numpy array of strings and returns a numpy array.
 
         Args:
             data (np.ndarray): a 1D numpy array of strings
-            slice_long (bool): whether to slice the data into chunks of the specified length if it is too long. Default = False
 
         Returns:
             encoded_data (np.ndarray): the encoded data
@@ -266,7 +268,7 @@ class TextAsciiEncoder(AbstractEncoder):
                 current_max_len = len(values)
 
             if len(values) > current_max_len:
-                if not slice_long:
+                if not self.slice_long:
                     raise ValueError(
                         f"Data length {len(values)} is greater than the specified max_len {current_max_len}",
                     )
