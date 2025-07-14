@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional
+from typing import Literal, Optional
 
 import numpy as np
 import torch
@@ -205,6 +205,7 @@ class TextAsciiEncoder(AbstractEncoder):
         vocab_size (int): The size of the vocabulary. Default = 256 (ASCII characters)
         dtype (np.dtype): The data type of the encoded data. Default = np.dtype(np.int8)
         max_len (Optional[int]): the length to pad the sequences to. No padding is done if set to None. Default = None
+        trim_strategy (Literal["raise", "trim", "slice", "drop"]): Behavior when a string is longer than max_len. Default = "raise"
 
     Methods:
         batch_encode: encodes a list of data points into a numpy.ndarray
@@ -216,7 +217,7 @@ class TextAsciiEncoder(AbstractEncoder):
         dtype: Optional[np.dtype[np.signedinteger]] = None,
         *,
         max_len: Optional[int] = None,
-        slice_long: bool = False,
+        trim_strategy: Literal["raise", "trim", "slice", "drop"] = "raise",
     ) -> None:
         """Initialize the TextAsciiEncoder class.
 
@@ -224,14 +225,21 @@ class TextAsciiEncoder(AbstractEncoder):
             vocab_size (int): the size of the vocabulary. Default = 256 (ASCII characters)
             dtype (np.dtype): the data type of the encoded data. Default = np.dtype(np.int8)
             max_len (Optional[int]): the length to pad the sequences to. No padding is done if set to None. Default = None
-            slice_long (bool): whether to slice the data into chunks of the specified length if it is too long. Default = False
+            trim_strategy (Literal["raise", "trim", "slice", "drop"]): Behavior when a string is longer than max_len. Default = "raise"
+
+        Raises:
+            ValueError: If an invalid trim strategy is provided.
         """
         if dtype is None:
             dtype = np.dtype(np.int8)
         self.vocab_size = vocab_size
         self.dtype = dtype
         self.max_len = max_len
-        self.slice_long = slice_long
+        self.trim_strategy = trim_strategy
+        if self.trim_strategy not in ["raise", "trim", "slice", "drop"]:
+            raise ValueError(
+                f"Invalid trim strategy: {self.trim_strategy}",
+            )
 
     def batch_encode(self, data: np.ndarray) -> np.ndarray:
         """Encodes the data.
@@ -268,16 +276,32 @@ class TextAsciiEncoder(AbstractEncoder):
                 current_max_len = len(values)
 
             if len(values) > current_max_len:
-                if not self.slice_long:
+                if self.trim_strategy == "raise":
+                    # raise an error and terminate
                     raise ValueError(
                         f"Data length {len(values)} is greater than the specified max_len {current_max_len}",
                     )
-                # Split and pad each chunk
-                num_chunks = len(values) // current_max_len + (1 if len(values) % current_max_len != 0 else 0)
-                for i in range(num_chunks):
-                    chunk = values[i * current_max_len : (i + 1) * current_max_len]
-                    padded_chunk = np.pad(chunk, (0, current_max_len - len(chunk)), mode="constant")
-                    encoded_data_list.append(padded_chunk)
+                if self.trim_strategy == "trim":
+                    # trim the array to max_len, discard the overflow
+                    logger.warning(f"Trimming an item of length {len(values)}")
+                    encoded_data_list.append(values[:current_max_len])
+                elif self.trim_strategy == "slice":
+                    # split items that are too long
+                    logger.warning(f"Slicing an item of length {len(values)}")
+                    num_chunks = len(values) // current_max_len + (1 if len(values) % current_max_len != 0 else 0)
+                    for i in range(num_chunks):
+                        chunk = values[i * current_max_len : (i + 1) * current_max_len]
+                        padded_chunk = np.pad(chunk, (0, current_max_len - len(chunk)), mode="constant")
+                        encoded_data_list.append(padded_chunk)
+                elif self.trim_strategy == "drop":
+                    # skip the offending item
+                    logger.warning(f"Skipping an item of length {len(values)}")
+                    continue
+                else:
+                    # somehow the trim strategy is wrong
+                    raise ValueError(
+                            "Trim strategy is invalid in batch_encode. Please check your code for manual updates of this attribute.",
+                    )
             else:
                 # Pad the single array/chunk
                 padded_values = np.pad(values, (0, current_max_len - len(values)), mode="constant")
