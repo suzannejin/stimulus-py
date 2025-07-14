@@ -120,7 +120,7 @@ class TestTextAsciiEncoder:
     def test_init_invalid_strategy_raises(self) -> None:
         """Test that the encoder raises if the trim strategy is invalid."""
         with pytest.raises(ValueError, match="Invalid trim strategy.*"):
-            encoder = TextAsciiEncoder(trim_strategy="explode") # noqa: F841
+            encoder = TextAsciiEncoder(trim_strategy="explode") # type: ignore[arg-type] # noqa: F841
 
     # ---- Tests for batch_encode ---- #
 
