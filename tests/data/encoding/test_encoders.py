@@ -115,6 +115,15 @@ class TestTextOneHotEncoder:
 class TestTextAsciiEncoder:
     """Test suite for TextAsciiEncoder."""
 
+    # ---- Tests for init ---- #
+
+    def test_init_invalid_strategy_raises(self) -> None:
+        """Test that the encoder raises if the trim strategy is invalid."""
+        with pytest.raises(ValueError, match="Invalid trim strategy.*"):
+            encoder = TextAsciiEncoder(trim_strategy="explode") # noqa: F841
+
+    # ---- Tests for batch_encode ---- #
+
     def test_batch_encode_single_string(self) -> None:
         """Test encoding a single string."""
         encoder = TextAsciiEncoder()
@@ -144,6 +153,35 @@ class TestTextAsciiEncoder:
         assert np.array_equal(output[0], np.array([104, 101, 108, 108, 111, 0, 0, 0, 0, 0]))
         assert np.array_equal(output[1], np.array([119, 111, 114, 108, 100, 115, 0, 0, 0, 0]))
 
+    def test_batch_encode_slice_padding(self) -> None:
+        """Test encoding a list of strings with padding and slicing."""
+        encoder = TextAsciiEncoder(max_len=5, trim_strategy="slice")
+        input_strs = np.array(["hellomate"])
+        output = encoder.batch_encode(input_strs)
+        assert isinstance(output, np.ndarray)
+        assert output.shape == (2, 5)
+        assert np.array_equal(output[0], np.array([104, 101, 108, 108, 111]))
+        assert np.array_equal(output[1], np.array([109, 97, 116, 101, 0]))
+
+    def test_batch_encode_trim_long(self) -> None:
+        """Test encoding a long string with the trim strategy."""
+        encoder = TextAsciiEncoder(max_len=5, trim_strategy="trim")
+        input_strs = np.array(["hello", "worlds"])
+        output = encoder.batch_encode(input_strs)
+        assert isinstance(output, np.ndarray)
+        assert output.shape == (2, 5)
+        assert np.array_equal(output[0], np.array([104, 101, 108, 108, 111]))
+        assert np.array_equal(output[1], np.array([119, 111, 114, 108, 100]))
+
+    def test_batch_encode_drop_long(self) -> None:
+        """Test encoding a long string with the drop strategy."""
+        encoder = TextAsciiEncoder(max_len=5, trim_strategy="drop")
+        input_strs = np.array(["hello", "worlds"])
+        output = encoder.batch_encode(input_strs)
+        assert isinstance(output, np.ndarray)
+        assert output.shape == (1, 5)
+        assert np.array_equal(output[0], np.array([104, 101, 108, 108, 111]))
+
     def test_batch_encode_dtype(self) -> None:
         """Test encoding with a non-default dtype."""
         encoder = TextAsciiEncoder(dtype=np.dtype(np.int32))
@@ -164,8 +202,8 @@ class TestTextAsciiEncoder:
             encoder.batch_encode(np.array(["你好"]))
 
     def test_batch_encode_too_long_raises(self) -> None:
-        """Test that encoding a string that is too long raises a ValueError."""
-        encoder = TextAsciiEncoder(max_len=3)
+        """Test that encoding a string that is too long raises a ValueError if raise strategy is used."""
+        encoder = TextAsciiEncoder(max_len=3, trim_strategy="raise")
         with pytest.raises(ValueError, match="Data length .* is greater than the specified max_len.*"):
             encoder.batch_encode(np.array(["hello"]))
 
