@@ -9,12 +9,13 @@ import safetensors.torch as safetensors
 import torch
 
 from stimulus.data.interface.data_loading import load_dataset_from_path
+from stimulus.typing.protocols import StimulusModel
 from stimulus.utils.model_file_interface import import_class_from_file
 
 logger = logging.getLogger(__name__)
 
 
-def load_model(model_path: str, model_config_path: str, weight_path: str) -> torch.nn.Module:
+def load_model(model_path: str, model_config_path: str, weight_path: str) -> StimulusModel:
     """Dynamically loads the model from a .py file."""
     with open(model_config_path) as f:
         complete_config = json.load(f)

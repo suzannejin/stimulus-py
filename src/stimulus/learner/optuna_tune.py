@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import uuid
-from typing import Any, Optional
+from typing import Any
 
 import datasets
 import optuna
@@ -14,6 +14,7 @@ from safetensors.torch import save_file
 from safetensors.torch import save_model as safe_save_model
 
 from stimulus.learner.interface import model_config_parser, model_schema
+from stimulus.typing.protocols import StimulusModel
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class Objective:
 
     def __init__(
         self,
-        model_class: torch.nn.Module,
+        model_class: type[StimulusModel],
         network_params: dict[str, model_schema.TunableParameter | model_schema.VariableList],
         optimizer_params: dict[str, model_schema.TunableParameter],
         data_params: dict[str, model_schema.TunableParameter],
@@ -274,7 +275,7 @@ class Objective:
         self.save_checkpoint(trial, model_instance, optimizer, complete_suggestions)
         return metric_dict[self.target_metric]
 
-    def _setup_model(self, trial: optuna.Trial) -> tuple[torch.nn.Module, dict]:
+    def _setup_model(self, trial: optuna.Trial) -> tuple[StimulusModel, dict]:
         """Setup the model for the trial."""
         model_suggestions = model_config_parser.suggest_parameters(trial, self.network_params)
         logger.info(f"Model suggestions: {model_suggestions}")
@@ -293,7 +294,7 @@ class Objective:
                 raise
         return model_instance, model_suggestions
 
-    def _setup_optimizer(self, trial: optuna.Trial, model_instance: torch.nn.Module) -> torch.optim.Optimizer:
+    def _setup_optimizer(self, trial: optuna.Trial, model_instance: StimulusModel) -> torch.optim.Optimizer:
         """Setup the optimizer for the trial."""
         optimizer_suggestions = model_config_parser.suggest_parameters(trial, self.optimizer_params)
         logger.info(f"Optimizer suggestions: {optimizer_suggestions}")
@@ -340,7 +341,7 @@ class Objective:
     def save_checkpoint(
         self,
         trial: optuna.Trial,
-        model_instance: torch.nn.Module,
+        model_instance: StimulusModel,
         optimizer: torch.optim.Optimizer,
         complete_suggestions: dict,
     ) -> None:
@@ -395,7 +396,7 @@ class Objective:
 
     def objective(
         self,
-        model_instance: torch.nn.Module,
+        model_instance: StimulusModel,
         train_loader: torch.utils.data.DataLoader,
         val_loader: torch.utils.data.DataLoader,
         loss_dict: dict[str, torch.nn.Module],
@@ -416,7 +417,7 @@ class Objective:
 
     def get_metrics(
         self,
-        model_instance: torch.nn.Module,
+        model_instance: StimulusModel,
         data_loader: torch.utils.data.DataLoader,
         loss_dict: dict[str, torch.nn.Module],
         device: torch.device,
@@ -495,76 +496,6 @@ class Objective:
 
         # Convert tensors to floats before returning
         return {k: v.item() if isinstance(v, torch.Tensor) else v for k, v in metric_dict.items()}
-
-
-def resolve_device(force_device: Optional[str] = None, config_device: Optional[str] = None) -> torch.device:
-    """Resolve device based on priority: force_device > config_device > auto-detection.
-
-    Args:
-        force_device: Device specified via CLI or function parameter (highest priority).
-        config_device: Device specified in model configuration (medium priority).
-
-    Returns:
-        torch.device: The resolved computation device.
-
-    Raises:
-        RuntimeError: If a forced or configured device is invalid or unavailable.
-    """
-    if force_device is not None:
-        try:
-            device = torch.device(force_device)
-        except RuntimeError as e:
-            raise RuntimeError(
-                f"Forced device '{force_device}' is not available. Please use a valid device.",
-            ) from e
-        else:
-            logger.info(f"Using force-specified device: {force_device}")
-            return device
-
-    if config_device is not None:
-        try:
-            device = torch.device(config_device)
-        except RuntimeError as e:
-            raise RuntimeError(
-                f"Device '{config_device}' specified in model configuration is not available. Please use a valid device.",
-            ) from e
-        else:
-            logger.info(f"Using config-specified device: {config_device}")
-            return device
-
-    return get_device()
-
-
-def get_device() -> torch.device:
-    """Get the appropriate device (CPU/GPU) for computation.
-
-    Returns:
-        torch.device: The selected computation device
-    """
-    if torch.backends.mps.is_available():
-        try:
-            # Try to allocate a small tensor on MPS to check if it works
-            device = torch.device("mps")
-            # Create a small tensor and move it to MPS as a test
-            test_tensor = torch.ones((1, 1)).to(device)
-            del test_tensor  # Free the memory
-            logger.info("Using MPS (Metal Performance Shaders) device")
-        except RuntimeError as e:
-            logger.warning(f"MPS available but failed to initialize: {e}")
-            logger.warning("Falling back to CPU")
-            return torch.device("cpu")
-        else:
-            return device
-
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-        gpu_name = torch.cuda.get_device_name(0)
-        memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
-        logger.info(f"Using GPU: {gpu_name} with {memory:.2f} GB memory")
-        return device
-
-    logger.info("Using CPU (GPU not available)")
-    return torch.device("cpu")
 
 
 def tune_loop(

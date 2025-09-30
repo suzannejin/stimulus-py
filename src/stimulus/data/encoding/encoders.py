@@ -10,7 +10,7 @@ import torch.nn.functional as F  # noqa: N812
 from sklearn import preprocessing
 from transformers import AutoModel, AutoTokenizer
 
-from stimulus.learner.optuna_tune import get_device
+from stimulus.learner.device_utils import get_device
 
 logger = logging.getLogger(__name__)
 
