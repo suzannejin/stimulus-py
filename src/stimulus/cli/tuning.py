@@ -11,6 +11,7 @@ import optuna
 import yaml
 
 from stimulus.learner import optuna_tune
+from stimulus.learner.device_utils import resolve_device
 from stimulus.learner.interface import model_config_parser, model_schema
 from stimulus.utils import model_file_interface
 
@@ -68,7 +69,7 @@ def tune(
         optuna.storages.journal.JournalFileBackend(f"{base_path}/optuna_journal_storage.log"),
     )
 
-    device = optuna_tune.resolve_device(force_device=force_device, config_device=model_config.device)
+    device = resolve_device(force_device=force_device, config_device=model_config.device)
 
     objective = optuna_tune.Objective(
         model_class=model_class,

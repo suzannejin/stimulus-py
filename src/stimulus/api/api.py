@@ -28,7 +28,9 @@ from stimulus.data.interface import data_config_parser
 from stimulus.data.splitting import splitters
 from stimulus.data.transforming import transforms
 from stimulus.learner import optuna_tune
+from stimulus.learner.device_utils import resolve_device
 from stimulus.learner.interface import model_config_parser, model_schema
+from stimulus.typing.protocols import StimulusModel
 from stimulus.utils.model_file_interface import import_class_from_file
 
 logger = logging.getLogger(__name__)
@@ -88,7 +90,7 @@ def encode(
 
 def predict(
     dataset: datasets.DatasetDict,
-    model: torch.nn.Module,
+    model: StimulusModel,
     batch_size: int = 256,
 ) -> dict[str, torch.Tensor]:
     """Run model prediction on the dataset.
@@ -257,7 +259,7 @@ def tune(
         ...     n_trials=50,
         ... )
     """
-    device = optuna_tune.resolve_device(force_device=force_device, config_device=model_config.device)
+    device = resolve_device(force_device=force_device, config_device=model_config.device)
 
     # Convert HuggingFace dataset to torch datasets
     dataset.set_format(type="torch")
