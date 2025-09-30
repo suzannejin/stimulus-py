@@ -287,3 +287,14 @@ Large change : adding huggingface support
 - encoders now use numpy array for I/O. ([c82cca7](https://github.com/mathysgrapotte/stimulus-py/commit/c82cca729492c3ca83518220278be1369f83fa8d) by mathysgrapotte).
 - compare tensor now outputs a descriptive csv, stats computation will happen downstream. ([21fe75d](https://github.com/mathysgrapotte/stimulus-py/commit/21fe75df2539540d4309bf79bb67fe17075a0278) by mathysgrapotte).
 
+## [0.4.1](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.4.1) - 2025-09-30
+
+<small>[Compare with 0.4.0](https://github.com/mathysgrapotte/stimulus-py/compare/0.4.0...0.4.1)</small>
+
+## [0.4.2](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.4.2) - 2025-09-30
+
+<small>[Compare with first commit](https://github.com/mathysgrapotte/stimulus-py/compare/13c1ee86c24fd918195558fa2e0f85dcb1ad0cf5...0.4.2)</small>
+
+## [0.4.3](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.4.3) - 2025-09-30
+
+<small>[Compare with 0.4.2](https://github.com/mathysgrapotte/stimulus-py/compare/0.4.2...0.4.3)</small>
