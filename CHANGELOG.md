@@ -213,3 +213,77 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - renamed yaml_data into yaml_data_schema for consistency. ([dbca1d5](https://github.com/mathysgrapotte/stimulus-py/commit/dbca1d56000ed66d6404bac73a1e0bddc0985fbb) by mgrapotte).
 - made dumper cleaner. ([8802c12](https://github.com/mathysgrapotte/stimulus-py/commit/8802c128052431c6c9994f119b08de78327d4ac8) by mgrapotte).
 - removed check_yaml, redundancy with pydantic functions. ([e76d246](https://github.com/mathysgrapotte/stimulus-py/commit/e76d246d09da1dc32a760821a49505bfd7043248) by mgrapotte).
+
+## [0.4.0](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.4.0) - 2025-09-30
+
+<small>[Compare with 0.3.0](https://github.com/mathysgrapotte/stimulus-py/compare/0.3.0...0.4.0)</small>
+Large change : adding huggingface support 
+
+### Features
+
+- Add more long string strategies in ASCII encoder ([713ab4b](https://github.com/mathysgrapotte/stimulus-py/commit/713ab4be14d6321987b02efe9656ca1b01ba0ea2) by itrujnara).
+- add ability to do per-sample metrics in an optional third directory. ([1587ca8](https://github.com/mathysgrapotte/stimulus-py/commit/1587ca80b2d3833d04be709bb0143268bdcf89f3) by mathysgrapotte).
+- added embeding methods to encode data + fixed encode to truly remove unwanted columns. ([1a477be](https://github.com/mathysgrapotte/stimulus-py/commit/1a477be0a5730d67e3150612b212ca48163af2c9) by mathysgrapotte).
+- complete model suggestions will now be saved to best_config_json to allow the model to access it's loss function at inference. ([5e52950](https://github.com/mathysgrapotte/stimulus-py/commit/5e529507bb1a501725c842e2c3edaf00e05f6fcb) by mathysgrapotte).
+- device available at config level. ([f5e9422](https://github.com/mathysgrapotte/stimulus-py/commit/f5e9422ede88aaebacde30301ef2886f2b0698d7) by mathysgrapotte).
+- modified schema and config parser to allow for converting a config into subconfigs. ([630e3ea](https://github.com/mathysgrapotte/stimulus-py/commit/630e3ea10adf0ae57b29770d36c770f4d255e26b) by mathysgrapotte).
+- switching model to use train/inference duality instead of only batch function ([66c8468](https://github.com/mathysgrapotte/stimulus-py/commit/66c846880d129ba81d0ddfa6930c55f28bf2100b) by mathysgrapotte).
+- added api definition for in-python use. ([2e21a30](https://github.com/mathysgrapotte/stimulus-py/commit/2e21a3012569e7f8edb858f9187ecdc2ec890bc7) by mathysgrapotte).
+- also apply transformation and filter to test dataset. ([58f782e](https://github.com/mathysgrapotte/stimulus-py/commit/58f782e318e6bfe25d9a52cc6b02ff5510506c5b) by mathysgrapotte).
+- add directory loading to transform_cs. ([0220a07](https://github.com/mathysgrapotte/stimulus-py/commit/0220a072be1355c827cc8ab94cb30359186bcaf4) by mathysgrapotte).
+- hf_datasets integrated in model tuning (check_model and tuning ask a path to a hf dataset) ([1c83460](https://github.com/mathysgrapotte/stimulus-py/commit/1c8346099d94bc52879b68e4269ac40dc6b1de3a) by mathysgrapotte).
+- encode now supports multiprocessing ([954c9be](https://github.com/mathysgrapotte/stimulus-py/commit/954c9bef94d7d38a03e59043f4b3305a701a8196) by mathysgrapotte).
+- encode now removes columns that are not associated with an encoder to save space ([5d01d0a](https://github.com/mathysgrapotte/stimulus-py/commit/5d01d0a09892e654bba90eb9bd23e308f0d37da8) by mathysgrapotte).
+- add a cli to encode the data and save it as a parquet dataset ([55d244b](https://github.com/mathysgrapotte/stimulus-py/commit/55d244b5279b24f13a57453c91ff28184db56463) by mathysgrapotte).
+- split_csv transformed to huggingface integration and now uses only two splits (train/val) instead of three. ([b14aaec](https://github.com/mathysgrapotte/stimulus-py/commit/b14aaec476b83c71bc9981faf9a0009a9a0bd5ec) by mathysgrapotte).
+- added column swap as a transform. ([99cd08f](https://github.com/mathysgrapotte/stimulus-py/commit/99cd08f2acdf9208bcc712dd40f4aab0a9f36cf0) by mathysgrapotte).
+- adding the swap transform which swaps 2 elements of a column n times. ([204fdd9](https://github.com/mathysgrapotte/stimulus-py/commit/204fdd9909f9ce5aed61ef3e745e05e2c8d54a31) by mathysgrapotte).
+- removed predict dependency, now metrics depends on model's batch function. ([23ba7af](https://github.com/mathysgrapotte/stimulus-py/commit/23ba7af48e6f9e1114197067d41391564e87c63d) by mathysgrapotte).
+- add the compare_tensors cli. ([8675bf1](https://github.com/mathysgrapotte/stimulus-py/commit/8675bf14cebe1913d36d5231842754918ff5eb98) by mgrapotte).
+- tuning cli now also returns the best config. ([199d2c3](https://github.com/mathysgrapotte/stimulus-py/commit/199d2c33892b86d513333e4a07b07fb1fdf001ce) by mgrapotte).
+- Add optional slicing to TextAsciiEncoder ([e0d4c30](https://github.com/mathysgrapotte/stimulus-py/commit/e0d4c301235c42b1ca292f3abf846d48c3c2d7e0) by itrujnara).
+- optuna tune now depends on max-samples instead of max-batches. ([000a2a3](https://github.com/mathysgrapotte/stimulus-py/commit/000a2a35c299766c9eae7c33eb1f56e25930abb8) by mathysgrapotte).
+- add Docker push workflow ([2d3d82a](https://github.com/mathysgrapotte/stimulus-py/commit/2d3d82a345e7a8c68a1541a5de920daa70d003ae) by itrujnara).
+- added balance sampler and relevant tests. ([ccbab8c](https://github.com/mathysgrapotte/stimulus-py/commit/ccbab8ce65e0864fcf6d0ce5ef1649d5398b8a45) by mathysgrapotte).
+- data_handlers now support samplers. ([7eb608a](https://github.com/mathysgrapotte/stimulus-py/commit/7eb608a60404d1907771b33d632001a3f130bc13) by mathysgrapotte).
+- Add dtype handling to all encoders ([8284f95](https://github.com/mathysgrapotte/stimulus-py/commit/8284f95419e9864252bbdd2fca0232ca325be455) by itrujnara).
+- Add dtype handling to column encoder parsing ([338b892](https://github.com/mathysgrapotte/stimulus-py/commit/338b892f3d21b41fa1a6694bed56366c714bc614) by itrujnara).
+- TextOneHot is now much faster. ([2ec49f6](https://github.com/mathysgrapotte/stimulus-py/commit/2ec49f603ed68f387638ccff1a6486639e53d56c) by mathysgrapotte).
+
+### Bug Fixes
+
+- Make slice_long a property of the ASCII encoder ([e3dcc6c](https://github.com/mathysgrapotte/stimulus-py/commit/e3dcc6c8243d6dc1303e37269e2716f3483406ce) by itrujnara).
+- transform_csv now works correctly when the data is a string ([eb58cf0](https://github.com/mathysgrapotte/stimulus-py/commit/eb58cf06287e6e20dfcbed997e98639278e7a1e1) by itrujnara).
+- fixed bad module import. ([c8f5f2b](https://github.com/mathysgrapotte/stimulus-py/commit/c8f5f2b83c17d4c9f9ea6e9420b8cdd09d56e6be) by mathysgrapotte).
+- removed bad input param for check_model. ([02b2dc8](https://github.com/mathysgrapotte/stimulus-py/commit/02b2dc81b62c655bce4172075952d04e33fde05e) by mathysgrapotte).
+- titanic_perf_model now outputs predictions as well as accuracy. ([c2b2924](https://github.com/mathysgrapotte/stimulus-py/commit/c2b2924167c5998c74248ab56ee0d9bec712b5ee) by mathysgrapotte).
+- predict and compare tensors now take into account all metrics outputed by model. ([65d88ae](https://github.com/mathysgrapotte/stimulus-py/commit/65d88ae57926c82a1977f5b9ac84b5feaca1dce1) by mathysgrapotte).
+- convert values to float when inputed to swap_transform. ([b798b63](https://github.com/mathysgrapotte/stimulus-py/commit/b798b63c277fc1ff65d309455195a94a9c250c3c) by mathysgrapotte).
+- metrics dictionary now solely relies on pytorch tensors and compute average instead of dividing by number of batches. ([6845a8d](https://github.com/mathysgrapotte/stimulus-py/commit/6845a8d29fada592e588a7e2354a1c45abb5cb4c) by mathysgrapotte).
+- fixed errors where saving gpu tensor metrics would cause crashes. ([f3cf281](https://github.com/mathysgrapotte/stimulus-py/commit/f3cf281ac92abe492f968b6878484b99dcfec373) by mathysgrapotte).
+- Raise TypeError if config type is wrong ([42be722](https://github.com/mathysgrapotte/stimulus-py/commit/42be72271b5287e1491e6a02d23dbcd795492a83) by itrujnara).
+- text masker was outputing errors due to starmap being used instead of map. ([d27e028](https://github.com/mathysgrapotte/stimulus-py/commit/d27e0283f56afd1c82fa23b0dcf57431c69d325f) by mgrapotte).
+- performance now properly takes care of cases where predictions is shamed (N,1) instead of (N,). ([7ee27bf](https://github.com/mathysgrapotte/stimulus-py/commit/7ee27bfbf264954c44dd0383130e182946cb8938) by mgrapotte).
+- schema now allows for variable_list to be used. ([149f6ea](https://github.com/mathysgrapotte/stimulus-py/commit/149f6ea55b45fc4960e72dc075cb7bd133d4cb9d) by mgrapotte).
+- removed warnings from numericencoder since converting from float to int is an usecase. ([7d9232a](https://github.com/mathysgrapotte/stimulus-py/commit/7d9232a4c1e5935102fd32703ff52616a923c487) by mgrapotte).
+- Replace einops with pure torch ([157023a](https://github.com/mathysgrapotte/stimulus-py/commit/157023a22c59eeeb02493a16dbbf76203a1b26b6) by itrujnara).
+- fix tensor dimension in TextAsciiEncoder ([6d97a91](https://github.com/mathysgrapotte/stimulus-py/commit/6d97a91f19fe7047bdd32b8c7e366f287a51e27f) by itrujnara).
+- Fix error in TextAsciiEncoder ([af09983](https://github.com/mathysgrapotte/stimulus-py/commit/af09983fcf4a76e4b059044ff62553901ff95dab) by itrujnara).
+- fix docstrings in TextAsciiEncoder ([80d2d99](https://github.com/mathysgrapotte/stimulus-py/commit/80d2d9901aa4d0cee59d70196ac759d80ff19dc1) by itrujnara).
+- fix docstring in TextAsciiEncoder ([474fa66](https://github.com/mathysgrapotte/stimulus-py/commit/474fa660351fbbea6f145c8c16614236e5559c7a) by itrujnara).
+- Deepcopy column params ([fdeda97](https://github.com/mathysgrapotte/stimulus-py/commit/fdeda97470631c377315e4d178ef83a099a750e6) by itrujnara).
+- Switch to left padding and make padded length an encoder attribute ([6185d98](https://github.com/mathysgrapotte/stimulus-py/commit/6185d982db5f3a0c08a099791b49631fe915dfd3) by itrujnara).
+- Accept int parameters for column encoder ([b194510](https://github.com/mathysgrapotte/stimulus-py/commit/b194510d1aed45fa32d83511bf2719be9046c280) by itrujnara).
+- fix type handling in ASCII encoder ([785b083](https://github.com/mathysgrapotte/stimulus-py/commit/785b08358c4368832f43970b670eda3308815937) by itrujnara).
+
+### Code Refactoring
+
+- splitting yamls is now done in a single pass with modular config splitting. ([2c9493d](https://github.com/mathysgrapotte/stimulus-py/commit/2c9493dfe5909719f3d6208a545f8d945fb00d4f) by mathysgrapotte).
+- remove references to ray in the codebase. ([9dc6ae5](https://github.com/mathysgrapotte/stimulus-py/commit/9dc6ae5b5fbc4b39ce97f504fc4c03d22034c2a9) by mathysgrapotte).
+- removing all references to data_handlers. ([cc771c5](https://github.com/mathysgrapotte/stimulus-py/commit/cc771c5907535bbb21c5ba2c039363a3a9f6b8ce) by mathysgrapotte).
+- predict now uses huggingface paradigm ([2347c73](https://github.com/mathysgrapotte/stimulus-py/commit/2347c739e33860fde03f960121bed00f757c2320) by mathysgrapotte).
+- switch config parser and encoders to support native numpy typing. ([eb3d0a4](https://github.com/mathysgrapotte/stimulus-py/commit/eb3d0a4f10b6a645a72ccd981481a6bab610f7a8) by mathysgrapotte).
+- change encoder tests to fit the new paradigm (npy array I/O) ([db7d6e7](https://github.com/mathysgrapotte/stimulus-py/commit/db7d6e798e592d1cc3fdc6f930e812ec771d3875) by mathysgrapotte).
+- encoders now use numpy array for I/O. ([c82cca7](https://github.com/mathysgrapotte/stimulus-py/commit/c82cca729492c3ca83518220278be1369f83fa8d) by mathysgrapotte).
+- compare tensor now outputs a descriptive csv, stats computation will happen downstream. ([21fe75d](https://github.com/mathysgrapotte/stimulus-py/commit/21fe75df2539540d4309bf79bb67fe17075a0278) by mathysgrapotte).
+

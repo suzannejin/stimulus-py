@@ -1,4 +1,4 @@
-"""Utility functions for launching and configuring experiments and ray tuning."""
+"""Utility functions for importing model classes from Python files."""
 
 import importlib.util
 import os

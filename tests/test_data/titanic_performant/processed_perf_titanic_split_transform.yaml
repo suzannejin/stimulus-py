@@ -1,0 +1,124 @@
+global_params:
+  seed: 42
+columns:
+- column_name: Survived
+  column_type: label
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Pclass
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Sex
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Age
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: SibSp
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Parch
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Fare
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Family_Size
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Embarked_C
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Embarked_Q
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Embarked_S
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Title_Dr
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Title_Master
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Title_Miss
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Title_Mr
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Title_Mrs
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Title_Rev
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+transforms:
+  transformation_name: noise
+  columns:
+  - column_name: Age
+    transformations:
+    - name: GaussianNoise
+      params:
+        std: 0.1
+  - column_name: Fare
+    transformations:
+    - name: GaussianNoise
+      params:
+        std: 0.1
+split:
+  split_method: RandomSplit
+  params:
+    split: [0.8, 0.2]
+  split_input_columns:
+  - Age

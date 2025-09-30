@@ -1,5 +1,6 @@
 """This file contains noise generators classes for generating various types of noise."""
 
+import copy
 import multiprocessing as mp
 from abc import ABC, abstractmethod
 from typing import Any
@@ -31,6 +32,7 @@ class AbstractTransform(ABC):
     def __init__(self) -> None:
         """Initialize the data transformer."""
         self.add_row: bool = False
+        self.remove_row: bool = False
         self.seed: int = 42
 
     @abstractmethod
@@ -74,6 +76,7 @@ class AbstractNoiseGenerator(AbstractTransform):
         """Initialize the noise generator."""
         super().__init__()
         self.add_row = False
+        self.remove_row = False
 
 
 class AbstractAugmentationGenerator(AbstractTransform):
@@ -86,6 +89,20 @@ class AbstractAugmentationGenerator(AbstractTransform):
         """Initialize the augmentation generator."""
         super().__init__()
         self.add_row = True
+        self.remove_row = False
+
+
+class AbstractSampler(AbstractTransform):
+    """Abstract class for samplers.
+
+    Sampler classes are expected to return np.nan in place of datapoints to be removed.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the sampler."""
+        super().__init__()
+        self.add_row = False
+        self.remove_row = True
 
 
 class UniformTextMasker(AbstractNoiseGenerator):
@@ -135,7 +152,7 @@ class UniformTextMasker(AbstractNoiseGenerator):
         """
         with mp.Pool(mp.cpu_count()) as pool:
             function_specific_input = list(data)
-            return pool.starmap(self.transform, function_specific_input)
+            return pool.map(self.transform, function_specific_input)
 
 
 class GaussianNoise(AbstractNoiseGenerator):
@@ -316,3 +333,144 @@ class GaussianChunk(AbstractAugmentationGenerator):
         with mp.Pool(mp.cpu_count()) as pool:
             function_specific_input = list(data)
             return pool.starmap(self.transform, function_specific_input)
+
+
+class BalanceSampler(AbstractSampler):
+    """Balance the data by sampling n samples from each class where n is the size of the smallest class.
+
+    This sampler class balances the data by sampling n samples from each class where n is the size of the smallest class.
+    """
+
+    def __init__(self) -> None:
+        """Initialize the balance sampler."""
+        super().__init__()
+
+    def transform(self, data: Any) -> Any:
+        """Raises NotImplementedError, as it does not make sense to balance a single data point."""
+        raise NotImplementedError("BalanceSampler does not make sense for a single data point.")
+
+    def transform_all(self, data: list) -> list:
+        """Balance the data by sampling n samples from each class where n is the size of the smallest class.
+
+        Args:
+            data (list): the data to be balanced
+
+        Returns:
+            transformed_data (list): the balanced data
+        """
+        # Get all possible classes in the data
+        classes = set(data)
+
+        # build a dictionary of classes and their corresponding indices
+        data_dict: dict[Any, list[int]] = {c: [] for c in classes}
+        for i, c in enumerate(data):
+            data_dict[c].append(i)
+
+        # get min class size
+        min_class_size = min(len(data_dict[c]) for c in classes)
+
+        # sample n samples from each class where n is the size of the smallest class
+        kept_indices: list[int] = []
+        for c in classes:
+            indices = np.random.choice(data_dict[c], size=min_class_size, replace=False)
+            kept_indices.extend(indices)
+
+        # return the balanced data, with np.nan in place of datapoints to be removed
+        return [data[i] if i in kept_indices else np.nan for i in range(len(data))]
+
+
+class SwapTransform(AbstractTransform):
+    """Swap the values of pairs of elemengs in the data n-times with replacement.
+
+    This transform swaps the values of pairs of elements in the data n-times with replacement.
+    E.g if the data is [1, 2, 3, 4, 5] and swap_numbers is 2, the output could be [2, 1, 4, 3, 5].
+    """
+
+    def __init__(self, swap_numbers: float = 1, seed: int = 42) -> None:
+        """Initialize the swap transform.
+
+        Args:
+            swap_numbers: Number of swaps to perform
+            seed: Random seed for reproducibility
+        """
+        super().__init__()
+        if isinstance(swap_numbers, float):
+            self.swap_numbers = int(swap_numbers)
+        else:
+            self.swap_numbers = swap_numbers
+        self.seed = seed
+
+    def transform(self, data: list[Any]) -> list[Any]:
+        """Swap the values of two random elements in the data.
+
+        Args:
+            data (list): the data to be transformed
+
+        Returns:
+            transformed_data (list): the transformed data
+        """
+        data_clone = copy.deepcopy(data)
+        i = np.random.randint(0, len(data_clone))
+        j = np.random.randint(0, len(data_clone))
+        while j == i:
+            j = np.random.randint(0, len(data_clone))
+        data_clone[i], data_clone[j] = data_clone[j], data_clone[i]
+        return data_clone
+
+    def transform_all(self, data: list[Any]) -> list[Any]:
+        """Swap the values of two random elements in the data n times.
+
+        Args:
+            data (list): the data to be transformed
+        """
+        data_clone = copy.deepcopy(data)
+        for _ in range(self.swap_numbers):
+            data_clone = self.transform(data_clone)
+        return data_clone
+
+
+class RandomDownSampler:
+    """A transformer that randomly samples a dataset to a specified size n.
+
+    This transformer reduces the total size of the dataset by randomly selecting
+    n samples while maintaining the original ordering with np.nan for removed items.
+    """
+
+    def __init__(self, n: int, seed: int = 42):
+        """Initialize the DownSampler.
+
+        Args:
+            n (int): target size of the sampled dataset
+        """
+        super().__init__()
+        self.n = n
+        self.seed = seed
+
+    def transform(self, data: Any) -> Any:
+        """Raises NotImplementedError, as it does not make sense to balance a single data point."""
+        raise NotImplementedError("BalanceSampler does not make sense for a single data point.")
+
+    def transform_all(self, data: list) -> list:
+        """Transform the data by randomly sampling n items.
+
+        Args:
+            data (list): the data to be sampled
+
+        Returns:
+            transformed_data (list): the sampled data with np.nan for removed items
+        """
+        if self.n > len(data):
+            return data
+
+        # set seed
+        np.random.seed(self.seed)
+
+        # randomly select n indices
+        kept_indices = np.random.choice(
+            range(len(data)),
+            size=self.n,
+            replace=False,
+        )
+
+        # return sampled data with np.nan for removed items
+        return [data[i] if i in kept_indices else np.nan for i in range(len(data))]

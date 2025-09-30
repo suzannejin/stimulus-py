@@ -1,207 +1,148 @@
 #!/usr/bin/env python3
 """CLI module for model prediction on datasets."""
 
-import argparse
 import json
-from collections.abc import Sequence
-from typing import Any
+import logging
 
-import polars as pl
+import datasets
+import safetensors.torch as safetensors
 import torch
-from torch.utils.data import DataLoader
 
-from stimulus.data.data_handlers import TorchDataset
-from stimulus.learner.predict import PredictWrapper
-from stimulus.utils.model_file_interface import get_experiment, import_class_from_file
+from stimulus.data.interface.data_loading import load_dataset_from_path
+from stimulus.utils.model_file_interface import import_class_from_file
 
-
-def get_args() -> argparse.Namespace:
-    """Parse command line arguments.
-
-    Returns:
-        Parsed command line arguments.
-    """
-    parser = argparse.ArgumentParser(description="Predict model outputs on a dataset.")
-    parser.add_argument("-m", "--model", type=str, required=True, metavar="FILE", help="Path to model .py file.")
-    parser.add_argument("-w", "--weight", type=str, required=True, metavar="FILE", help="Path to model weights file.")
-    parser.add_argument(
-        "-mc",
-        "--model_config",
-        type=str,
-        required=True,
-        metavar="FILE",
-        help="Path to tune config file with model hyperparameters.",
-    )
-    parser.add_argument(
-        "-ec",
-        "--experiment_config",
-        type=str,
-        required=True,
-        metavar="FILE",
-        help="Path to experiment config for data modification.",
-    )
-    parser.add_argument("-d", "--data", type=str, required=True, metavar="FILE", help="Path to input data.")
-    parser.add_argument("-o", "--output", type=str, required=True, metavar="FILE", help="Path for output predictions.")
-    parser.add_argument("--split", type=int, help="Data split to use (default: None).")
-    parser.add_argument("--return_labels", action="store_true", help="Include labels with predictions.")
-
-    return parser.parse_args()
+logger = logging.getLogger(__name__)
 
 
-def load_model(model_class: Any, weight_path: str, mconfig: dict[str, Any]) -> Any:
-    """Load model with hyperparameters and weights.
+def load_model(model_path: str, model_config_path: str, weight_path: str) -> torch.nn.Module:
+    """Dynamically loads the model from a .py file."""
+    with open(model_config_path) as f:
+        complete_config = json.load(f)
+
+    # Extract network parameters from complete config
+    # Handle both old format (direct params) and new format (nested params)
+    network_params = complete_config.get("network_params", complete_config)
+
+    # Check that the model can be loaded
+    model = import_class_from_file(model_path)
+    model_instance = model(**network_params)
+
+    weights = safetensors.load_file(weight_path)
+    model_instance.load_state_dict(weights)
+    return model_instance
+
+
+def update_statistics(statistics: dict, temp_statistics: dict) -> dict:
+    """Update the statistics with the new statistics.
 
     Args:
-        model_class: Model class to instantiate.
-        weight_path: Path to model weights.
-        mconfig: Model configuration dictionary.
+        statistics: The statistics to update.
+        temp_statistics: The new statistics to update with.
 
     Returns:
-        Loaded model instance.
+        The updated statistics.
     """
-    hyperparameters = mconfig["model_params"]
-    model = model_class(**hyperparameters)
-    model.load_state_dict(torch.load(weight_path))
-    return model
+    for key, value in temp_statistics.items():
+        if isinstance(value, torch.Tensor):
+            if value.ndim == 0:
+                try:
+                    # Check if statistics[key] is zero-dimensional and reshape it if needed
+                    if statistics[key].ndim == 0:
+                        statistics[key] = torch.cat([statistics[key].reshape(1), value.unsqueeze(0)], dim=0)
+                    else:
+                        statistics[key] = torch.cat([statistics[key], value.unsqueeze(0)], dim=0)
+                except RuntimeError as e:
+                    raise RuntimeError(
+                        f"Error updating statistics: {e}, shape of incoming tensors is {value.shape} and in-place tensor is {statistics[key].shape}, values of those tensors are {value} and {statistics[key]}",
+                    ) from e
+            else:
+                statistics[key] = torch.cat([statistics[key], value], dim=0)
+        elif isinstance(value, (int, float, list)):
+            statistics[key] = statistics[key] + value
+        else:
+            raise TypeError(f"Invalid statistics type: {type(value)}")
+
+    return statistics
 
 
-def get_batch_size(mconfig: dict[str, Any]) -> int:
-    """Get batch size from model config.
+def convert_dict_to_tensor(data: dict) -> dict:
+    """Convert a dictionary to a tensor.
 
     Args:
-        mconfig: Model configuration dictionary.
+        data: The dictionary to convert.
 
     Returns:
-        Batch size to use for predictions.
+        The converted dictionary.
     """
-    default_batch_size = 256
-    if "data_params" in mconfig and "batch_size" in mconfig["data_params"]:
-        return mconfig["data_params"]["batch_size"]
-    return default_batch_size
+    for key, value in data.items():
+        if not isinstance(value, torch.Tensor):
+            data[key] = torch.tensor(value)
+    return data
 
 
-def parse_y_keys(y: dict[str, Any], data: pl.DataFrame, y_type: str = "pred") -> dict[str, Any]:
-    """Parse dictionary keys to match input data format.
-
-    Args:
-        y: Dictionary of predictions or labels.
-        data: Input DataFrame.
-        y_type: Type of values ('pred' or 'label').
-
-    Returns:
-        Dictionary with updated keys.
-    """
-    if not y:
-        return y
-
-    parsed_y = {}
-    for k1, v1 in y.items():
-        for k2 in data.columns:
-            if k1 == k2.split(":")[0]:
-                new_key = f"{k1}:{y_type}:{k2.split(':')[2]}"
-                parsed_y[new_key] = v1
-
-    return parsed_y
-
-
-def add_meta_info(data: pl.DataFrame, y: dict[str, Any]) -> dict[str, Any]:
-    """Add metadata columns to predictions/labels dictionary.
-
-    Args:
-        data: Input DataFrame with metadata.
-        y: Dictionary of predictions/labels.
-
-    Returns:
-        Updated dictionary with metadata.
-    """
-    keys = get_meta_keys(data.columns)
-    for key in keys:
-        y[key] = data[key].to_list()
-    return y
-
-
-def get_meta_keys(names: Sequence[str]) -> list[str]:
-    """Extract metadata column keys.
-
-    Args:
-        names: List of column names.
-
-    Returns:
-        List of metadata column keys.
-    """
-    return [name for name in names if name.split(":")[1] == "meta"]
-
-
-def main(
-    model_path: str,
-    weight_path: str,
-    mconfig_path: str,
-    econfig_path: str,
+def predict(
     data_path: str,
+    model_path: str,
+    model_config_path: str,
+    weight_path: str,
     output: str,
-    *,
-    return_labels: bool = False,
-    split: int | None = None,
+    batch_size: int = 256,
 ) -> None:
     """Run model prediction pipeline.
 
     Args:
-        model_path: Path to model file.
-        weight_path: Path to model weights.
-        mconfig_path: Path to model config.
-        econfig_path: Path to experiment config.
-        data_path: Path to input data.
-        output: Path for output predictions.
-        return_labels: Whether to include labels.
-        split: Data split to use.
+        data_path: Path to the input data file.
+        model_path: Path to the model file.
+        model_config_path: Path to the model config YAML file.
+        weight_path: Path to the model weights file.
+        output: Path to save the prediction results.
+        batch_size: Batch size for prediction.
     """
-    with open(mconfig_path) as in_json:
-        mconfig = json.load(in_json)
+    # Load model configuration to get loss function
+    with open(model_config_path) as file:
+        complete_config = json.load(file)
 
-    model_class = import_class_from_file(model_path)
-    model = load_model(model_class, weight_path, mconfig)
+    # Get loss function from the optimized config
+    loss_params = complete_config.get("loss_params", {})
+    if not loss_params:
+        raise ValueError(f"No loss_params found in model config: {model_config_path}")
 
-    with open(econfig_path) as in_json:
-        experiment_name = json.load(in_json)["experiment"]
-    initialized_experiment_class = get_experiment(experiment_name)
+    # Extract loss function name from optimized parameters
+    # The loss function name should be directly available (e.g., {"loss_fn": "BCEWithLogitsLoss"})
+    loss_fn_name = None
+    for _param_name, param_value in loss_params.items():
+        if isinstance(param_value, str):
+            loss_fn_name = param_value
+            break
 
-    dataloader = DataLoader(
-        TorchDataset(data_path, initialized_experiment_class, split=split),
-        batch_size=get_batch_size(mconfig),
-        shuffle=False,
-    )
+    if not loss_fn_name:
+        raise ValueError(f"Could not extract loss function from loss_params: {loss_params}")
 
-    predictor = PredictWrapper(model, dataloader)
-    out = predictor.predict(return_labels=return_labels)
-    y_pred, y_true = out if return_labels else (out, {})
+    # Create loss function instance
+    try:
+        loss_fn = getattr(torch.nn, loss_fn_name)()
+    except AttributeError as e:
+        raise ValueError(f"Invalid loss function '{loss_fn_name}' in config") from e
 
-    y_pred = {k: v.tolist() for k, v in y_pred.items()}
-    y_true = {k: v.tolist() for k, v in y_true.items()}
+    logger.info(f"Using loss function: {loss_fn_name}")
 
-    data = pl.read_csv(data_path)
-    y_pred = parse_y_keys(y_pred, data, y_type="pred")
-    y_true = parse_y_keys(y_true, data, y_type="label")
+    # Get the best model with best architecture and weights
+    model = load_model(model_path, model_config_path, weight_path)
+    dataset = load_dataset_from_path(data_path)
+    dataset.set_format(type="torch")
+    splits = [dataset[split_name] for split_name in dataset]
+    all_splits = datasets.concatenate_datasets(splits)
+    loader = torch.utils.data.DataLoader(all_splits, batch_size=batch_size, shuffle=False)
 
-    y = {**y_pred, **y_true}
-    y = add_meta_info(data, y)
-    df = pl.from_dict(y)
-    df.write_csv(output)
+    # create empty tensor for predictions
+    is_first_batch = True
+    for batch in loader:
+        if is_first_batch:
+            _loss, statistics = model.inference(batch, loss_fn)
+            is_first_batch = False
+        _loss, temp_statistics = model.inference(batch, loss_fn)
+        statistics = update_statistics(statistics, temp_statistics)
 
-
-def run() -> None:
-    """Execute model prediction pipeline."""
-    args = get_args()
-    main(
-        args.model,
-        args.weight,
-        args.model_config,
-        args.experiment_config,
-        args.data,
-        args.output,
-        return_labels=args.return_labels,
-        split=args.split,
-    )
-
-
-if __name__ == "__main__":
-    run()
+    to_return: dict = convert_dict_to_tensor(statistics)
+    # Predict the data
+    safetensors.save_file(to_return, output)

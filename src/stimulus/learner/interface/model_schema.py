@@ -6,6 +6,7 @@ from typing import Any, Callable, Literal, Optional
 
 import optuna
 import pydantic
+import torch
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +27,7 @@ class TunableParameter(pydantic.BaseModel):
             "int",
             "loguniform",
             "uniform",
+            "variable_list",
         ]:
             raise NotImplementedError(
                 f"Mode {self.mode} not available for Optuna, please use one of the following: categorical, discrete_uniform, float, int, loguniform, uniform, variable_list",
@@ -165,9 +167,10 @@ class Model(pydantic.BaseModel):
     sampler: Sampler
     objective: Objective
     seed: int = 42
-    max_batches: int = 1000
-    compute_objective_every_n_batches: int = 50
+    max_samples: int = 1000
+    compute_objective_every_n_samples: int = 50
     n_trials: int = 10
+    device: Optional[str] = None
 
     # Add a model validator to debug the input data
     @pydantic.model_validator(mode="before")
@@ -182,4 +185,14 @@ class Model(pydantic.BaseModel):
         """Validate that data_params contains batch_size."""
         if "batch_size" not in self.data_params:
             raise ValueError("data_params must contain batch_size")
+        return self
+
+    @pydantic.model_validator(mode="after")
+    def validate_device(self) -> "Model":
+        """Validate that device is a valid PyTorch device if specified."""
+        if self.device is not None:
+            try:
+                torch.device(self.device)
+            except RuntimeError as e:
+                raise ValueError(f"Invalid device '{self.device}': {e}") from e
         return self

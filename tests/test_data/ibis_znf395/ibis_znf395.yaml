@@ -4,26 +4,24 @@ global_params:
 columns:
   - column_name : "dna"
     column_type : "input"
-    data_type : str
     encoder:
       - name: TextOneHotEncoder
         params:
           alphabet: "acgt"
+          dtype: float32
 
   - column_name : "binding"
     column_type : "label"
-    data_type : int
     encoder:
       - name: NumericEncoder
         params:
-
+          dtype: float32
   - column_name : "binding"
     column_type : "label"
-    data_type : str
     encoder:
       - name: NumericEncoder
         params:
-
+          dtype: float32
 
 transforms:
   - transformation_name: 'reverse_complement'
@@ -53,4 +51,4 @@ split:
   - split_method: RandomSplit
     split_input_columns: ["binding"]
     params:
-      split: [0.6, 0.2, 0.2]
+      split: [0.6, 0.4]

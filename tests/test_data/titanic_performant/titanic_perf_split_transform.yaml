@@ -1,0 +1,90 @@
+global_params:
+  seed: 42
+columns:
+- column_name: PassengerId
+  column_type: meta
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: int32
+- column_name: Survived
+  column_type: label
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Pclass
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Sex
+  column_type: input
+  encoder:
+  - name: StrClassificationEncoder
+    params:
+      dtype: float32
+- column_name: Age
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: SibSp
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Parch
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Fare
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Family_Size
+  column_type: input
+  encoder:
+  - name: NumericEncoder
+    params:
+      dtype: float32
+- column_name: Embarked
+  column_type: input
+  encoder:
+  - name: TextOneHotEncoder
+    params:
+      dtype: float32
+      alphabet: CQS
+- column_name: Title
+  column_type: input
+  encoder:
+  - name: StrClassificationEncoder
+    params:
+      dtype: float32
+      scale: true
+transforms:
+  transformation_name: noise
+  columns:
+  - column_name: Age
+    transformations:
+    - name: GaussianNoise
+      params:
+        std: 0.1
+  - column_name: Fare
+    transformations:
+    - name: GaussianNoise
+      params:
+        std: 0.1
+split:
+  split_method: RandomSplit
+  params:
+    split: [0.7, 0.3]
+  split_input_columns:
+  - Age

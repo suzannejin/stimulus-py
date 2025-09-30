@@ -29,8 +29,13 @@ __pycache__/
 .cursorrules
 
 # Ignore output directories from Titanic tests
-/tests/test_data/titanic/ray_results/
+/tests/test_data/titanic/optuna_results/
 /tests/test_data/titanic/test_results/
 
 # Ignore output directories from Dream tests
 /tutorials/dream/dream_train.csv
+
+# Ignore output directories from Optuna tests
+.DS_Store
+
+CLAUDE.md

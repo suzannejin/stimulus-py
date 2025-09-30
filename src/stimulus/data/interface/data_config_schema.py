@@ -15,7 +15,14 @@ class ColumnsEncoder(BaseModel):
     """Model for column encoder configuration."""
 
     name: str
-    params: Optional[dict[str, Union[str, list[Any]]]]  # Allow both string and list values
+    params: dict[str, Union[int, str, list[Any]]]
+
+    @field_validator("params")
+    def validate_dtype(cls, params: dict) -> dict:  # noqa: N805
+        """Validate that the 'dtype' key is present in the encoder parameters."""
+        if "dtype" not in params:
+            raise ValueError("params must contain 'dtype' key")
+        return params
 
 
 class Columns(BaseModel):
@@ -23,7 +30,6 @@ class Columns(BaseModel):
 
     column_name: str
     column_type: str
-    data_type: str
     encoder: list[ColumnsEncoder]
 
 
@@ -131,7 +137,22 @@ class Schema(BaseModel):
     config: ConfigDict
 
 
-class SplitSchema(BaseModel):
-    """Model for validating a Split YAML schema."""
+class EncodingConfigDict(BaseModel):
+    """Model for encoding-only configuration."""
 
-    config: ConfigDict
+    global_params: GlobalParams
+    columns: list[Columns]
+
+
+class IndividualSplitConfigDict(BaseModel):
+    """Model for individual split configuration."""
+
+    global_params: GlobalParams
+    split: Split
+
+
+class IndividualTransformConfigDict(BaseModel):
+    """Model for individual transform configuration."""
+
+    global_params: GlobalParams
+    transforms: Transform

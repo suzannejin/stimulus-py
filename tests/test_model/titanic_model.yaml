@@ -1,6 +1,6 @@
-max_batches: 10
-compute_objective_every_n_batches: 1
-n_trials: 5
+max_samples: 1
+compute_objective_every_n_samples: 1
+n_trials: 2
 
 network_params:
   nb_neurons_intermediate_layer:
@@ -53,7 +53,7 @@ sampler:
   params:
 
 objective:
-  metric: val_rocauc
-  direction: maximize
+  metric: val_loss
+  direction: minimize
 
 

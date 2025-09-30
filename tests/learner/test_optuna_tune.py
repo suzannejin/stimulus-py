@@ -5,84 +5,79 @@ import logging
 import os
 import shutil
 import tempfile
+import warnings
+from typing import Any
 
+import datasets
 import optuna
 import pytest
 import torch
 import yaml
 
-from stimulus.cli.tuning import load_data_config_from_path
 from stimulus.learner import optuna_tune
 from stimulus.learner.interface import model_config_parser, model_schema
 from stimulus.utils import model_file_interface
 
 logger = logging.getLogger(__name__)
 
+warnings.filterwarnings("error")  # This will convert warnings to exceptions temporarily
 
-@pytest.fixture
-def get_model_class() -> torch.nn.Module:
-    """Get the model class."""
-    model_path = os.path.join("tests", "test_model", "titanic_model.py")
-    return model_file_interface.import_class_from_file(model_path)
+TEST_CASES = [
+    {
+        "name": "titanic",
+        "model_path": os.path.join("tests", "test_model", "titanic_perf_model.py"),
+        "config_path": os.path.join("tests", "test_model", "titanic_perf_model.yaml"),
+        "data_path": os.path.join("tests", "test_data", "titanic_performant", "titanic_encoded_hf"),
+    },
+]
 
 
-@pytest.fixture
-def get_model_config() -> model_schema.Model:
-    """Get the model config."""
-    model_path = os.path.join("tests", "test_model", "titanic_model.yaml")
-    with open(model_path) as f:
+@pytest.fixture(params=TEST_CASES)
+def test_case(request: Any) -> dict:
+    """Get a complete test case configuration."""
+    case = request.param
+
+    # Load model class
+    model_class = model_file_interface.import_class_from_file(case["model_path"])
+
+    # Load model config
+    with open(case["config_path"]) as f:
         model_config = yaml.safe_load(f)
-    return model_schema.Model(**model_config)
+    model_config = model_schema.Model(**model_config)
+
+    data = datasets.load_from_disk(case["data_path"])
+    data.set_format("torch")
+    train_data = data["train"]
+    val_data = data["test"]
+
+    return {
+        "name": case["name"],
+        "model_class": model_class,
+        "model_config": model_config,
+        "train_data": train_data,
+        "val_data": val_data,
+    }
 
 
-@pytest.fixture
-def get_train_val_datasets() -> tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
-    """Get the train and val datasets."""
-    train_data = load_data_config_from_path(
-        data_path=os.path.join("tests", "test_data", "titanic", "titanic_stimulus_split.csv"),
-        data_config_path=os.path.join("tests", "test_data", "titanic", "titanic_unique_transform.yaml"),
-        split=0,
-    )
-    val_data = load_data_config_from_path(
-        data_path=os.path.join("tests", "test_data", "titanic", "titanic_stimulus_split.csv"),
-        data_config_path=os.path.join("tests", "test_data", "titanic", "titanic_unique_transform.yaml"),
-        split=1,
-    )
-    return train_data, val_data
-
-
-def test_parameter_suggestions(
-    get_model_config: model_schema.Model,
-    get_model_class: torch.nn.Module,
-    get_train_val_datasets: tuple[torch.utils.data.Dataset, torch.utils.data.Dataset],
-) -> None:
-    """Test parameter suggestions directly without running a full study."""
-    train_data, val_data = get_train_val_datasets
+def test_parameter_suggestions(test_case: dict) -> None:
+    """Test parameter suggestions for various model configurations."""
+    model_config = test_case["model_config"]
+    model_class = test_case["model_class"]
 
     # Create a study and trial
     study = optuna.create_study()
     trial = study.ask()
 
     # Test network params
-    network_suggestions = {}
-    for name, param in get_model_config.network_params.items():
-        suggestion = model_config_parser.get_suggestion(name, param, trial)
-        network_suggestions[name] = suggestion
+    network_suggestions = model_config_parser.suggest_parameters(trial, model_config.network_params)
 
-    logger.info(f"Network suggestions: {network_suggestions}")
+    logger.info(f"Network suggestions for {test_case['name']}: {network_suggestions}")
 
-    assert 7 <= network_suggestions["nb_neurons_intermediate_layer"] <= 15
-    assert 1 <= network_suggestions["nb_intermediate_layers"] <= 5
-    assert network_suggestions["nb_classes"] == 2
-
-    model_instance = get_model_class(**network_suggestions)
+    model_instance = model_class(**network_suggestions)
     logger.info(f"Model instance: {model_instance}")
     assert model_instance is not None
 
-    optimizer_suggestions = {}
-    for name, param in get_model_config.optimizer_params.items():
-        suggestion = model_config_parser.get_suggestion(name, param, trial)
-        optimizer_suggestions[name] = suggestion
+    optimizer_suggestions = model_config_parser.suggest_parameters(trial, model_config.optimizer_params)
 
     logger.info(f"Optimizer suggestions: {optimizer_suggestions}")
 
@@ -98,14 +93,10 @@ def test_parameter_suggestions(
     assert optimizer is not None
 
 
-def test_tune_loop(
-    get_model_class: torch.nn.Module,
-    get_model_config: model_schema.Model,
-    get_train_val_datasets: tuple[torch.utils.data.Dataset, torch.utils.data.Dataset],
-) -> None:
+def test_tune_loop(test_case: dict) -> None:
     """Test the tune loop."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        train_data, val_data = get_train_val_datasets
+        train_data, val_data = test_case["train_data"], test_case["val_data"]
         artifact_store = optuna.artifacts.FileSystemArtifactStore(base_path=temp_dir)
         storage = optuna.storages.JournalStorage(
             optuna.storages.journal.JournalFileBackend(os.path.join(temp_dir, "optuna_journal_storage.log")),
@@ -113,17 +104,17 @@ def test_tune_loop(
         pruner = optuna.pruners.MedianPruner(n_warmup_steps=50, n_startup_trials=2)
         device = optuna_tune.get_device()
         objective = optuna_tune.Objective(
-            model_class=get_model_class,
-            network_params=get_model_config.network_params,
-            optimizer_params=get_model_config.optimizer_params,
-            data_params=get_model_config.data_params,
-            loss_params=get_model_config.loss_params,
+            model_class=test_case["model_class"],
+            network_params=test_case["model_config"].network_params,
+            optimizer_params=test_case["model_config"].optimizer_params,
+            data_params=test_case["model_config"].data_params,
+            loss_params=test_case["model_config"].loss_params,
             train_torch_dataset=train_data,
             val_torch_dataset=val_data,
             artifact_store=artifact_store,
-            max_batches=get_model_config.max_batches,
-            compute_objective_every_n_batches=get_model_config.compute_objective_every_n_batches,
-            target_metric=get_model_config.objective.metric,
+            max_samples=test_case["model_config"].max_samples,
+            compute_objective_every_n_samples=test_case["model_config"].compute_objective_every_n_samples,
+            target_metric=test_case["model_config"].objective.metric,
             device=device,
         )
 
@@ -132,8 +123,8 @@ def test_tune_loop(
             objective=objective,
             pruner=pruner,
             sampler=optuna.samplers.TPESampler(),
-            n_trials=get_model_config.n_trials,
-            direction=get_model_config.objective.direction,
+            n_trials=test_case["model_config"].n_trials,
+            direction=test_case["model_config"].objective.direction,
             storage=storage,
         )
         assert study is not None
