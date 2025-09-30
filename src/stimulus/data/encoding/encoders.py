@@ -300,7 +300,7 @@ class TextAsciiEncoder(AbstractEncoder):
                 else:
                     # somehow the trim strategy is wrong
                     raise ValueError(
-                            "Trim strategy is invalid in batch_encode. Please check your code for manual updates of this attribute.",
+                        "Trim strategy is invalid in batch_encode. Please check your code for manual updates of this attribute.",
                     )
             else:
                 # Pad the single array/chunk
