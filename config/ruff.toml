@@ -70,6 +70,11 @@ ignore = [
     "A005",  # stimulus.typing is not shadowing typing
 ]
 
+"duties.py" = [
+    "PT028",  # Test function parameter has default argument (false positive for task runner)
+    "RUF100", # Breaks some local directives
+]
+
 # TODO temporary just until all unittests are passed to unittest
 "tests/unittest_*.py" = ["ALL"]
 

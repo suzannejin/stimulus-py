@@ -1,0 +1,33 @@
+# this file is NOT correct for running any training, it is just for testing purposes
+global_params:
+  seed: 42
+
+columns:
+  - column_name: passenger_id
+    column_type: meta
+    encoder:
+      - name: TextAsciiEncoder
+        params:
+          vocab_size: 100
+          dtype: int16
+
+transforms:
+  - transformation_name: "noise"
+    columns:
+      - column_name: "age"
+        transformations:
+          - name: GaussianNoise
+            params:
+              std: [0.1, 0.2, 0.3]
+      - column_name: "fare"
+        transformations:
+          - name: GaussianNoise
+            params:
+              std: [0.1, 0.2, 0.3]
+
+split:
+  - split_method: RandomSplit
+    split_input_columns: ["age"]
+    params:
+      split: [0.7, 0.3]
+

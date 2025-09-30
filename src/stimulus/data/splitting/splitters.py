@@ -6,13 +6,13 @@ from typing import Any, Optional
 import numpy as np
 
 # Constants
-SPLIT_SIZE = 3  # Number of splits (train/val/test)
+SPLIT_SIZE = 2  # Number of splits (train/test)
 
 
 class AbstractSplitter(ABC):
     """Abstract class for splitters.
 
-    A splitter splits the data into train, validation, and test sets.
+    A splitter splits the data into train and test sets.
 
     Methods:
         get_split_indexes: calculates split indices for the data
@@ -28,16 +28,16 @@ class AbstractSplitter(ABC):
         self.seed = seed
 
     @abstractmethod
-    def get_split_indexes(self, data: dict) -> tuple[list, list, list]:
+    def get_split_indexes(self, data: dict) -> tuple[list, list]:
         """Splits the data. Always return indices mapping to the original list.
 
         This is an abstract method that should be implemented by the child class.
 
         Args:
-            data (pl.DataFrame): the data to be split
+            data (dict): the data to be split
 
         Returns:
-            split_indices (list): the indices for train, validation, and test sets
+            split_indices (list): the indices for train and test sets
         """
         raise NotImplementedError
 
@@ -68,18 +68,18 @@ class RandomSplit(AbstractSplitter):
             seed: Random seed for reproducibility
         """
         super().__init__()
-        self.split = [0.7, 0.2, 0.1] if split is None else split
+        self.split = [0.7, 0.3] if split is None else split
         self.seed = seed
         if len(self.split) != SPLIT_SIZE:
             raise ValueError(
-                "The split argument should be a list with length 3 that contains the proportions for [train, validation, test] splits.",
+                "The split argument should be a list with length 2 that contains the proportions for [train, validation, test] splits.",
             )
 
     def get_split_indexes(
         self,
         data: dict,
-    ) -> tuple[list, list, list]:
-        """Splits the data indices into train, validation, and test sets.
+    ) -> tuple[list, list]:
+        """Splits the data indices into train and test sets.
 
         One can use these lists of indices to parse the data afterwards.
 
@@ -88,7 +88,6 @@ class RandomSplit(AbstractSplitter):
 
         Returns:
             train (list): The indices for the training set.
-            validation (list): The indices for the validation set.
             test (list): The indices for the test set.
 
         Raises:
@@ -109,16 +108,15 @@ class RandomSplit(AbstractSplitter):
         np.random.seed(self.seed)
         np.random.shuffle(indices)
 
-        # Calculate the sizes of the train, validation, and test sets
+        # Calculate the sizes of the train and test sets
         train_size = int(self.split[0] * length_of_data)
-        validation_size = int(self.split[1] * length_of_data)
+        test_size = int(self.split[1] * length_of_data)
 
         # Split the shuffled indices according to the calculated sizes
         train = indices[:train_size].tolist()
-        validation = indices[train_size : train_size + validation_size].tolist()
-        test = indices[train_size + validation_size :].tolist()
+        test = indices[train_size : train_size + test_size].tolist()
 
-        return train, validation, test
+        return train, test
 
     def distance(self, data_one: Any, data_two: Any) -> float:
         """Calculate distance between two data points.

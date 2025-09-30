@@ -11,12 +11,7 @@ The aliases from this module should be used for typing purposes only.
 from typing import Any, TypeAlias, TypeVar
 
 # these imports mostly alias everything
-from stimulus.data.data_handlers import (
-    DatasetHandler,
-    DatasetLoader,
-    DatasetProcessor,
-    TorchDataset,
-)
+# Note: DatasetHandler, DatasetLoader, DatasetProcessor, TorchDataset removed as they were unused
 from stimulus.data.encoding.encoders import AbstractEncoder as Encoder
 from stimulus.data.interface.data_config_parser import (
     create_encoders,
@@ -38,21 +33,10 @@ from stimulus.data.interface.data_config_schema import (
 )
 from stimulus.data.splitting import AbstractSplitter as Splitter
 from stimulus.data.transforming.transforms import AbstractTransform as Transform
-from stimulus.learner.predict import PredictWrapper
-from stimulus.utils.performance import Performance
-from stimulus.utils.yaml_model_schema import (
-    CustomTunableParameter,
-    Data,
-    Loss,
-    Model,
-    RayConfigLoader,
-    RayTuneModel,
-    RunParams,
-    Scheduler,
-    TunableParameter,
-    Tune,
-    TuneParams,
-)
+
+# Note: PredictWrapper and Performance imports removed due to missing modules
+# Note: yaml_model_schema imports removed as they contained unused Ray-related classes
+# The codebase now uses Optuna exclusively for hyperparameter tuning
 
 # data/interface/data_config_schema.py
 
@@ -71,7 +55,7 @@ YamlData: TypeAlias = (
 )
 
 # Replace these problematic imports
-# from stimulus.learner.raytune_learner import CheckpointDict, TuneModel, TuneWrapper
+# Note: raytune_learner imports removed as the module was replaced with optuna_tune
 
 # Replace with type aliases if needed
 CheckpointDict = dict[str, Any]

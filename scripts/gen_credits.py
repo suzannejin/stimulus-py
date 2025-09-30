@@ -65,6 +65,9 @@ def _get_metadata() -> Metadata:
     for pkg in distributions():
         name = _norm_name(pkg.name)  # type: ignore[attr-defined,unused-ignore]
         metadata[name] = _merge_fields(pkg.metadata)  # type: ignore[arg-type]
+        # Ensure 'classifier' key exists
+        if "classifier" not in metadata[name]:
+            metadata[name]["classifier"] = []
         metadata[name]["spec"] = set()
         metadata[name]["extras"] = set()
         metadata[name].setdefault("summary", "")

@@ -17,7 +17,7 @@ def ensure_at_least_1d(tensor: torch.Tensor) -> torch.Tensor:
 def set_general_seeds(seed_value: Union[int, None]) -> None:
     """Set all relevant random seeds to a given value.
 
-    Especially useful in case of ray.tune. Ray does not have a "generic" seed as far as ray 2.23.
+    Especially useful for hyperparameter tuning with Optuna.
     """
     # Set python seed
     random.seed(seed_value)

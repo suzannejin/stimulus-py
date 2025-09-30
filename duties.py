@@ -188,7 +188,7 @@ def coverage(ctx: Context) -> None:
 
 
 @duty
-def test(ctx: Context, *cli_args: str, match: str = "") -> None:
+def test(ctx: Context, *cli_args: str, match: str | None = None) -> None:  # noqa: PT028
     """Run the test suite.
 
     Parameters:
@@ -200,7 +200,7 @@ def test(ctx: Context, *cli_args: str, match: str = "") -> None:
         tools.pytest(
             "tests",
             config_file="config/pytest.ini",
-            select=match,
+            select=match or "",
             color="yes",
         ).add_args("-n", "auto", *cli_args),
         title=pyprefix("Running tests"),

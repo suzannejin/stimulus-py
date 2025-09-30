@@ -7,9 +7,12 @@ import pytest
 
 from src.stimulus.data.transforming.transforms import (
     AbstractTransform,
+    BalanceSampler,
     GaussianChunk,
     GaussianNoise,
+    RandomDownSampler,
     ReverseComplement,
+    SwapTransform,
     UniformTextMasker,
 )
 
@@ -251,3 +254,48 @@ class TestReverseComplement:
         for item in transformed_data:
             assert isinstance(item, str)
         assert transformed_data == test_data.expected_multiple_outputs
+
+
+def test_balance_sampler() -> None:
+    """Test the BalanceSampler class."""
+    sampler = BalanceSampler()
+    data = ["a", "a", "a", "b", "b", "c", "c", "c", "c", "c"]
+    transformed_data = sampler.transform_all(data)
+    nb_a = len([x for x in transformed_data if x == "a"])
+    nb_b = len([x for x in transformed_data if x == "b"])
+    nb_c = len([x for x in transformed_data if x == "c"])
+    nb_nan = len([x for x in transformed_data if isinstance(x, float) and np.isnan(x)])
+    assert nb_a == nb_b == nb_c == 2
+    assert nb_nan == 4
+
+
+def test_swap_transform() -> None:
+    """Test the SwapTransform class."""
+    swap_transform = SwapTransform(swap_numbers=1.5)
+    data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    transformed_data = swap_transform.transform_all(data)
+    assert transformed_data != data
+    # check that only two elements are swapped
+    # Count differences between original and transformed data
+    differences = sum(1 for i, x in enumerate(transformed_data) if x != data[i])
+    assert differences == 2
+
+
+def test_swap_transform_multiple() -> None:
+    """Test the SwapTransform class with multiple swaps."""
+    swap_transform = SwapTransform(swap_numbers=10)
+    data = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+    transformed_data = swap_transform.transform_all(data)
+    assert transformed_data != data
+
+
+def test_random_down_sampler() -> None:
+    """Test the RandomDownSampler class."""
+    sampler = RandomDownSampler(n=3, seed=0)
+    data = ["a", "a", "a", "b", "b", "c", "c", "c", "c", "c"]
+    transformed_data = sampler.transform_all(data)
+    transformed_data = [x for x in transformed_data if not isinstance(x, float) or not np.isnan(x)]
+    assert len(transformed_data) == 3
+    assert transformed_data[0] == "a"
+    assert transformed_data[1] == "b"
+    assert transformed_data[2] == "c"
