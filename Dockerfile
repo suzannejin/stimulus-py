@@ -1,5 +1,8 @@
 # syntax=docker/dockerfile:1.9
 
+# Define the target platform as a build argument with a default value
+ARG TARGETPLATFORM=linux/arm64
+
 ############################
 # Stage 1: Builder         #
 ############################

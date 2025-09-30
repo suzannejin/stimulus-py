@@ -4,9 +4,10 @@ import logging
 from typing import Any, Optional, Union
 
 import torch
-from torch import Tensor, nn
+from torch import Tensor
 from torch.utils.data import DataLoader
 
+from stimulus.typing.protocols import StimulusModel
 from stimulus.utils.generic_utils import ensure_at_least_1d
 from stimulus.utils.performance import Performance
 
@@ -21,7 +22,7 @@ class PredictWrapper:
 
     def __init__(
         self,
-        model: nn.Module,
+        model: StimulusModel,
         dataloader: DataLoader,
         loss_dict: Optional[dict[str, Any]] = None,
         device: torch.device | None = None,

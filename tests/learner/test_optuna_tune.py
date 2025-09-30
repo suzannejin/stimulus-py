@@ -15,6 +15,7 @@ import torch
 import yaml
 
 from stimulus.learner import optuna_tune
+from stimulus.learner.device_utils import get_device
 from stimulus.learner.interface import model_config_parser, model_schema
 from stimulus.utils import model_file_interface
 
@@ -102,7 +103,7 @@ def test_tune_loop(test_case: dict) -> None:
             optuna.storages.journal.JournalFileBackend(os.path.join(temp_dir, "optuna_journal_storage.log")),
         )
         pruner = optuna.pruners.MedianPruner(n_warmup_steps=50, n_startup_trials=2)
-        device = optuna_tune.get_device()
+        device = get_device()
         objective = optuna_tune.Objective(
             model_class=test_case["model_class"],
             network_params=test_case["model_config"].network_params,

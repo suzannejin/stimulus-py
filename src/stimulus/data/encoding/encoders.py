@@ -10,7 +10,7 @@ import torch.nn.functional as F  # noqa: N812
 from sklearn import preprocessing
 from transformers import AutoModel, AutoTokenizer
 
-from stimulus.learner.optuna_tune import get_device
+from stimulus.learner.device_utils import get_device
 
 logger = logging.getLogger(__name__)
 
@@ -300,7 +300,7 @@ class TextAsciiEncoder(AbstractEncoder):
                 else:
                     # somehow the trim strategy is wrong
                     raise ValueError(
-                            "Trim strategy is invalid in batch_encode. Please check your code for manual updates of this attribute.",
+                        "Trim strategy is invalid in batch_encode. Please check your code for manual updates of this attribute.",
                     )
             else:
                 # Pad the single array/chunk

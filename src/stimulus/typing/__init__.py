@@ -33,6 +33,7 @@ from stimulus.data.interface.data_config_schema import (
 )
 from stimulus.data.splitting import AbstractSplitter as Splitter
 from stimulus.data.transforming.transforms import AbstractTransform as Transform
+from stimulus.typing.protocols import StimulusModel
 
 # Note: PredictWrapper and Performance imports removed due to missing modules
 # Note: yaml_model_schema imports removed as they contained unused Ray-related classes
