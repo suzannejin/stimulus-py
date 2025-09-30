@@ -17,7 +17,7 @@ def import_class_from_file(file_path: str) -> type:
         ImportError: If no class starting with 'Model' is found in the file.
     """
     # Extract directory path and file name
-    directory, file_name = os.path.split(file_path)
+    _directory, file_name = os.path.split(file_path)
     module_name = os.path.splitext(file_name)[0]  # Remove extension to get module name
 
     # Create a module from the file path
