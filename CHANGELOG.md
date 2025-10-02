@@ -307,3 +307,12 @@ Large change : adding huggingface support
 
 - making type changes to allow for numpy version bump to >=2.0.0. - updating torch to 2.3.0 or above - adding model protocol for preventing mypy to see function outputs as Torch - adding a new device_utils module to avoid circular imports. ([99a23da](https://github.com/mathysgrapotte/stimulus-py/commit/99a23dac50c1ba6339cfce27085b045e1e310574) by mathysgrapotte).
 
+
+## [0.5.1](https://github.com/mathysgrapotte/stimulus-py/releases/tag/0.5.1) - 2025-10-02
+
+<small>[Compare with 0.5.0](https://github.com/mathysgrapotte/stimulus-py/compare/0.5.0...0.5.1)</small>
+
+### Features
+
+- bumping scipy to over x.15.1 to solve compatibility issues with other packages. ([9b8fd04](https://github.com/mathysgrapotte/stimulus-py/commit/9b8fd0445956ef7712b7501ec8a02f4a60f4a6b8) by mathysgrapotte).
+
