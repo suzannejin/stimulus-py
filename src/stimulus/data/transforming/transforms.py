@@ -34,6 +34,7 @@ class AbstractTransform(ABC):
         self.add_row: bool = False
         self.remove_row: bool = False
         self.seed: int = 42
+        self.scope: str = "element"  # "element" or "dataset"
 
     @abstractmethod
     def transform(self, data: Any) -> Any:

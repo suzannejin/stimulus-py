@@ -10,7 +10,7 @@ import pytest
 from click.testing import CliRunner
 
 from stimulus.cli.main import cli
-from stimulus.cli.transform_csv import main
+from stimulus.cli.transform import main
 
 
 # Fixtures

@@ -68,7 +68,6 @@ def check_model(
         network_params=model_config.network_params,
         optimizer_params=model_config.optimizer_params,
         data_params=model_config.data_params,
-        loss_params=model_config.loss_params,
         train_torch_dataset=train_dataset,
         val_torch_dataset=validation_dataset,
         artifact_store=artifact_store,

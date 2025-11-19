@@ -55,9 +55,23 @@ def test_check_model_main(
         except RuntimeError as e:
             pytest.fail(f"check_model.check_model raised {type(e).__name__}: {e}")
 
-        assert os.path.exists(base_path)
-        assert os.path.exists(file_path)
-        assert os.path.exists(f"{base_path}/artifacts/")
-        assert os.path.exists(f"{base_path}/optuna_journal_storage.log")
+        # Assertions before cleanup
+        try:
+            assert os.path.exists(base_path)
+            assert os.path.exists(file_path)
+            assert os.path.exists(f"{base_path}/artifacts/")
+            assert os.path.exists(f"{base_path}/optuna_journal_storage.log")
+        finally:
+            # Clean up test artifacts
+            import glob
 
-        shutil.rmtree(temp_dir)
+            # Remove all generated artifact files in the current directory
+            for pattern in ["*.safetensors", "*.pt", "*.json"]:
+                for filepath in glob.glob(pattern):
+                    try:
+                        os.remove(filepath)
+                        logger.debug(f"Cleaned up artifact: {filepath}")
+                    except (OSError, FileNotFoundError):
+                        pass
+
+            shutil.rmtree(temp_dir)

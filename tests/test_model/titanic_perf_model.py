@@ -3,7 +3,7 @@
 # mypy: ignore-errors
 """This file contains the PyTorch model for the performance test of the Titanic dataset."""
 
-from typing import Callable
+from typing import Any
 
 import torch
 
@@ -21,6 +21,9 @@ class ModelTitanicPerformance(torch.nn.Module):
         layers.append(torch.nn.Linear(in_features, out_features))
         layers.append(activation_output)
         self.layers = torch.nn.ModuleList(layers)
+
+        # Define loss function internally (new protocol)
+        self.loss_fn = torch.nn.BCEWithLogitsLoss()
 
     def forward(
         self,
@@ -68,13 +71,12 @@ class ModelTitanicPerformance(torch.nn.Module):
             x = layer(x)
         return x
 
-    def compute_loss(self, output: torch.Tensor, Survived: torch.Tensor, loss_fn: Callable) -> torch.Tensor:
+    def compute_loss(self, output: torch.Tensor, Survived: torch.Tensor) -> torch.Tensor:
         """Compute the loss.
 
         Args:
             output: Model output tensor of shape [batch_size, nb_classes]
             survived: Target tensor of shape [batch_size, 1]
-            loss_fn: Loss function (CrossEntropyLoss)
 
         Returns:
             Loss value
@@ -88,7 +90,7 @@ class ModelTitanicPerformance(torch.nn.Module):
         if target.dim() == 0:
             target = target.unsqueeze(0)
 
-        return loss_fn(output, target)
+        return self.loss_fn(output, target)
 
     def compute_accuracy(self, output: torch.Tensor, Survived: torch.Tensor) -> torch.Tensor:
         """Compute the accuracy.
@@ -107,58 +109,82 @@ class ModelTitanicPerformance(torch.nn.Module):
         self,
         batch: dict[str, torch.Tensor],
         optimizer: torch.optim.Optimizer,
-        loss_fn: Callable,
-    ) -> tuple[torch.Tensor, dict[str, torch.Tensor], dict[str, torch.Tensor]]:
+        logger: Any,  # ExperimentLogger
+        global_step: int,
+    ) -> tuple[float, dict[str, float]]:
         """Perform one training batch step.
 
-        `batch` is a dictionary with the input and label tensors.
-        `optimizer` is the optimizer for the training step.
-        **kwargs contains the loss functions.
+        Args:
+            batch: Dictionary with the input and label tensors
+            optimizer: Optimizer for the training step
+            logger: ExperimentLogger for metrics logging
+            global_step: Current training step
+
+        Returns:
+            Tuple of (loss value, metrics dictionary)
         """
         # Forward pass
         output = self.forward(**batch).squeeze(-1)
 
         # Compute loss
-        loss = self.compute_loss(output, batch["Survived"], loss_fn=loss_fn)
+        loss = self.compute_loss(output, batch["Survived"])
 
         # Backward pass and optimization
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-        # Compute per-sample losses
-        per_sample_losses = {}
-        if "sample_id" in batch:
-            # Compute individual losses for each sample
-            target = batch["Survived"].squeeze(-1)
-
-            # Clone the loss function with reduction='none' for per-sample losses
-            per_sample_loss_fn = type(loss_fn)(reduction="none")
-            sample_losses = per_sample_loss_fn(output, target)  # Per-sample losses
-
-            # Convert integer sample_ids to strings for dict keys (required by safetensors)
-            for i, sample_id in enumerate(batch["sample_id"]):
-                sample_id_str = f"sample_{sample_id.item()}"
-                per_sample_losses[sample_id_str] = sample_losses[i]
-
+        # Compute metrics
         accuracy = self.compute_accuracy(output, batch["Survived"])
-        return loss, {"accuracy": accuracy, "predictions": output}, per_sample_losses
 
-    def inference(
+        # Log metrics
+        logger.log_scalar("train/loss", loss.item(), global_step)
+        logger.log_scalar("train/accuracy", accuracy.item(), global_step)
+
+        return loss.item(), {"accuracy": accuracy.item()}
+
+    def validate(
         self,
-        batch: dict[str, torch.Tensor],
-        loss_fn: Callable,
-    ) -> tuple[torch.Tensor, dict[str, torch.Tensor]]:
-        """Perform one inference batch step.
+        data_loader: torch.utils.data.DataLoader,
+        logger: Any | None = None,
+        global_step: int | None = None,
+    ) -> dict[str, float]:
+        """Validate the model on a data loader.
 
-        `batch` is a dictionary with the input and label tensors.
-        **kwargs contains the loss functions.
+        Args:
+            data_loader: Validation data loader (batches already on correct device)
+            logger: Optional logger for metrics logging
+            global_step: Optional step for logging
+
+        Returns:
+            Dictionary of validation metrics
         """
-        # Forward pass only
-        output = self.forward(**batch).squeeze(-1)
+        self.eval()
 
-        # Compute loss
-        loss = self.compute_loss(output, batch["Survived"], loss_fn=loss_fn)
+        total_loss = 0.0
+        total_accuracy = 0.0
+        num_batches = 0
 
-        accuracy = self.compute_accuracy(output, batch["Survived"])
-        return loss, {"accuracy": accuracy, "predictions": output}
+        with torch.no_grad():
+            for batch in data_loader:
+                # Batches are already on the correct device via DeviceDataLoader wrapper
+                output = self.forward(**batch).squeeze(-1)
+
+                # Compute loss and metrics
+                loss = self.compute_loss(output, batch["Survived"])
+                accuracy = self.compute_accuracy(output, batch["Survived"])
+
+                total_loss += loss.item()
+                total_accuracy += accuracy.item()
+                num_batches += 1
+
+        # Average metrics
+        avg_loss = total_loss / num_batches if num_batches > 0 else 0.0
+        avg_accuracy = total_accuracy / num_batches if num_batches > 0 else 0.0
+
+        # Log if logger provided
+        if logger and global_step is not None:
+            logger.log_scalar("val/loss", avg_loss, global_step)
+            logger.log_scalar("val/accuracy", avg_accuracy, global_step)
+
+        return {"loss": avg_loss, "accuracy": avg_accuracy}

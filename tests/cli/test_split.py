@@ -8,7 +8,7 @@ import pytest
 from click.testing import CliRunner
 
 from stimulus.cli.main import cli
-from stimulus.cli.split_csv import split_csv
+from stimulus.cli.split import split_csv
 
 
 @pytest.fixture
@@ -35,7 +35,7 @@ def yaml_path() -> str:
     )
 
 
-@pytest.mark.skip(reason="Break github action runners")
+# @pytest.mark.skip(reason="Break github action runners")
 def test_split_csv_main(
     csv_path: str,
     yaml_path: str,
@@ -71,12 +71,12 @@ def test_split_csv_main(
         ), "test split directory not found"
 
 
-@pytest.mark.skip(reason="Break github action runners")
-def test_split_csv_with_force(
+# @pytest.mark.skip(reason="Break github action runners")
+def test_split_csv_error_on_existing_split(
     csv_path_with_split: str,
     yaml_path: str,
 ) -> None:
-    """Test split_csv with force flag on file that already has split column.
+    """Test split_csv raises error on file that already has split column.
 
     Args:
         csv_path_with_split: Path to test CSV data with split column.
@@ -85,16 +85,38 @@ def test_split_csv_with_force(
     with tempfile.TemporaryDirectory() as tmp_dir_name:
         output_path = tmp_dir_name
 
+        # First run to create the split dataset
+        # Actually csv_path_with_split is just a CSV, it doesn't necessarily mean it's a HF dataset with splits.
+        # But the test name implies it has a split column or something.
+        # Wait, if it's a CSV, load_dataset_from_path loads it as a single split (usually 'train').
+        # So split() should work fine unless we are loading a directory that is already split.
+
+        # Let's look at how split_csv works. It loads data.
+        # If data_csv is a directory, it loads from disk.
+        # If it's a csv file, it loads as csv.
+
+        # If we want to test the "already exists" error, we need to pass a dataset that has 'test' split.
+        # So we should first split and save, then try to split again the SAVED output.
+
+        # Let's adjust the test to do exactly that.
+
+        # 1. Split and save to output_path
         split_csv(
-            data_csv=csv_path_with_split,
+            data_csv=csv_path_with_split,  # This is just a CSV, so it works first time
             config_yaml=yaml_path,
             out_path=output_path,
-            force=True,
         )
-        assert os.path.exists(output_path)
+
+        # 2. Try to split again using the output_path as input
+        with pytest.raises(ValueError, match="Test split already exists"):
+            split_csv(
+                data_csv=output_path,  # Now pointing to the directory with splits
+                config_yaml=yaml_path,
+                out_path=output_path,  # Output doesn't matter here, should fail before
+            )
 
 
-@pytest.mark.skip(reason="Break github action runners")
+# @pytest.mark.skip(reason="Break github action runners")
 def test_cli_invocation(
     csv_path: str,
     yaml_path: str,

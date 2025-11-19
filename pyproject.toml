@@ -3,8 +3,8 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [project]
-name = "stimulus-py"
-description = "A package for testing deep learning models"
+name = "stimulus-template"
+description = "Template framework for creating data modality-specific ML implementations"
 authors = [
   { name="Mathys Grapotte", email="mathysgrapotte@gmail.com" },
   { name="Alessio Vignoli"},
@@ -52,19 +52,20 @@ dependencies = [
     "huggingface-hub>=0.32.0",
     "evaluate>=0.4.3",
     "hatchling>=1.27.0",
+    "tensorboard>=2.20.0",
 ]
 
 [project.scripts]
 stimulus = "stimulus.cli.main:cli"
 
 [project.urls]
-Homepage = "https://mathysgrapotte.github.io/stimulus-py"
-Documentation = "https://mathysgrapotte.github.io/stimulus-py"
-Changelog = "https://mathysgrapotte.github.io/stimulus-py/changelog"
-Repository = "https://github.com/mathysgrapotte/stimulus-py"
-Issues = "https://github.com/mathysgrapotte/stimulus-py/issues"
-Discussions = "https://github.com/mathysgrapotte/stimulus-py/discussions"
-Gitter = "https://gitter.im/stimulus-py/community"
+Homepage = "https://mathysgrapotte.github.io/stimulus-template"
+Documentation = "https://mathysgrapotte.github.io/stimulus-template"
+Changelog = "https://mathysgrapotte.github.io/stimulus-template/changelog"
+Repository = "https://github.com/mathysgrapotte/stimulus-template"
+Issues = "https://github.com/mathysgrapotte/stimulus-template/issues"
+Discussions = "https://github.com/mathysgrapotte/stimulus-template/discussions"
+Gitter = "https://gitter.im/stimulus-template/community"
 Funding = "https://github.com/sponsors/mathysgrapotte"
 
 [tool.pdm]

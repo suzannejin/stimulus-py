@@ -109,7 +109,6 @@ def test_tune_loop(test_case: dict) -> None:
             network_params=test_case["model_config"].network_params,
             optimizer_params=test_case["model_config"].optimizer_params,
             data_params=test_case["model_config"].data_params,
-            loss_params=test_case["model_config"].loss_params,
             train_torch_dataset=train_data,
             val_torch_dataset=val_data,
             artifact_store=artifact_store,
@@ -150,3 +149,17 @@ def test_tune_loop(test_case: dict) -> None:
         assert os.path.exists(file_path)
         os.remove(file_path)
         shutil.rmtree(temp_dir)
+
+        # Clean up TensorBoard runs directory with retry logic
+        # TensorBoard's background threads may still be writing
+        import time
+        
+        for attempt in range(3):
+            try:
+                if os.path.exists("runs"):
+                    shutil.rmtree("runs")
+                break
+            except (OSError, PermissionError, FileNotFoundError):
+                if attempt < 2:
+                    time.sleep(1.0)
+                # Ignore errors on last attempt - cleanup is not critical

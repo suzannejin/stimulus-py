@@ -83,5 +83,32 @@ def test_tuning_main(
             logger.info(f"Log: {log}")
 
         finally:
-            # Clean up
+            # Clean up test artifacts
+            import glob
+
+            # Remove all generated artifact files in the current directory
+            for pattern in ["*.safetensors", "*.pt", "*.json"]:
+                for filepath in glob.glob(pattern):
+                    try:
+                        os.remove(filepath)
+                        logger.debug(f"Cleaned up artifact: {filepath}")
+                    except (OSError, FileNotFoundError):
+                        pass
+
+            # Clean up TensorBoard runs directory with retry logic
+            # TensorBoard's background threads may still be writing
+            import time
+            
+            for attempt in range(3):
+                try:
+                    if os.path.exists("runs"):
+                        shutil.rmtree("runs")
+                    break
+                except (OSError, PermissionError, FileNotFoundError):
+                    if attempt < 2:
+                        time.sleep(1.0)
+                    # Ignore errors on last attempt
+
+
+            # Clean up temp directory
             shutil.rmtree(temp_dir, ignore_errors=True)

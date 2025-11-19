@@ -7,10 +7,8 @@ import os
 import uuid
 from typing import Any
 
-import datasets
 import optuna
 import torch
-from safetensors.torch import save_file
 from safetensors.torch import save_model as safe_save_model
 
 from stimulus.learner.interface import model_config_parser, model_schema
@@ -20,7 +18,123 @@ logger = logging.getLogger(__name__)
 
 # Constants for model interface
 STANDARD_MODEL_RETURN_COUNT = 2  # (loss, metrics)
-EXTENDED_MODEL_RETURN_COUNT = 3  # (loss, metrics, per_sample_dict)
+
+
+class _StorageCompatibleTrial:
+    """Wrapper around optuna.Trial that normalizes categorical choices for persistent storage.
+
+    This wrapper intercepts suggest_categorical calls and converts list choices to tuples
+    to avoid warnings when using JournalStorage or other persistent storage backends.
+
+    This is particularly useful for variable-length architectures where layer configurations
+    are represented as lists (e.g., [128, 64] for a 2-layer network).
+    """
+
+    def __init__(self, trial: optuna.Trial):
+        self._trial = trial
+
+    def suggest_categorical(self, name: str, choices):
+        """Wrap suggest_categorical to serialize complex choices for storage compatibility.
+
+        Args:
+            name: Parameter name
+            choices: List of choices (may include complex types like lists)
+
+        Returns:
+            Selected choice (deserialized if it was complex)
+        """
+        # Check if we have complex (non-primitive) choices
+        has_complex = any(isinstance(c, (list, tuple)) for c in choices)
+
+        if has_complex:
+            # Serialize to JSON strings for Optuna storage (hashable and storable)
+            str_choices = tuple(json.dumps(list(c)) if isinstance(c, (list, tuple)) else c for c in choices)
+            result = self._trial.suggest_categorical(name, str_choices)
+            # Deserialize back to list for the model
+            return json.loads(result)
+        return self._trial.suggest_categorical(name, choices)
+
+    def __getattr__(self, name):
+        """Delegate all other methods to the original trial."""
+        return getattr(self._trial, name)
+
+
+def resolve_device(
+    force_device: str | None = None,
+    config_device: str | None = None,
+) -> torch.device:
+    """Resolve device based on priority: force_device > config_device > auto-detection.
+
+    Args:
+        force_device: Device specified via CLI or function parameter (highest priority)
+        config_device: Device specified in model configuration (medium priority)
+
+    Returns:
+        The resolved computation device
+
+    Raises:
+        RuntimeError: If a forced or configured device is invalid or unavailable
+    """
+    if force_device is not None:
+        device = torch.device(force_device)
+        logger.info(f"Using force-specified device: {force_device}")
+        return device
+
+    if config_device is not None:
+        device = torch.device(config_device)
+        logger.info(f"Using config-specified device: {config_device}")
+        return device
+
+    return get_device()
+
+
+def get_device() -> torch.device:
+    """Get the appropriate device (CPU/GPU) for computation.
+
+    Priority order:
+    1. MPS (Apple Silicon) if available
+    2. CUDA (NVIDIA GPU) if available
+    3. CPU as fallback
+
+    Returns:
+        The selected computation device
+    """
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+        # Create a small tensor and move it to MPS as a test
+        test_tensor = torch.ones((1, 1)).to(device)
+        del test_tensor  # Free the memory
+        logger.info("Using MPS (Metal Performance Shaders) device")
+        return device
+
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        gpu_name = torch.cuda.get_device_name(0)
+        memory = torch.cuda.get_device_properties(0).total_memory / (1024**3)
+        logger.info(f"Using GPU: {gpu_name} with {memory:.2f} GB memory")
+        return device
+
+    logger.info("Using CPU (GPU not available)")
+    return torch.device("cpu")
+
+
+def _move_batch_to_device(batch: dict[str, torch.Tensor], device: torch.device) -> dict[str, torch.Tensor]:
+    """Move a batch to the specified device.
+
+    Args:
+        batch: Dictionary of batch data
+        device: Target device
+
+    Returns:
+        Dictionary with all tensors moved to device
+    """
+    device_batch = {}
+    for key, value in batch.items():
+        if isinstance(value, torch.Tensor):
+            device_batch[key] = value.to(device, non_blocking=True)
+        else:
+            device_batch[key] = value
+    return device_batch
 
 
 class Objective:
@@ -32,9 +146,8 @@ class Objective:
         network_params: dict[str, model_schema.TunableParameter | model_schema.VariableList],
         optimizer_params: dict[str, model_schema.TunableParameter],
         data_params: dict[str, model_schema.TunableParameter],
-        loss_params: dict[str, model_schema.TunableParameter],
-        train_torch_dataset: datasets.Dataset,
-        val_torch_dataset: datasets.Dataset,
+        train_torch_dataset: torch.utils.data.Dataset,
+        val_torch_dataset: torch.utils.data.Dataset,
         artifact_store: Any,
         max_samples: int = 1000,
         compute_objective_every_n_samples: int = 50,
@@ -48,7 +161,6 @@ class Objective:
             network_params: The network parameters to be tuned.
             optimizer_params: The optimizer parameters to be tuned.
             data_params: The data parameters to be tuned.
-            loss_params: The loss parameters to be tuned.
             train_torch_dataset: The training dataset.
             val_torch_dataset: The validation dataset.
             artifact_store: The artifact store to save the model and optimizer.
@@ -61,17 +173,10 @@ class Objective:
         self.network_params = network_params
         self.optimizer_params = optimizer_params
         self.data_params = data_params
-        self.loss_params = loss_params
 
-        # Add sample_id column to datasets for per-sample loss tracking (as integers)
-        self.train_torch_dataset = train_torch_dataset.add_column(
-            "sample_id",
-            list(range(len(train_torch_dataset))),
-        )
-        self.val_torch_dataset = val_torch_dataset.add_column(
-            "sample_id",
-            list(range(len(val_torch_dataset))),
-        )
+        # Store datasets directly (no wrapping needed)
+        self.train_torch_dataset = train_torch_dataset
+        self.val_torch_dataset = val_torch_dataset
 
         self.artifact_store = artifact_store
         self.target_metric = target_metric
@@ -89,145 +194,134 @@ class Objective:
         except AttributeError as e:
             raise ValueError(f"Optimizer {optimizer_name} not found in torch.optim") from e
 
+    def _train_single_batch(
+        self,
+        batch: dict,
+        model: StimulusModel,
+        optimizer: torch.optim.Optimizer,
+        logger: Any,
+        step: int,
+    ) -> tuple[float, dict[str, float]]:
+        """Train on a single batch.
+
+        Args:
+            batch: Raw batch from DataLoader
+            model: Model instance
+            optimizer: Optimizer instance
+            logger: ExperimentLogger for metrics
+            step: Current training step
+
+        Returns:
+            Tuple of (loss value, metrics dict)
+        """
+        device_batch = _move_batch_to_device(batch, self.device)
+        return model.train_batch(device_batch, optimizer, logger, step)
+
+    def _periodic_evaluation(
+        self,
+        trial: optuna.Trial,
+        model: StimulusModel,
+        optimizer: torch.optim.Optimizer,
+        train_loader: torch.utils.data.DataLoader,
+        val_loader: torch.utils.data.DataLoader,
+        batch_idx: int,
+        complete_suggestions: dict,
+    ) -> None:
+        """Perform periodic evaluation and handle pruning.
+
+        Args:
+            trial: Optuna trial
+            model: Model instance
+            optimizer: Optimizer instance
+            train_loader: Training data loader
+            val_loader: Validation data loader
+            batch_idx: Current batch index
+            complete_suggestions: Complete hyperparameter suggestions for checkpointing
+
+        Raises:
+            optuna.TrialPruned: If trial should be pruned
+        """
+        metric_dict = self.objective(
+            model_instance=model,
+            train_loader=train_loader,
+            val_loader=val_loader,
+            device=self.device,
+        )
+        logger.info(f"Metrics at batch {batch_idx}: {metric_dict}")
+
+        trial.report(metric_dict[self.target_metric], batch_idx)
+        for metric_name, metric_value in metric_dict.items():
+            trial.set_user_attr(metric_name, metric_value)
+
+        if trial.should_prune():
+            self.save_checkpoint(trial, model, optimizer, complete_suggestions)
+            raise optuna.TrialPruned()
+
     def __call__(self, trial: optuna.Trial):
         """Execute a full training trial and return the objective metric value."""
+        # Wrap trial for storage compatibility
+        trial = _StorageCompatibleTrial(trial)
+
         # Setup phase - capture all parameter suggestions before conversion
         model_instance, model_suggestions = self._setup_model(trial)
 
         # Capture parameter suggestions before they're converted to instances
         optimizer_suggestions = model_config_parser.suggest_parameters(trial, self.optimizer_params)
-        loss_suggestions = model_config_parser.suggest_parameters(trial, self.loss_params)
         data_suggestions = model_config_parser.suggest_parameters(trial, self.data_params)
 
-        # Create complete suggestions dictionary
+        # Combine suggestions for checkpointing
         complete_suggestions = {
             "network_params": model_suggestions,
             "optimizer_params": optimizer_suggestions,
-            "loss_params": loss_suggestions,
             "data_params": data_suggestions,
         }
 
         optimizer = self._setup_optimizer(trial, model_instance)
+        # Setup training components
         train_loader, val_loader, batch_size = self._setup_data_loaders(trial)
-        loss_dict = self._setup_loss_functions(trial)
+
+        # Create per-trial logger
+        from stimulus.learner.logging import ExperimentLogger
+
+        trial_logger = ExperimentLogger(
+            log_dir=f"runs/trial-{trial.number}",
+            backend="tensorboard",
+        )
 
         # Training loop
         batch_idx: int = 0
         metric_dict: dict = {}
 
-        # Per-sample loss tracking
-        completed_sample_trajectories: dict[str, list[torch.Tensor]] = {}
+        # Flatten training loop - use infinite iterator with slice
+        from itertools import cycle, islice
 
-        while batch_idx * batch_size < self.max_samples:
-            nb_computed_samples = 0
-            epoch_sample_lists: dict[str, list[torch.Tensor]] = {}  # Reset each epoch
-            epoch_completed = True
+        max_batches = (self.max_samples + batch_size - 1) // batch_size  # Ceiling division
+        samples_since_eval = 0
 
-            for batch in train_loader:
-                # set model in train mode
-                model_instance.train()
-                try:
-                    # Move all tensors to device (sample_id is now an integer tensor)
-                    device_batch = {}
-                    for key, value in batch.items():
-                        try:
-                            device_batch[key] = value.to(self.device, non_blocking=True)
-                        except AttributeError as e:
-                            raise AttributeError(
-                                f"Error moving '{key}' to device. Expected tensor but got {type(value)}. "
-                                f"This usually happens when dataset columns contain non-tensor data. "
-                                f"Original error: {e}",
-                            ) from e
+        for batch_idx, batch in enumerate(islice(cycle(train_loader), max_batches)):
+            # Train on single batch
+            model_instance.train()
+            _loss, _metrics = self._train_single_batch(
+                batch,
+                model_instance,
+                optimizer,
+                trial_logger,
+                batch_idx,
+            )
 
-                    # Perform a batch update
-                    result = model_instance.train_batch(batch=device_batch, optimizer=optimizer, **loss_dict)
-
-                    # Handle optional per-sample data (3rd return value)
-                    if len(result) == EXTENDED_MODEL_RETURN_COUNT:
-                        _loss, _metrics, per_sample_dict = result
-                        # Collect per-sample data for this epoch
-                        for sample_id, sample_loss in per_sample_dict.items():
-                            if sample_id not in epoch_sample_lists:
-                                epoch_sample_lists[sample_id] = []
-                            epoch_sample_lists[sample_id].append(sample_loss)
-                    else:
-                        _loss, _metrics = result
-
-                except RuntimeError as e:
-                    if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
-                        "MPS backend out of memory" in str(e) and self.device.type == "mps"
-                    ):
-                        logger.warning(f"{self.device.type.upper()} out of memory during training: {e}")
-                        logger.warning("Falling back to CPU for this trial")
-                        temp_device = torch.device("cpu")
-                        model_instance = model_instance.to(temp_device)
-                        # Consider adjusting batch size or other parameters
-                        # Move all tensors to device (sample_id is now an integer tensor)
-                        device_batch = {}
-                        for key, value in batch.items():
-                            try:
-                                device_batch[key] = value.to(temp_device)
-                            except AttributeError as e:
-                                raise AttributeError(
-                                    f"Error moving '{key}' to device during fallback. Expected tensor but got {type(value)}. "
-                                    f"This usually happens when dataset columns contain non-tensor data. "
-                                    f"Original error: {e}",
-                                ) from e
-                        # Retry the batch
-                        result = model_instance.train_batch(
-                            batch=device_batch,
-                            optimizer=optimizer,
-                            **loss_dict,
-                        )
-
-                        # Handle optional per-sample data in error recovery
-                        if len(result) == EXTENDED_MODEL_RETURN_COUNT:
-                            _loss, _metrics, per_sample_dict = result
-                            # Collect per-sample data for this epoch
-                            for sample_id, sample_loss in per_sample_dict.items():
-                                if sample_id not in epoch_sample_lists:
-                                    epoch_sample_lists[sample_id] = []
-                                epoch_sample_lists[sample_id].append(sample_loss)
-                        else:
-                            _loss, _metrics = result
-                    else:
-                        raise
-
-                batch_idx += 1
-                nb_computed_samples += batch_size
-                # Compute objective periodically
-                if nb_computed_samples >= self.compute_objective_every_n_samples:
-                    nb_computed_samples = 0
-                    # Evaluate current model performance
-                    metric_dict = self.objective(
-                        model_instance=model_instance,
-                        train_loader=train_loader,
-                        val_loader=val_loader,
-                        loss_dict=loss_dict,
-                        device=self.device,
-                    )
-                    logger.info(f"Objective: {metric_dict} at batch {batch_idx}")
-
-                    trial.report(metric_dict[self.target_metric], batch_idx)
-                    for metric_name, metric_value in metric_dict.items():
-                        trial.set_user_attr(metric_name, metric_value)
-
-                    # Check if trial should be pruned
-                    if trial.should_prune():
-                        self.save_checkpoint(trial, model_instance, optimizer, complete_suggestions)
-                        raise optuna.TrialPruned()  # noqa: RSE102
-
-                if batch_idx * batch_size >= self.max_samples:
-                    epoch_completed = False  # Mark epoch as incomplete
-                    break
-
-            # After epoch loop - check if epoch completed and save per-sample data
-            if epoch_completed and epoch_sample_lists:
-                # Epoch completed naturally - aggregate per-sample data
-                for sample_id, loss_list in epoch_sample_lists.items():
-                    if sample_id not in completed_sample_trajectories:
-                        completed_sample_trajectories[sample_id] = []
-                    completed_sample_trajectories[sample_id].extend(loss_list)
+            # Track samples and evaluate periodically
+            samples_since_eval += batch_size
+            if samples_since_eval >= self.compute_objective_every_n_samples:
+                samples_since_eval = 0
+                self._periodic_evaluation(
+                    trial,
+                    model_instance,
+                    optimizer,
+                    train_loader,
+                    val_loader,
+                    batch_idx,
+                    complete_suggestions,
+                )
 
         # Ensure we have computed metrics at least once before returning
         if not metric_dict:
@@ -236,40 +330,14 @@ class Objective:
                 model_instance=model_instance,
                 train_loader=train_loader,
                 val_loader=val_loader,
-                loss_dict=loss_dict,
                 device=self.device,
             )
             for metric_name, metric_value in metric_dict.items():
                 trial.set_user_attr(metric_name, metric_value)
-
-        # Save per-sample artifacts if data was collected
-        if completed_sample_trajectories:
-            # Convert lists to tensors
-            sample_trajectories = {
-                sample_id: torch.stack(loss_list) for sample_id, loss_list in completed_sample_trajectories.items()
-            }
-
-            # Save to safetensors
-            unique_id = str(uuid.uuid4())[:8]
-            per_sample_path = f"{trial.number}_{unique_id}_per_sample.safetensors"
-            save_file(sample_trajectories, per_sample_path)
-
-            # Upload to artifact store
-            artifact_id = optuna.artifacts.upload_artifact(
-                artifact_store=self.artifact_store,
-                file_path=per_sample_path,
-                study_or_trial=trial.study,
-            )
-
-            # Clean up local file
-            try:
-                os.remove(per_sample_path)
-            except FileNotFoundError:
-                logger.info(f"File was already deleted: {per_sample_path}")
-
-            # Store artifact reference
-            trial.set_user_attr("per_sample_artifact_id", artifact_id)
-            trial.set_user_attr("per_sample_artifact_path", per_sample_path)
+        
+        # Close logger to prevent file access issues during cleanup
+        trial_logger.flush()  # Ensure all writes complete
+        trial_logger.close()
 
         # Final checkpoint and return objective value
         self.save_checkpoint(trial, model_instance, optimizer, complete_suggestions)
@@ -329,14 +397,6 @@ class Objective:
             shuffle=False,
         )
         return train_loader, val_loader, batch_size
-
-    def _setup_loss_functions(self, trial: optuna.Trial) -> dict[str, torch.nn.Module]:
-        """Setup the loss functions for the trial."""
-        loss_dict = model_config_parser.suggest_parameters(trial, self.loss_params)
-        for key, loss_fn in loss_dict.items():
-            loss_dict[key] = getattr(torch.nn, loss_fn)()
-        logger.info(f"Loss parameters: {loss_dict}")
-        return loss_dict
 
     def save_checkpoint(
         self,
@@ -399,15 +459,14 @@ class Objective:
         model_instance: StimulusModel,
         train_loader: torch.utils.data.DataLoader,
         val_loader: torch.utils.data.DataLoader,
-        loss_dict: dict[str, torch.nn.Module],
         device: torch.device,
     ) -> dict[str, float]:
         """Compute the objective metric(s) for the tuning process.
 
         The objectives are outputed by the model's batch function in the form of loss, metric_dictionary.
         """
-        train_metrics = self.get_metrics(model_instance, train_loader, loss_dict, device)
-        val_metrics = self.get_metrics(model_instance, val_loader, loss_dict, device)
+        train_metrics = self.get_metrics(model_instance, train_loader, device)
+        val_metrics = self.get_metrics(model_instance, val_loader, device)
 
         # add train_ and val_ prefix to related keys.
         return {
@@ -419,83 +478,26 @@ class Objective:
         self,
         model_instance: StimulusModel,
         data_loader: torch.utils.data.DataLoader,
-        loss_dict: dict[str, torch.nn.Module],
         device: torch.device,
     ) -> dict[str, float]:
-        """Compute the objective metric(s) for the tuning process."""
+        """Compute metrics by delegating to the model's validate method.
 
-        def update_metric_dict(
-            metric_dict: dict[str, torch.Tensor],
-            metrics: dict[str, torch.Tensor],
-            loss: torch.Tensor,
-        ) -> dict[str, torch.Tensor]:
-            """Update the metric dictionary with the new metrics and loss."""
-            for key, value in metrics.items():
-                if key not in metric_dict:
-                    if value.ndim == 0:
-                        metric_dict[key] = value.unsqueeze(0)
-                    else:
-                        metric_dict[key] = value
-                elif value.ndim == 0:
-                    metric_dict[key] = torch.cat([metric_dict[key], value.unsqueeze(0)], dim=0)
-                else:
-                    metric_dict[key] = torch.cat([metric_dict[key], value], dim=0)
-            if "loss" not in metric_dict:
-                if loss.ndim == 0:
-                    metric_dict["loss"] = loss.unsqueeze(0)
-                else:
-                    metric_dict["loss"] = loss
-            elif loss.ndim == 0:
-                metric_dict["loss"] = torch.cat([metric_dict["loss"], loss.unsqueeze(0)], dim=0)
-            else:
-                metric_dict["loss"] = torch.cat([metric_dict["loss"], loss], dim=0)
-            return metric_dict
+        The model is responsible for:
+        - Setting itself to eval mode
+        - Iterating through the data loader
+        - Computing and aggregating metrics
+        - Returning a dictionary of metric values
 
-        # set model in eval mode
-        model_instance.eval()
+        The framework handles device placement by moving batches as they're yielded.
+        """
 
-        metric_dict: dict = {}
+        # Create generator that moves batches to device
+        def device_batches():
+            for batch in data_loader:
+                yield _move_batch_to_device(batch, device)
 
-        for batch in data_loader:
-            try:
-                # Move all tensors to device (sample_id is now an integer tensor)
-                device_batch = {}
-                for key, value in batch.items():
-                    try:
-                        device_batch[key] = value.to(device, non_blocking=True)
-                    except AttributeError as e:
-                        raise AttributeError(
-                            f"Error moving '{key}' to device during inference. Expected tensor but got {type(value)}. "
-                            f"This usually happens when dataset columns contain non-tensor data. "
-                            f"Original error: {e}",
-                        ) from e
-
-                # Perform a batch update
-                loss, metrics = model_instance.inference(batch=device_batch, **loss_dict)
-
-            except RuntimeError as e:
-                if ("CUDA out of memory" in str(e) and self.device.type == "cuda") or (
-                    "MPS backend out of memory" in str(e) and self.device.type == "mps"
-                ):
-                    logger.warning(f"{self.device.type.upper()} out of memory during training: {e}")
-                    logger.warning("Falling back to CPU for this trial")
-                    temp_device = torch.device("cpu")
-                    model_instance = model_instance.to(temp_device)
-                    # Consider adjusting batch size or other parameters
-                    device_batch = {key: value.to(temp_device) for key, value in batch.items()}
-                    # Retry the batch
-                    loss, metrics = model_instance.inference(batch=device_batch, **loss_dict)
-                else:
-                    raise
-
-            metric_dict = update_metric_dict(metric_dict, metrics, loss)
-
-        # devide all metrics by number of batches
-        for key in metric_dict:
-            metric_dict[key] = metric_dict[key].mean()
-
-        # Convert tensors to floats before returning
-        return {k: v.item() if isinstance(v, torch.Tensor) else v for k, v in metric_dict.items()}
+        # Delegate validation to model with device-aware batch iterator
+        return model_instance.validate(device_batches())
 
 
 def tune_loop(

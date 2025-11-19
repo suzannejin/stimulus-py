@@ -11,16 +11,16 @@ import click
 
 from stimulus.cli.check_model import check_model as check_model_func
 from stimulus.cli.compare_tensors import compare_tensors_and_save
-from stimulus.cli.encode_csv import main as encode_csv_func
+from stimulus.cli.encode import main as encode_csv_func
 from stimulus.cli.predict import predict as predict_func
-from stimulus.cli.split_csv import split_csv as split_csv_func
+from stimulus.cli.split import split_csv as split_csv_func
 from stimulus.cli.split_yaml import split_yaml as split_yaml_func
-from stimulus.cli.transform_csv import main as transform_csv_func
+from stimulus.cli.transform import main as transform_csv_func
 from stimulus.cli.tuning import tune as tune_func
 
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
-@click.version_option(version("stimulus-py"), "-v", "--version")
+@click.version_option(version("stimulus-template"), "-v", "--version")
 def cli() -> None:
     """Stimulus is an open-science framework for data processing and model training."""
 
@@ -99,26 +99,16 @@ def check_model(
     required=True,
     help="The output file path to write the split csv",
 )
-@click.option(
-    "-f",
-    "--force",
-    is_flag=True,
-    default=False,
-    help="Overwrite the split column if it already exists in the csv",
-)
 def split_csv(
     csv: str,
     yaml: str,
     output: str,
-    *,
-    force: bool,
 ) -> None:
     """Split rows in a CSV data file."""
     split_csv_func(
         data_csv=csv,
         config_yaml=yaml,
         out_path=output,
-        force=force,
     )
 
 
