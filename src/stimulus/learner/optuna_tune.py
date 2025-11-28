@@ -153,6 +153,7 @@ class Objective:
         compute_objective_every_n_samples: int = 50,
         target_metric: str = "val_loss",
         device: torch.device | None = None,
+        log_dir: str = "runs",
     ):
         """Initialize the Objective class.
 
@@ -168,6 +169,7 @@ class Objective:
             compute_objective_every_n_samples: The number of samples to compute the objective.
             target_metric: The target metric to optimize.
             device: The device to run the training on.
+            log_dir: The directory to save logs to.
         """
         self.model_class = model_class
         self.network_params = network_params
@@ -186,6 +188,7 @@ class Objective:
             self.device = torch.device("cpu")
         else:
             self.device = device
+        self.log_dir = log_dir
 
     def _get_optimizer(self, optimizer_name: str) -> type[torch.optim.Optimizer]:
         """Get the optimizer from the name."""
@@ -284,7 +287,7 @@ class Objective:
         from stimulus.learner.logging import ExperimentLogger
 
         trial_logger = ExperimentLogger(
-            log_dir=f"runs/trial-{trial.number}",
+            log_dir=os.path.join(self.log_dir, f"trial-{trial.number}"),
             backend="tensorboard",
         )
 
@@ -298,46 +301,43 @@ class Objective:
         max_batches = (self.max_samples + batch_size - 1) // batch_size  # Ceiling division
         samples_since_eval = 0
 
-        for batch_idx, batch in enumerate(islice(cycle(train_loader), max_batches)):
-            # Train on single batch
-            model_instance.train()
-            _loss, _metrics = self._train_single_batch(
-                batch,
-                model_instance,
-                optimizer,
-                trial_logger,
-                batch_idx,
-            )
-
-            # Track samples and evaluate periodically
-            samples_since_eval += batch_size
-            if samples_since_eval >= self.compute_objective_every_n_samples:
-                samples_since_eval = 0
-                self._periodic_evaluation(
-                    trial,
+        with trial_logger:
+            for batch_idx, batch in enumerate(islice(cycle(train_loader), max_batches)):
+                # Train on single batch
+                model_instance.train()
+                _loss, _metrics = self._train_single_batch(
+                    batch,
                     model_instance,
                     optimizer,
-                    train_loader,
-                    val_loader,
+                    trial_logger,
                     batch_idx,
-                    complete_suggestions,
                 )
 
-        # Ensure we have computed metrics at least once before returning
-        if not metric_dict:
-            logger.info("Computing final objective metrics before returning")
-            metric_dict = self.objective(
-                model_instance=model_instance,
-                train_loader=train_loader,
-                val_loader=val_loader,
-                device=self.device,
-            )
-            for metric_name, metric_value in metric_dict.items():
-                trial.set_user_attr(metric_name, metric_value)
-        
-        # Close logger to prevent file access issues during cleanup
-        trial_logger.flush()  # Ensure all writes complete
-        trial_logger.close()
+                # Track samples and evaluate periodically
+                samples_since_eval += batch_size
+                if samples_since_eval >= self.compute_objective_every_n_samples:
+                    samples_since_eval = 0
+                    self._periodic_evaluation(
+                        trial,
+                        model_instance,
+                        optimizer,
+                        train_loader,
+                        val_loader,
+                        batch_idx,
+                        complete_suggestions,
+                    )
+
+            # Ensure we have computed metrics at least once before returning
+            if not metric_dict:
+                logger.info("Computing final objective metrics before returning")
+                metric_dict = self.objective(
+                    model_instance=model_instance,
+                    train_loader=train_loader,
+                    val_loader=val_loader,
+                    device=self.device,
+                )
+                for metric_name, metric_value in metric_dict.items():
+                    trial.set_user_attr(metric_name, metric_value)
 
         # Final checkpoint and return objective value
         self.save_checkpoint(trial, model_instance, optimizer, complete_suggestions)

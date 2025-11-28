@@ -134,6 +134,14 @@ class ExperimentLogger:
         else:
             self.tb_writer.add_hparams(tb_hparams, metrics)
 
+    def __enter__(self) -> "ExperimentLogger":
+        """Enter the context manager."""
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        """Exit the context manager and close the logger."""
+        self.close()
+
     def close(self) -> None:
         """Close all backends and flush pending writes."""
         if self.backend in ["tensorboard", "both"]:

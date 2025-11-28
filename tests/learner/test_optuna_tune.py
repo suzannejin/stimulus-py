@@ -116,6 +116,7 @@ def test_tune_loop(test_case: dict) -> None:
             compute_objective_every_n_samples=test_case["model_config"].compute_objective_every_n_samples,
             target_metric=test_case["model_config"].objective.metric,
             device=device,
+            log_dir=temp_dir,
         )
 
         logger.info(f"Objective: {objective}")
@@ -149,17 +150,3 @@ def test_tune_loop(test_case: dict) -> None:
         assert os.path.exists(file_path)
         os.remove(file_path)
         shutil.rmtree(temp_dir)
-
-        # Clean up TensorBoard runs directory with retry logic
-        # TensorBoard's background threads may still be writing
-        import time
-        
-        for attempt in range(3):
-            try:
-                if os.path.exists("runs"):
-                    shutil.rmtree("runs")
-                break
-            except (OSError, PermissionError, FileNotFoundError):
-                if attempt < 2:
-                    time.sleep(1.0)
-                # Ignore errors on last attempt - cleanup is not critical
