@@ -150,4 +150,3 @@ def test_tune_loop(test_case: dict) -> None:
         )
         assert os.path.exists(file_path)
         os.remove(file_path)
-        shutil.rmtree(temp_dir)

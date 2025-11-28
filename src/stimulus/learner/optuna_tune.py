@@ -4,6 +4,7 @@ import inspect
 import json
 import logging
 import os
+import tempfile
 import uuid
 from typing import Any
 
@@ -416,13 +417,19 @@ class Objective:
                 if isinstance(v, torch.Tensor):
                     param[k] = v.cpu()
         unique_id = str(uuid.uuid4())[:8]
-        model_path = f"{trial.number}_{unique_id}_model.safetensors"
-        optimizer_path = f"{trial.number}_{unique_id}_optimizer.pt"
-        model_suggestions_path = f"{trial.number}_{unique_id}_model_suggestions.json"
+        # Use log_dir for temporary files to avoid race conditions in parallel execution
+        # If log_dir doesn't exist, use a temporary directory
+        base_dir = self.log_dir if os.path.exists(self.log_dir) else tempfile.gettempdir()
+        
+        model_path = os.path.join(base_dir, f"{trial.number}_{unique_id}_model.safetensors")
+        optimizer_path = os.path.join(base_dir, f"{trial.number}_{unique_id}_optimizer.pt")
+        model_suggestions_path = os.path.join(base_dir, f"{trial.number}_{unique_id}_model_suggestions.json")
+        
         safe_save_model(model_instance, model_path)
         torch.save(optimizer_state, optimizer_path)
         with open(model_suggestions_path, "w") as f:
             json.dump(complete_suggestions, f)
+            
         artifact_id_model = optuna.artifacts.upload_artifact(
             artifact_store=self.artifact_store,
             file_path=model_path,
