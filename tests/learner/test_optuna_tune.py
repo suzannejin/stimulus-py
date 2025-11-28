@@ -18,6 +18,7 @@ from stimulus.learner import optuna_tune
 from stimulus.learner.device_utils import get_device
 from stimulus.learner.interface import model_config_parser, model_schema
 from stimulus.utils import model_file_interface
+from stimulus.data.interface.dataset_interface import HuggingFaceDataset
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +48,9 @@ def test_case(request: Any) -> dict:
     model_config = model_schema.Model(**model_config)
 
     data = datasets.load_from_disk(case["data_path"])
-    data.set_format("torch")
-    train_data = data["train"]
-    val_data = data["test"]
+    stimulus_data = HuggingFaceDataset(data)
+    train_data = stimulus_data.get_torch_dataset("train")
+    val_data = stimulus_data.get_torch_dataset("test")
 
     return {
         "name": case["name"],
