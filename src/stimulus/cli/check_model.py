@@ -75,6 +75,7 @@ def check_model(
         compute_objective_every_n_samples=model_config.compute_objective_every_n_samples,
         target_metric=model_config.objective.metric,
         device=device,
+        log_dir=os.path.join(base_path, "runs"),
     )
 
     logger.info(f"Objective: {objective}")
@@ -100,13 +101,22 @@ def check_model(
     # Download the best model
     trial = study.best_trial
     best_artifact_id = trial.user_attrs["model_id"]
-    file_path = trial.user_attrs["model_path"]
+    
+    # Create a temporary file for the downloaded model
+    # We use the same directory as the artifact store for simplicity, or a new temp file
+    # Since we return the path, we should probably keep it valid.
+    # The original code returned file_path which was likely in a temp dir that might be deleted?
+    # No, original code used user_attrs["model_path"] which was in log_dir or tempdir.
+    
+    # Let's download to a file in the base_path (optuna_results_dirpath)
+    download_path = os.path.join(base_path, "best_model.safetensors")
+    
     optuna.artifacts.download_artifact(
         artifact_store=artifact_store,
-        file_path=file_path,
+        file_path=download_path,
         artifact_id=best_artifact_id,
     )
 
-    logger.info(f"Best model downloaded successfully to {file_path}")
+    logger.info(f"Best model downloaded successfully to {download_path}")
 
-    return base_path, file_path
+    return base_path, download_path

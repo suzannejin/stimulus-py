@@ -419,47 +419,41 @@ class Objective:
         unique_id = str(uuid.uuid4())[:8]
         # Use log_dir for temporary files to avoid race conditions in parallel execution
         # If log_dir doesn't exist, use a temporary directory
-        base_dir = self.log_dir if os.path.exists(self.log_dir) else tempfile.gettempdir()
+        base_dir = self.log_dir if os.path.exists(self.log_dir) else None
         
-        model_path = os.path.join(base_dir, f"{trial.number}_{unique_id}_model.safetensors")
-        optimizer_path = os.path.join(base_dir, f"{trial.number}_{unique_id}_optimizer.pt")
-        model_suggestions_path = os.path.join(base_dir, f"{trial.number}_{unique_id}_model_suggestions.json")
-        
-        safe_save_model(model_instance, model_path)
-        torch.save(optimizer_state, optimizer_path)
-        with open(model_suggestions_path, "w") as f:
-            json.dump(complete_suggestions, f)
+        with tempfile.TemporaryDirectory(dir=base_dir) as temp_dir:
+            model_path = os.path.join(temp_dir, f"{trial.number}_{unique_id}_model.safetensors")
+            optimizer_path = os.path.join(temp_dir, f"{trial.number}_{unique_id}_optimizer.pt")
+            model_suggestions_path = os.path.join(temp_dir, f"{trial.number}_{unique_id}_model_suggestions.json")
             
-        artifact_id_model = optuna.artifacts.upload_artifact(
-            artifact_store=self.artifact_store,
-            file_path=model_path,
-            study_or_trial=trial.study,
-        )
-        artifact_id_optimizer = optuna.artifacts.upload_artifact(
-            artifact_store=self.artifact_store,
-            file_path=optimizer_path,
-            study_or_trial=trial.study,
-        )
-        artifact_id_model_suggestions = optuna.artifacts.upload_artifact(
-            artifact_store=self.artifact_store,
-            file_path=model_suggestions_path,
-            study_or_trial=trial.study,
-        )
-        # delete the files from the local filesystem
-        try:
-            os.remove(model_path)
-            os.remove(optimizer_path)
-            os.remove(model_suggestions_path)
-        except FileNotFoundError:
-            logger.info(
-                f"File was already deleted: {model_path} or {optimizer_path} or {model_suggestions_path}, most likely due to pruning",
+            safe_save_model(model_instance, model_path)
+            torch.save(optimizer_state, optimizer_path)
+            with open(model_suggestions_path, "w") as f:
+                json.dump(complete_suggestions, f)
+                
+            artifact_id_model = optuna.artifacts.upload_artifact(
+                artifact_store=self.artifact_store,
+                file_path=model_path,
+                study_or_trial=trial.study,
             )
-        trial.set_user_attr("model_id", artifact_id_model)
-        trial.set_user_attr("model_path", model_path)
-        trial.set_user_attr("optimizer_id", artifact_id_optimizer)
-        trial.set_user_attr("optimizer_path", optimizer_path)
-        trial.set_user_attr("model_suggestions_id", artifact_id_model_suggestions)
-        trial.set_user_attr("model_suggestions_path", model_suggestions_path)
+            artifact_id_optimizer = optuna.artifacts.upload_artifact(
+                artifact_store=self.artifact_store,
+                file_path=optimizer_path,
+                study_or_trial=trial.study,
+            )
+            artifact_id_model_suggestions = optuna.artifacts.upload_artifact(
+                artifact_store=self.artifact_store,
+                file_path=model_suggestions_path,
+                study_or_trial=trial.study,
+            )
+            
+            # Store the paths in user_attrs for reference, even though they will be deleted
+            trial.set_user_attr("model_id", artifact_id_model)
+            trial.set_user_attr("model_path", model_path)
+            trial.set_user_attr("optimizer_id", artifact_id_optimizer)
+            trial.set_user_attr("optimizer_path", optimizer_path)
+            trial.set_user_attr("model_suggestions_id", artifact_id_model_suggestions)
+            trial.set_user_attr("model_suggestions_path", model_suggestions_path)
 
     def objective(
         self,
