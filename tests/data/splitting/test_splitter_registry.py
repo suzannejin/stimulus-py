@@ -5,8 +5,8 @@ from typing import Any
 import pytest
 
 from src.stimulus.core.registry import AbstractRegistry, BaseRegistry
-from src.stimulus.data.splitters.registry import SplitterRegistry
 from src.stimulus.data.splitting import AbstractSplitter
+from src.stimulus.data.splitting.registry import SplitterRegistry
 from tests.core import mock  # noqa: F401
 
 

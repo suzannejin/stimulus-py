@@ -4,7 +4,7 @@ This module provides Python functions that wrap the CLI functionality,
 allowing users to call Stimulus functions directly from Python scripts
 with in-memory objects.
 
-All functions work with HuggingFace datasets, torch models, and configuration
+All functions work with StimulusDataset wrappers, torch models, and configuration
 dictionaries.
 """
 
@@ -15,19 +15,19 @@ import tempfile
 from collections import defaultdict
 from typing import Any, Optional
 
-import datasets
 import optuna
 import pandas as pd
 import torch
 from safetensors.torch import load_file
 
-from stimulus.cli import encode_csv as encode_csv_cli
-from stimulus.cli.compare_tensors import compare_tensors as compare_tensors_impl
-from stimulus.cli.transform_csv import transform_batch
 from stimulus.data.interface import data_config_parser
+from stimulus.data.interface.dataset_interface import StimulusDataset
+from stimulus.data.pipelines import encode as encode_pipeline
+from stimulus.data.pipelines.transform import transform_batch
 from stimulus.data.splitting import splitters
 from stimulus.data.transforming import transforms
 from stimulus.learner import optuna_tune
+from stimulus.learner.compare import compare_tensors as compare_tensors_impl
 from stimulus.learner.device_utils import resolve_device
 from stimulus.learner.interface import model_config_parser, model_schema
 from stimulus.typing.protocols import StimulusModel
@@ -37,50 +37,51 @@ logger = logging.getLogger(__name__)
 
 
 def encode(
-    dataset: datasets.DatasetDict,
+    dataset: StimulusDataset,
     encoders: dict[str, Any],
     num_proc: Optional[int] = None,
     *,
     remove_unencoded_columns: bool = True,
-) -> datasets.DatasetDict:
+) -> StimulusDataset:
     """Encode a dataset using the provided encoders.
 
     Args:
-        dataset: HuggingFace dataset to encode.
+        dataset: StimulusDataset to encode.
         encoders: Dictionary mapping column names to encoder instances.
         num_proc: Number of processes to use for encoding (default: None for single process).
         remove_unencoded_columns: Whether to remove columns not in encoders config (default: True).
 
     Returns:
-        The encoded HuggingFace dataset.
+        The encoded StimulusDataset.
 
     Example:
         >>> from stimulus.data.encoding.encoders import LabelEncoder
         >>> encoders = {"category": LabelEncoder(dtype="int64")}
         >>> encoded_dataset = encode(dataset, encoders)
     """
-    # Set format to numpy for processing
-    dataset.set_format(type="numpy")
-
     logger.info(f"Loaded encoders for columns: {list(encoders.keys())}")
 
     # Identify columns that aren't in the encoder configuration
     columns_to_remove = set()
     if remove_unencoded_columns:
-        for split_name, split_dataset in dataset.items():
-            dataset_columns = set(split_dataset.column_names)
-            encoder_columns = set(encoders.keys())
-            columns_to_remove.update(dataset_columns - encoder_columns)
+        # We check all splits to find all columns
+        all_columns = set()
+        for split_columns in dataset.column_names.values():
+            all_columns.update(split_columns)
+
+        encoder_columns = set(encoders.keys())
+        columns_to_remove.update(all_columns - encoder_columns)
+        if columns_to_remove:
             logger.info(
-                f"Removing columns not in encoder configuration from {split_name} split: {list(columns_to_remove)}",
+                f"Removing columns not in encoder configuration: {list(columns_to_remove)}",
             )
 
     # Apply the encoders to the data
     dataset = dataset.map(
-        encode_csv_cli.encode_batch,
+        encode_pipeline.encode_batch,
         batched=True,
         fn_kwargs={"encoders_config": encoders},
-        remove_columns=list(columns_to_remove),
+        remove_columns=list(columns_to_remove) if columns_to_remove else None,
         num_proc=num_proc,
     )
 
@@ -89,14 +90,14 @@ def encode(
 
 
 def predict(
-    dataset: datasets.DatasetDict,
+    dataset: StimulusDataset,
     model: StimulusModel,
     batch_size: int = 256,
 ) -> dict[str, torch.Tensor]:
     """Run model prediction on the dataset.
 
     Args:
-        dataset: HuggingFace dataset to predict on.
+        dataset: StimulusDataset to predict on.
         model: PyTorch model instance (already loaded with weights).
         batch_size: Batch size for prediction (default: 256).
 
@@ -107,10 +108,9 @@ def predict(
         >>> predictions = predict(test_dataset, trained_model)
         >>> print(predictions["predictions"])
     """
-    dataset.set_format(type="torch")
-    splits = [dataset[split_name] for split_name in dataset]
-    all_splits = datasets.concatenate_datasets(splits)
-    loader = torch.utils.data.DataLoader(all_splits, batch_size=batch_size, shuffle=False)
+    # Get concatenated torch dataset for all splits
+    all_splits_dataset = dataset.get_torch_dataset(dataset.split_names)
+    loader = torch.utils.data.DataLoader(all_splits_dataset, batch_size=batch_size, shuffle=False)
 
     # create empty tensor for predictions
     is_first_batch = True
@@ -129,85 +129,85 @@ def predict(
 
 
 def split(
-    dataset: datasets.DatasetDict,
+    dataset: StimulusDataset,
     splitter: splitters.AbstractSplitter,
     split_columns: list[str],
-    *,
-    force: bool = False,
-) -> datasets.DatasetDict:
+) -> StimulusDataset:
     """Split a dataset using the provided splitter.
 
     Args:
-        dataset: HuggingFace dataset to split.
+        dataset: StimulusDataset to split.
         splitter: Splitter instance (e.g., RandomSplitter, StratifiedSplitter).
         split_columns: List of column names to use for splitting logic.
-        force: Overwrite existing test split if it exists (default: False).
 
     Returns:
         Dataset with train/test splits.
+
+    Raises:
+        ValueError: If 'test' split already exists.
 
     Example:
         >>> from stimulus.data.splitting.splitters import RandomSplitter
         >>> splitter = RandomSplitter(test_ratio=0.2, random_state=42)
         >>> split_dataset = split(dataset, splitter, ["target_column"])
     """
-    if "test" in dataset and not force:
-        logger.info("Test split already exists and force was set to False. Returning existing split.")
-        return dataset
+    split_names = dataset.split_names
+    if "test" in split_names:
+        raise ValueError("Test split already exists. Cannot split again.")
 
-    if "test" in dataset and force:
-        logger.info(
-            "Test split already exists and force was set to True. Merging current test split into train and recalculating splits.",
-        )
-        dataset["train"] = datasets.concatenate_datasets([dataset["train"], dataset["test"]])
-        del dataset["test"]
+    # We assume we are splitting the 'train' split
+    if "train" not in split_names:
+        # Fallback to the first split if 'train' is not present
+        target_split = split_names[0]
+        logger.warning(f"'train' split not found. Using '{target_split}' for splitting.")
+    else:
+        target_split = "train"
 
-    dataset_with_numpy_format = dataset.with_format("numpy")
     column_data_dict = {}
     for col_name in split_columns:
         try:
-            column_data_dict[col_name] = dataset_with_numpy_format["train"][col_name]
+            # Use get_column to retrieve data for splitting logic
+            column_data_dict[col_name] = dataset.get_column(target_split, col_name)
         except KeyError as err:
             raise ValueError(
-                f"Column '{col_name}' not found in dataset with columns {dataset_with_numpy_format['train'].column_names}",
+                f"Column '{col_name}' not found in dataset split '{target_split}'",
             ) from err
 
     if not column_data_dict:
         raise ValueError(
-            f"No data columns were extracted for splitting. Input specified columns are {split_columns}, "
-            f"dataset has columns {dataset_with_numpy_format['train'].column_names}",
+            f"No data columns were extracted for splitting. Input specified columns are {split_columns}",
         )
 
     train_indices, test_indices = splitter.get_split_indexes(column_data_dict)
 
-    train_dataset = dataset_with_numpy_format["train"].select(train_indices)
-    test_dataset = dataset_with_numpy_format["train"].select(test_indices)
+    train_split_obj = dataset.select_split(target_split, train_indices)
+    test_split_obj = dataset.select_split(target_split, test_indices)
 
-    return datasets.DatasetDict({"train": train_dataset, "test": test_dataset})
+    return dataset.create_from_splits({"train": train_split_obj, "test": test_split_obj})
 
 
 def transform(
-    dataset: datasets.DatasetDict,
+    dataset: StimulusDataset,
     transforms_config: dict[str, list[transforms.AbstractTransform]],
-) -> datasets.DatasetDict:
+) -> StimulusDataset:
     """Transform a dataset using the provided transformations.
 
     Args:
-        dataset: HuggingFace dataset to transform.
+        dataset: StimulusDataset to transform.
         transforms_config: Dictionary mapping column names to lists of transform instances.
 
     Returns:
-        Transformed HuggingFace dataset.
+        Transformed StimulusDataset.
 
     Example:
         >>> from stimulus.data.transforming.transforms import NoiseTransform
         >>> transforms_config = {"feature": [NoiseTransform(noise_level=0.1)]}
         >>> transformed_dataset = transform(dataset, transforms_config)
     """
-    dataset.set_format(type="numpy")
     logger.info("Transforms initialized successfully.")
 
     # Apply the transformations to the data
+    # We use map here as the existing transform_batch is designed for batch processing
     dataset = dataset.map(
         transform_batch,
         batched=True,
@@ -216,14 +216,13 @@ def transform(
 
     # Filter out NaN values
     logger.debug(f"Dataset type: {type(dataset)}")
-    dataset["train"] = dataset["train"].filter(lambda example: not any(pd.isna(value) for value in example.values()))
-    dataset["test"] = dataset["test"].filter(lambda example: not any(pd.isna(value) for value in example.values()))
+    dataset = dataset.filter(lambda example: not any(pd.isna(value) for value in example.values()))
 
     return dataset
 
 
 def tune(
-    dataset: datasets.DatasetDict,
+    dataset: StimulusDataset,
     model_class: type[torch.nn.Module],
     model_config: model_schema.Model,
     n_trials: int = 100,
@@ -237,7 +236,7 @@ def tune(
     """Run hyperparameter tuning using Optuna.
 
     Args:
-        dataset: HuggingFace dataset containing train/test splits.
+        dataset: StimulusDataset containing train/test splits.
         model_class: PyTorch model class to tune.
         model_config: Model configuration with tunable parameters.
         n_trials: Number of trials to run (default: 100).
@@ -261,10 +260,9 @@ def tune(
     """
     device = resolve_device(force_device=force_device, config_device=model_config.device)
 
-    # Convert HuggingFace dataset to torch datasets
-    dataset.set_format(type="torch")
-    train_torch_dataset = dataset["train"]
-    val_torch_dataset = dataset["test"]  # Using test as validation
+    # Convert to torch datasets
+    train_torch_dataset = dataset.get_torch_dataset("train")
+    val_torch_dataset = dataset.get_torch_dataset("test")  # Using test as validation
 
     # Create temporary artifact store
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -276,13 +274,12 @@ def tune(
             network_params=model_config.network_params,
             optimizer_params=model_config.optimizer_params,
             data_params=model_config.data_params,
-            loss_params=model_config.loss_params,
             train_torch_dataset=train_torch_dataset,
             val_torch_dataset=val_torch_dataset,
             artifact_store=artifact_store,
-            max_samples=max_samples,
-            compute_objective_every_n_samples=compute_objective_every_n_samples,
-            target_metric=target_metric,
+            max_samples=model_config.max_samples,
+            compute_objective_every_n_samples=model_config.compute_objective_every_n_samples,
+            target_metric=model_config.objective.metric,
             device=device,
         )
 
@@ -358,7 +355,7 @@ def compare_tensors(
 
 
 def check_model(
-    dataset: datasets.DatasetDict,
+    dataset: StimulusDataset,
     model_class: type[torch.nn.Module],
     model_config: model_schema.Model,
     n_trials: int = 3,
@@ -371,7 +368,7 @@ def check_model(
     Performs a small-scale hyperparameter tuning run to verify everything works.
 
     Args:
-        dataset: HuggingFace dataset containing train/test splits.
+        dataset: StimulusDataset containing train/test splits.
         model_class: PyTorch model class to check.
         model_config: Model configuration with tunable parameters.
         n_trials: Number of trials for validation (default: 3).

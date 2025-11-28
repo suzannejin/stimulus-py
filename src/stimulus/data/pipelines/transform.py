@@ -1,16 +1,12 @@
-#!/usr/bin/env python3
-"""CLI module for transforming CSV data files."""
+"""Pipeline module for transforming data."""
 
 import logging
 from typing import Any
 
-import datasets
 import numpy as np
-import pandas as pd
 import yaml
 
 from stimulus.data.interface import data_config_parser
-from stimulus.data.interface.data_loading import load_dataset_from_path
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +28,7 @@ def load_transforms_from_config(data_config_path: str) -> dict[str, list[Any]]:
 
 
 def transform_batch(
-    batch: datasets.formatting.formatting.LazyBatch,
+    batch: dict[str, list],
     transforms_config: dict[str, list[Any]],
 ) -> dict[str, list]:
     """Transform a batch of data.
@@ -46,7 +42,7 @@ def transform_batch(
     is handled outside this function, based on its output.
 
     Args:
-        batch: The input batch of data (a Hugging Face LazyBatch).
+        batch: The input batch of data.
         transforms_config: A dictionary where keys are column names and values are
                            lists of transform objects to be applied to that column.
 
@@ -83,31 +79,3 @@ def transform_batch(
                 result_dict[column_name] = transform_obj.transform_all(result_dict[column_name])
 
     return result_dict
-
-
-def main(data_csv: str, config_yaml: str, out_path: str) -> None:
-    """Transform the data according to the configuration.
-
-    Args:
-        data_csv: Path to input CSV file.
-        config_yaml: Path to config YAML file.
-        out_path: Path to output transformed CSV.
-    """
-    dataset = load_dataset_from_path(data_csv)
-
-    dataset.set_format(type="numpy")
-    # Create transforms from the config
-    transforms = load_transforms_from_config(config_yaml)
-    logger.info("Transforms initialized successfully.")
-
-    # Apply the transformations to the data
-    dataset = dataset.map(
-        transform_batch,
-        batched=True,
-        fn_kwargs={"transforms_config": transforms},
-    )
-    logger.debug(f"Dataset type: {type(dataset)}")
-    dataset["train"] = dataset["train"].filter(lambda example: not any(pd.isna(value) for value in example.values()))
-    if "test" in dataset:
-        dataset["test"] = dataset["test"].filter(lambda example: not any(pd.isna(value) for value in example.values()))
-    dataset.save_to_disk(out_path)

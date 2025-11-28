@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from safetensors.torch import load_file
 
-from stimulus.cli import compare_tensors
+from stimulus.learner.compare import compare_tensors
 
 if TYPE_CHECKING:
     import torch
@@ -37,7 +37,7 @@ def test_compare_tensors(tensor_paths: list[str]) -> None:
             results["tensor2"].append(str(os.path.basename(tensor_paths[j])))
             tensor1 = tensors[tensor_paths[i]]
             tensor2 = tensors[tensor_paths[j]]
-            tensor_comparison = compare_tensors.compare_tensors(tensor1, tensor2, mode)
+            tensor_comparison = compare_tensors(tensor1, tensor2, mode)
             for key, tensor in tensor_comparison.items():
                 if tensor.ndim == 0:
                     results[key].append(tensor.item())

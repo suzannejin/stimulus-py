@@ -10,9 +10,10 @@ import pytest
 import yaml
 from click.testing import CliRunner
 
-from stimulus.cli.encode_csv import encode_batch, load_encoders_from_config, main
+from stimulus.cli.encode import main
 from stimulus.cli.main import cli
 from stimulus.data.encoding.encoders import NumericEncoder, StrClassificationEncoder
+from stimulus.data.pipelines.encode import encode_batch, load_encoders_from_config
 
 
 # Fixtures
@@ -32,7 +33,7 @@ def yaml_path() -> str:
     )
 
 
-@pytest.mark.skip(reason="Break github action runners")
+# @pytest.mark.skip(reason="Break github action runners")
 def test_encode_csv_main_function(
     csv_path: str,
     yaml_path: str,

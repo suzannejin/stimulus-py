@@ -5,7 +5,7 @@ from typing import Any
 import pytest
 
 from src.stimulus.core.registry import AbstractRegistry, BaseRegistry
-from src.stimulus.data.transform.registry import TransformRegistry
+from src.stimulus.data.transforming.registry import TransformRegistry
 from src.stimulus.data.transforming.transforms import AbstractTransform
 from tests.core import mock  # noqa: F401
 

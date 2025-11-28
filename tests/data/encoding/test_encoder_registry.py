@@ -5,8 +5,8 @@ from typing import Any
 import pytest
 
 from src.stimulus.core.registry import AbstractRegistry, BaseRegistry
-from src.stimulus.data.encoders.registry import EncoderRegistry
 from src.stimulus.data.encoding.encoders import AbstractEncoder
+from src.stimulus.data.encoding.registry import EncoderRegistry
 from tests.core import mock  # noqa: F401
 
 
