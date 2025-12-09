@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 import datasets
 import optuna
+import optuna.storages.journal
 import yaml
 
 from stimulus.learner import optuna_tune

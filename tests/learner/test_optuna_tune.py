@@ -9,6 +9,7 @@ from typing import Any
 
 import datasets
 import optuna
+import optuna.storages.journal
 import pytest
 import torch
 import yaml

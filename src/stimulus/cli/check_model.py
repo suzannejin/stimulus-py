@@ -6,6 +6,7 @@ import os
 from typing import Optional
 
 import optuna
+import optuna.storages.journal
 import yaml
 
 from stimulus.data.interface.dataset_interface import HuggingFaceDataset, StimulusDataset
