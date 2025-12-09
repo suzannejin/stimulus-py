@@ -1,24 +1,22 @@
-"""Tests for the transform_csv CLI command."""
+"""Tests for the transform CLI command."""
 
-import hashlib
 import os
 import pathlib
 import tempfile
-from typing import Any, Callable
 
 import pytest
 from click.testing import CliRunner
 
 from stimulus.cli.main import cli
-from stimulus.cli.transform import main
+from stimulus.cli.transform import transform
 
 
 # Fixtures
 @pytest.fixture
-def csv_path() -> str:
-    """Fixture that returns the path to a CSV file."""
+def parquet_path() -> str:
+    """Fixture that returns the path to a Parquet file."""
     return str(
-        pathlib.Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_stimulus.csv",
+        pathlib.Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_stimulus.parquet",
     )
 
 
@@ -31,55 +29,46 @@ def yaml_path() -> str:
 
 
 @pytest.mark.skip(reason="Non deterministic snapshot based on platform")
-def test_transform_csv(
-    csv_path: str,
+def test_transform(
+    parquet_path: str,
     yaml_path: str,
-    snapshot: Callable[[], Any],
 ) -> None:
-    """Tests the transform_csv function with correct YAML files."""
+    """Tests the transform function with correct YAML files."""
     # Verify required files exist
-    assert os.path.exists(csv_path), f"CSV file not found at {csv_path}"
+    assert os.path.exists(parquet_path), f"Parquet file not found at {parquet_path}"
     assert os.path.exists(yaml_path), f"YAML config not found at {yaml_path}"
 
-    # Create temporary output file
-    with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp_file:
-        output_path = tmp_file.name
+    # Create temporary output directory
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        output_path = os.path.join(tmp_dir, "output_dataset")
 
-    try:
         # Run main function - should complete without errors
-        main(
-            data_csv=csv_path,
+        transform(
+            data_path=parquet_path,
             config_yaml=yaml_path,
             out_path=output_path,
         )
 
-        # Verify output file exists and has content
-        assert os.path.exists(output_path), "Output file was not created"
-        with open(output_path, newline="", encoding="utf-8") as file:
-            hash = hashlib.md5(file.read().encode()).hexdigest()  # noqa: S324
-        assert hash == snapshot
-
-    finally:
-        # Clean up temporary file
-        if os.path.exists(output_path):
-            os.unlink(output_path)
+        # Verify output directory exists and has content
+        assert os.path.exists(output_path), "Output directory was not created"
+        # TODO: Add more robust verification (e.g. load dataset and check content)
 
 
 @pytest.mark.skip(reason="Break github action runners")
 def test_cli_invocation(
-    csv_path: str,
+    parquet_path: str,
     yaml_path: str,
 ) -> None:
-    """Test the CLI invocation of transform-csv command."""
+    """Test the CLI invocation of transform command."""
     runner = CliRunner()
     with runner.isolated_filesystem():
-        output_path = "output.csv"
+        output_path = "output_dataset"
         result = runner.invoke(
             cli,
             [
-                "transform-csv",
-                "-c",
-                csv_path,
+                "transform",
+                "-d",
+                parquet_path,
                 "-y",
                 yaml_path,
                 "-o",
@@ -87,4 +76,4 @@ def test_cli_invocation(
             ],
         )
         assert result.exit_code == 0
-        assert os.path.exists(output_path), "Output file was not created"
+        assert os.path.exists(output_path), "Output directory was not created"

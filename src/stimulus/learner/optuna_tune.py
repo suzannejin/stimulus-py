@@ -4,7 +4,9 @@ import inspect
 import json
 import logging
 import os
+import tempfile
 import uuid
+from collections.abc import Generator
 from typing import Any
 
 import optuna
@@ -33,7 +35,7 @@ class _StorageCompatibleTrial:
     def __init__(self, trial: optuna.Trial):
         self._trial = trial
 
-    def suggest_categorical(self, name: str, choices):
+    def suggest_categorical(self, name: str, choices: Any) -> Any:
         """Wrap suggest_categorical to serialize complex choices for storage compatibility.
 
         Args:
@@ -54,7 +56,7 @@ class _StorageCompatibleTrial:
             return json.loads(result)
         return self._trial.suggest_categorical(name, choices)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str):
         """Delegate all other methods to the original trial."""
         return getattr(self._trial, name)
 
@@ -258,9 +260,9 @@ class Objective:
 
         if trial.should_prune():
             self.save_checkpoint(trial, model, optimizer, complete_suggestions)
-            raise optuna.TrialPruned()
+            raise optuna.TrialPruned
 
-    def __call__(self, trial: optuna.Trial):
+    def __call__(self, trial: Any):
         """Execute a full training trial and return the objective metric value."""
         # Wrap trial for storage compatibility
         trial = _StorageCompatibleTrial(trial)
@@ -416,43 +418,43 @@ class Objective:
                 if isinstance(v, torch.Tensor):
                     param[k] = v.cpu()
         unique_id = str(uuid.uuid4())[:8]
-        model_path = f"{trial.number}_{unique_id}_model.safetensors"
-        optimizer_path = f"{trial.number}_{unique_id}_optimizer.pt"
-        model_suggestions_path = f"{trial.number}_{unique_id}_model_suggestions.json"
-        safe_save_model(model_instance, model_path)
-        torch.save(optimizer_state, optimizer_path)
-        with open(model_suggestions_path, "w") as f:
-            json.dump(complete_suggestions, f)
-        artifact_id_model = optuna.artifacts.upload_artifact(
-            artifact_store=self.artifact_store,
-            file_path=model_path,
-            study_or_trial=trial.study,
-        )
-        artifact_id_optimizer = optuna.artifacts.upload_artifact(
-            artifact_store=self.artifact_store,
-            file_path=optimizer_path,
-            study_or_trial=trial.study,
-        )
-        artifact_id_model_suggestions = optuna.artifacts.upload_artifact(
-            artifact_store=self.artifact_store,
-            file_path=model_suggestions_path,
-            study_or_trial=trial.study,
-        )
-        # delete the files from the local filesystem
-        try:
-            os.remove(model_path)
-            os.remove(optimizer_path)
-            os.remove(model_suggestions_path)
-        except FileNotFoundError:
-            logger.info(
-                f"File was already deleted: {model_path} or {optimizer_path} or {model_suggestions_path}, most likely due to pruning",
+        # Use log_dir for temporary files to avoid race conditions in parallel execution
+        # If log_dir doesn't exist, use a temporary directory
+        base_dir = self.log_dir if os.path.exists(self.log_dir) else None
+
+        with tempfile.TemporaryDirectory(dir=base_dir) as temp_dir:
+            model_path = os.path.join(temp_dir, f"{trial.number}_{unique_id}_model.safetensors")
+            optimizer_path = os.path.join(temp_dir, f"{trial.number}_{unique_id}_optimizer.pt")
+            model_suggestions_path = os.path.join(temp_dir, f"{trial.number}_{unique_id}_model_suggestions.json")
+
+            safe_save_model(model_instance, model_path)
+            torch.save(optimizer_state, optimizer_path)
+            with open(model_suggestions_path, "w") as f:
+                json.dump(complete_suggestions, f)
+
+            artifact_id_model = optuna.artifacts.upload_artifact(
+                artifact_store=self.artifact_store,
+                file_path=model_path,
+                study_or_trial=trial.study,
             )
-        trial.set_user_attr("model_id", artifact_id_model)
-        trial.set_user_attr("model_path", model_path)
-        trial.set_user_attr("optimizer_id", artifact_id_optimizer)
-        trial.set_user_attr("optimizer_path", optimizer_path)
-        trial.set_user_attr("model_suggestions_id", artifact_id_model_suggestions)
-        trial.set_user_attr("model_suggestions_path", model_suggestions_path)
+            artifact_id_optimizer = optuna.artifacts.upload_artifact(
+                artifact_store=self.artifact_store,
+                file_path=optimizer_path,
+                study_or_trial=trial.study,
+            )
+            artifact_id_model_suggestions = optuna.artifacts.upload_artifact(
+                artifact_store=self.artifact_store,
+                file_path=model_suggestions_path,
+                study_or_trial=trial.study,
+            )
+
+            # Store the paths in user_attrs for reference, even though they will be deleted
+            trial.set_user_attr("model_id", artifact_id_model)
+            trial.set_user_attr("model_path", model_path)
+            trial.set_user_attr("optimizer_id", artifact_id_optimizer)
+            trial.set_user_attr("optimizer_path", optimizer_path)
+            trial.set_user_attr("model_suggestions_id", artifact_id_model_suggestions)
+            trial.set_user_attr("model_suggestions_path", model_suggestions_path)
 
     def objective(
         self,
@@ -492,7 +494,7 @@ class Objective:
         """
 
         # Create generator that moves batches to device
-        def device_batches():
+        def device_batches() -> Generator[Any, None, None]:
             for batch in data_loader:
                 yield _move_batch_to_device(batch, device)
 

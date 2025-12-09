@@ -3,11 +3,11 @@
 
 import logging
 import os
-import shutil
 from typing import Any, Optional
 
 import datasets
 import optuna
+import optuna.storages.journal
 import yaml
 
 from stimulus.learner import optuna_tune
@@ -83,6 +83,7 @@ def tune(
         compute_objective_every_n_samples=model_config.compute_objective_every_n_samples,
         target_metric=model_config.objective.metric,
         device=device,
+        log_dir=os.path.join(base_path, "runs"),
     )
 
     study = optuna_tune.tune_loop(
@@ -97,35 +98,25 @@ def tune(
     best_trial = study.best_trial
     best_model_artifact_id = best_trial.user_attrs["model_id"]
     best_optimizer_artifact_id = best_trial.user_attrs["optimizer_id"]
-    best_model_file_path = best_trial.user_attrs["model_path"]
-    best_optimizer_file_path = best_trial.user_attrs["optimizer_path"]
     best_model_suggestions_artifact_id = best_trial.user_attrs["model_suggestions_id"]
-    best_model_suggestions_file_path = best_trial.user_attrs["model_suggestions_path"]
+
+    # Ensure output directories exist
+    os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
+    os.makedirs(os.path.dirname(best_optimizer_path), exist_ok=True)
+    os.makedirs(os.path.dirname(best_config_path), exist_ok=True)
 
     optuna.artifacts.download_artifact(
         artifact_store=artifact_store,
-        file_path=best_model_file_path,
+        file_path=best_model_path,
         artifact_id=best_model_artifact_id,
     )
     optuna.artifacts.download_artifact(
         artifact_store=artifact_store,
-        file_path=best_optimizer_file_path,
+        file_path=best_optimizer_path,
         artifact_id=best_optimizer_artifact_id,
     )
     optuna.artifacts.download_artifact(
         artifact_store=artifact_store,
-        file_path=best_model_suggestions_file_path,
+        file_path=best_config_path,
         artifact_id=best_model_suggestions_artifact_id,
     )
-    try:
-        shutil.move(best_model_file_path, best_model_path)
-        shutil.move(best_optimizer_file_path, best_optimizer_path)
-        shutil.move(best_model_suggestions_file_path, best_config_path)
-    except FileNotFoundError:
-        logger.info("Best model or optimizer file_path not found, creating output directories")
-        os.makedirs(os.path.dirname(best_model_path), exist_ok=True)
-        os.makedirs(os.path.dirname(best_optimizer_path), exist_ok=True)
-        os.makedirs(os.path.dirname(best_config_path), exist_ok=True)
-        shutil.move(best_model_file_path, best_model_path)
-        shutil.move(best_optimizer_file_path, best_optimizer_path)
-        shutil.move(best_model_suggestions_file_path, best_config_path)

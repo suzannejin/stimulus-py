@@ -45,13 +45,13 @@ class TestHuggingFaceDataset:
         col1 = stimulus_dataset.get_column("train", "col1")
         assert len(col1) == 5
         assert col1[0] == 1
-        assert isinstance(col1, list) or isinstance(col1, np.ndarray)
+        assert isinstance(col1, (list, np.ndarray))
 
     def test_get_torch_dataset(self, stimulus_dataset: HuggingFaceDataset) -> None:
         """Test get_torch_dataset method."""
         torch_dataset = stimulus_dataset.get_torch_dataset("train")
         assert isinstance(torch_dataset, torch.utils.data.Dataset)
-        assert len(torch_dataset) == 5
+        assert len(torch_dataset) == 5  # type: ignore[arg-type]
         item = torch_dataset[0]
         assert "col1" in item
         assert "col3" in item
@@ -112,7 +112,7 @@ class TestHuggingFaceDataset:
         class AddOneTransform:
             scope = "element"
 
-            def __call__(self, example):
+            def __call__(self, example: Any):
                 example["col1"] += 1
                 return example
 

@@ -8,7 +8,16 @@ logging implementations.
 from __future__ import annotations
 
 import os
-from typing import Any, Literal, Optional
+from typing import TYPE_CHECKING, Any, Literal
+
+if TYPE_CHECKING:
+    import types
+
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
+
 
 LoggerBackend = Literal["tensorboard", "wandb", "both"]
 
@@ -37,8 +46,8 @@ class ExperimentLogger:
         self,
         log_dir: str,
         backend: LoggerBackend = "tensorboard",
-        wandb_project: Optional[str] = None,
-        wandb_entity: Optional[str] = None,
+        wandb_project: str | None = None,
+        wandb_entity: str | None = None,
         **wandb_kwargs: Any,
     ):
         """Initialize experiment logger.
@@ -112,7 +121,7 @@ class ExperimentLogger:
         self,
         hparams: dict[str, Any],
         metrics: dict[str, float],
-        run_name: Optional[str] = None,
+        run_name: str | None = None,
     ) -> None:
         """Log hyperparameters and final metrics.
 
@@ -134,34 +143,39 @@ class ExperimentLogger:
         else:
             self.tb_writer.add_hparams(tb_hparams, metrics)
 
-    def __enter__(self) -> "ExperimentLogger":
+    def __enter__(self) -> Self:
         """Enter the context manager."""
         return self
 
-    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: types.TracebackType | None,
+    ) -> None:
         """Exit the context manager and close the logger."""
         self.close()
 
     def close(self) -> None:
         """Close all backends and flush pending writes."""
-        if self.backend in ["tensorboard", "both"]:
-            if self.tb_writer:
-                self.tb_writer.flush()
-                self.tb_writer.close()
+        if self.backend in ["tensorboard", "both"] and self.tb_writer:
+            self.tb_writer.flush()
+            self.tb_writer.close()
 
         if self.backend in ["wandb", "both"]:
             import wandb
-            wandb.finish()  # type: ignore[name-defined]
-    
+
+            wandb.finish()
+
     def flush(self) -> None:
         """Flush all pending writes to ensure data is written to disk."""
-        if self.backend in ["tensorboard", "both"]:
-            if self.tb_writer:
-                self.tb_writer.flush()
-        
+        if self.backend in ["tensorboard", "both"] and self.tb_writer:
+            self.tb_writer.flush()
+
         if self.backend in ["wandb", "both"]:
             # WandB handles flushing internally, but we can be explicit
             import wandb
+
             wandb.finish()
 
 

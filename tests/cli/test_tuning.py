@@ -98,7 +98,7 @@ def test_tuning_main(
             # Clean up TensorBoard runs directory with retry logic
             # TensorBoard's background threads may still be writing
             import time
-            
+
             for attempt in range(3):
                 try:
                     if os.path.exists("runs"):
@@ -108,7 +108,6 @@ def test_tuning_main(
                     if attempt < 2:
                         time.sleep(1.0)
                     # Ignore errors on last attempt
-
 
             # Clean up temp directory
             shutil.rmtree(temp_dir, ignore_errors=True)

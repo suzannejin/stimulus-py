@@ -2,12 +2,15 @@
 
 import logging
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
-import polars as pl
-import torch
+import pandas as pd
 from safetensors.torch import load_file
 
 from stimulus.learner.compare import compare_tensors
+
+if TYPE_CHECKING:
+    import torch
 
 logger = logging.getLogger(__name__)
 
@@ -36,4 +39,4 @@ def compare_tensors_and_save(
                     results[key].append(tensor.item())
                 else:
                     results[key].append(tensor.mean().item())
-    pl.DataFrame(results).write_csv(output_logs)
+    pd.DataFrame(results).to_csv(output_logs, index=False)

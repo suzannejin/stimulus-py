@@ -1,4 +1,4 @@
-"""Tests for the encode_csv CLI command."""
+"""Tests for the encode CLI command."""
 
 import os
 import pathlib
@@ -10,7 +10,7 @@ import pytest
 import yaml
 from click.testing import CliRunner
 
-from stimulus.cli.encode import main
+from stimulus.cli.encode import encode
 from stimulus.cli.main import cli
 from stimulus.data.encoding.encoders import NumericEncoder, StrClassificationEncoder
 from stimulus.data.pipelines.encode import encode_batch, load_encoders_from_config
@@ -18,10 +18,10 @@ from stimulus.data.pipelines.encode import encode_batch, load_encoders_from_conf
 
 # Fixtures
 @pytest.fixture
-def csv_path() -> str:
-    """Fixture that returns the path to a CSV file."""
+def parquet_path() -> str:
+    """Fixture that returns the path to a Parquet file."""
     return str(
-        pathlib.Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_stimulus.csv",
+        pathlib.Path(__file__).parent.parent / "test_data" / "titanic" / "titanic_stimulus.parquet",
     )
 
 
@@ -34,13 +34,13 @@ def yaml_path() -> str:
 
 
 # @pytest.mark.skip(reason="Break github action runners")
-def test_encode_csv_main_function(
-    csv_path: str,
+def test_encode_main_function(
+    parquet_path: str,
     yaml_path: str,
 ) -> None:
-    """Tests the encode_csv main function with correct YAML files."""
+    """Tests the encode main function with correct YAML files."""
     # Verify required files exist
-    assert os.path.exists(csv_path), f"CSV file not found at {csv_path}"
+    assert os.path.exists(parquet_path), f"Parquet file not found at {parquet_path}"
     assert os.path.exists(yaml_path), f"YAML config not found at {yaml_path}"
 
     # Create temporary output directory
@@ -48,8 +48,8 @@ def test_encode_csv_main_function(
         output_path = os.path.join(tmp_dir, "encoded_dataset")
 
         # Run main function - should complete without errors
-        main(
-            data_path=csv_path,
+        encode(
+            data_path=parquet_path,
             config_yaml=yaml_path,
             out_path=output_path,
         )
@@ -79,10 +79,10 @@ def test_encode_csv_main_function(
 
 
 @pytest.mark.skip(reason="Break github action runners")
-def test_encode_csv_with_parquet_input(
+def test_encode_with_parquet_input(
     yaml_path: str,
 ) -> None:
-    """Test encode_csv with parquet input file."""
+    """Test encode with parquet input file."""
     # Create a temporary parquet file for testing
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Create a simple dataset and save as parquet
@@ -105,7 +105,7 @@ def test_encode_csv_with_parquet_input(
         output_path = os.path.join(tmp_dir, "encoded_dataset")
 
         # Run main function with parquet input
-        main(
+        encode(
             data_path=parquet_path,
             config_yaml=yaml_path,
             out_path=output_path,
@@ -118,21 +118,21 @@ def test_encode_csv_with_parquet_input(
 
 
 @pytest.mark.skip(reason="Break github action runners")
-def test_encode_csv_with_dataset_directory_input(
-    csv_path: str,
+def test_encode_with_dataset_directory_input(
+    parquet_path: str,
     yaml_path: str,
 ) -> None:
-    """Test encode_csv with HuggingFace dataset directory input."""
+    """Test encode with HuggingFace dataset directory input."""
     with tempfile.TemporaryDirectory() as tmp_dir:
-        # First create a dataset directory from CSV
-        dataset = datasets.load_dataset("csv", data_files=csv_path)
+        # First create a dataset directory from Parquet
+        dataset = datasets.load_dataset("parquet", data_files=parquet_path)
         dataset_dir = os.path.join(tmp_dir, "input_dataset")
         dataset.save_to_disk(dataset_dir)
 
         output_path = os.path.join(tmp_dir, "encoded_dataset")
 
         # Run main function with dataset directory input
-        main(
+        encode(
             data_path=dataset_dir,
             config_yaml=yaml_path,
             out_path=output_path,
@@ -145,11 +145,11 @@ def test_encode_csv_with_dataset_directory_input(
 
 
 @pytest.mark.skip(reason="Break github action runners")
-def test_encode_csv_with_missing_column_graceful_handling(
-    csv_path: str,
+def test_encode_with_missing_column_graceful_handling(
+    parquet_path: str,
     yaml_path: str,
 ) -> None:
-    """Test that encode_csv handles missing columns gracefully without crashing."""
+    """Test that encode handles missing columns gracefully without crashing."""
     with tempfile.TemporaryDirectory() as tmp_dir:
         # Create a modified config with a non-existent column
         with open(yaml_path) as f:
@@ -176,8 +176,8 @@ def test_encode_csv_with_missing_column_graceful_handling(
         output_path = os.path.join(tmp_dir, "encoded_dataset")
 
         # Run main function - should complete without errors even with non-existent column
-        main(
-            data_path=csv_path,
+        encode(
+            data_path=parquet_path,
             config_yaml=modified_yaml_path,
             out_path=output_path,
         )
@@ -205,19 +205,19 @@ def test_encode_csv_with_missing_column_graceful_handling(
 
 @pytest.mark.skip(reason="Break github action runners")
 def test_cli_invocation(
-    csv_path: str,
+    parquet_path: str,
     yaml_path: str,
 ) -> None:
-    """Test the CLI invocation of encode-csv command."""
+    """Test the CLI invocation of encode command."""
     runner = CliRunner()
     with runner.isolated_filesystem():
         output_path = "encoded_dataset"
         result = runner.invoke(
             cli,
             [
-                "encode-csv",
+                "encode",
                 "-d",
-                csv_path,
+                parquet_path,
                 "-y",
                 yaml_path,
                 "-o",

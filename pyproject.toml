@@ -35,7 +35,7 @@ dependencies = [
     "multiprocess==0.70.16",
     "numpy>=2.0.0",
     "pandas>=2.2.0",
-    "polars>=1.26.0",
+
     "pydantic>=2.7.0",
     "safetensors>=0.4.5",
     "scikit-learn>=1.5.0",
@@ -53,6 +53,7 @@ dependencies = [
     "evaluate>=0.4.3",
     "hatchling>=1.27.0",
     "tensorboard>=2.20.0",
+    "typing-extensions>=4.0.0",
 ]
 
 [project.scripts]
@@ -92,8 +93,8 @@ data = [
     {path = "share/**/*", relative-to = "."},
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     # dev
     "editables>=0.5",
 

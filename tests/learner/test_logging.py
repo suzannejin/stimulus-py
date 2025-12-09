@@ -2,25 +2,26 @@
 
 import os
 import tempfile
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
 
-from stimulus.learner.logging import ExperimentLogger, LoggerBackend, create_trial_logger
+from stimulus.learner.logging import ExperimentLogger, create_trial_logger
 
 
 def _is_wandb_available() -> bool:
     """Check if wandb is installed."""
     try:
         import wandb  # noqa: F401
-
-        return True
     except ImportError:
         return False
+    else:
+        return True
 
 
 @pytest.fixture
-def temp_log_dir():
+def temp_log_dir() -> Generator[str, None, None]:
     """Create a temporary directory for logs."""
     with tempfile.TemporaryDirectory() as tmpdir:
         yield tmpdir
@@ -29,7 +30,7 @@ def temp_log_dir():
 class TestExperimentLogger:
     """Tests for ExperimentLogger class."""
 
-    def test_tensorboard_backend(self, temp_log_dir):
+    def test_tensorboard_backend(self, temp_log_dir: str) -> None:
         """Test TensorBoard backend initialization and basic logging."""
         logger = ExperimentLogger(log_dir=temp_log_dir, backend="tensorboard")
 
@@ -47,7 +48,7 @@ class TestExperimentLogger:
         event_files = list(Path(temp_log_dir).glob("events.out.tfevents.*"))
         assert len(event_files) > 0, "TensorBoard event files should be created"
 
-    def test_log_hparams(self, temp_log_dir):
+    def test_log_hparams(self, temp_log_dir: str) -> None:
         """Test hyperparameter logging."""
         logger = ExperimentLogger(log_dir=temp_log_dir, backend="tensorboard")
 
@@ -66,7 +67,7 @@ class TestExperimentLogger:
         event_files = list(Path(temp_log_dir).glob("**/events.out.tfevents.*"))
         assert len(event_files) > 0
 
-    def test_wandb_backend_missing_project(self, temp_log_dir):
+    def test_wandb_backend_missing_project(self, temp_log_dir: str) -> None:
         """Test that WandB backend requires project name."""
         with pytest.raises(ValueError, match="wandb_project is required"):
             ExperimentLogger(log_dir=temp_log_dir, backend="wandb")
@@ -75,7 +76,7 @@ class TestExperimentLogger:
         not _is_wandb_available(),
         reason="WandB not installed",
     )
-    def test_wandb_backend_with_project(self, temp_log_dir):
+    def test_wandb_backend_with_project(self, temp_log_dir: str) -> None:
         """Test WandB backend with project name."""
         # This test requires wandb to be installed
         # It will create a wandb run but in offline mode
@@ -93,12 +94,12 @@ class TestExperimentLogger:
         event_files = list(Path(temp_log_dir).glob("events.out.tfevents.*"))
         assert len(event_files) > 0
 
-    def test_both_backends_missing_project(self, temp_log_dir):
+    def test_both_backends_missing_project(self, temp_log_dir: str) -> None:
         """Test that 'both' backend requires project name."""
         with pytest.raises(ValueError, match="wandb_project is required"):
             ExperimentLogger(log_dir=temp_log_dir, backend="both")
 
-    def test_log_dir_creation(self):
+    def test_log_dir_creation(self) -> None:
         """Test that log directory is created if it doesn't exist."""
         with tempfile.TemporaryDirectory() as tmpdir:
             log_dir = os.path.join(tmpdir, "new_logs", "experiment_1")
@@ -112,7 +113,7 @@ class TestExperimentLogger:
 class TestCreateTrialLogger:
     """Tests for create_trial_logger helper function."""
 
-    def test_create_trial_logger(self, temp_log_dir):
+    def test_create_trial_logger(self, temp_log_dir: str) -> None:
         """Test trial logger creation."""
         trial_logger = create_trial_logger(
             root_log_dir=temp_log_dir,
@@ -128,7 +129,7 @@ class TestCreateTrialLogger:
         trial_logger.log_scalar("train/loss", 0.3, step=0)
         trial_logger.close()
 
-    def test_multiple_trial_loggers(self, temp_log_dir):
+    def test_multiple_trial_loggers(self, temp_log_dir: str) -> None:
         """Test creating multiple trial loggers."""
         loggers = []
         for i in range(3):
@@ -151,10 +152,8 @@ class TestCreateTrialLogger:
 class TestLoggerBackendType:
     """Tests for LoggerBackend type."""
 
-    def test_valid_backends(self, temp_log_dir):
+    def test_valid_backends(self, temp_log_dir: str) -> None:
         """Test all valid backend values."""
-        valid_backends: list[LoggerBackend] = ["tensorboard", "wandb", "both"]
-
         # Only test tensorboard (others require wandb)
         logger = ExperimentLogger(log_dir=temp_log_dir, backend="tensorboard")
         assert logger.backend == "tensorboard"
