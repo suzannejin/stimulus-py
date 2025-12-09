@@ -8,7 +8,7 @@ import datasets
 import safetensors.torch as safetensors
 import torch
 
-from stimulus.data.interface.data_loading import load_dataset_from_path
+from stimulus.data.interface.dataset_interface import HuggingFaceDataset, StimulusDataset
 from stimulus.typing.protocols import StimulusModel
 from stimulus.utils.model_file_interface import import_class_from_file
 
@@ -88,6 +88,7 @@ def predict(
     weight_path: str,
     output: str,
     batch_size: int = 256,
+    dataset_cls: type[StimulusDataset] = HuggingFaceDataset,
 ) -> None:
     """Run model prediction pipeline.
 
@@ -98,6 +99,7 @@ def predict(
         weight_path: Path to the model weights file.
         output: Path to save the prediction results.
         batch_size: Batch size for prediction.
+        dataset_cls: The dataset class to use for loading.
     """
     # Load model configuration to get loss function
     with open(model_config_path) as file:
@@ -129,7 +131,7 @@ def predict(
 
     # Get the best model with best architecture and weights
     model = load_model(model_path, model_config_path, weight_path)
-    dataset = load_dataset_from_path(data_path)
+    dataset = dataset_cls.load_from_disk(data_path)
     dataset.set_format(type="torch")
     splits = [dataset[split_name] for split_name in dataset]
     all_splits = datasets.concatenate_datasets(splits)

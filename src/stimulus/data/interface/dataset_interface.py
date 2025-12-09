@@ -131,6 +131,18 @@ class StimulusDataset(ABC):
             path (str): The directory path where the dataset should be saved.
         """
 
+    @classmethod
+    @abstractmethod
+    def load_from_disk(cls, path: str) -> "StimulusDataset":
+        """Load a dataset from disk.
+
+        Args:
+            path (str): The path to the dataset.
+
+        Returns:
+            StimulusDataset: The loaded dataset.
+        """
+
     # Methods for splitting and reconstruction
 
     @abstractmethod
@@ -253,3 +265,39 @@ class HuggingFaceDataset(StimulusDataset):
     def unwrap(self) -> datasets.DatasetDict:
         """Access the underlying HuggingFace dataset."""
         return self._dataset
+
+    @classmethod
+    def load_from_disk(cls, path: str) -> "HuggingFaceDataset":
+        """Load a dataset from disk with strict format checking.
+
+        Args:
+            path: Path to the dataset file (CSV/Parquet) or directory.
+
+        Returns:
+            HuggingFaceDataset: The loaded dataset.
+
+        Raises:
+            ValueError: If the file extension is not supported or format mismatch occurs.
+        """
+        import os
+        import datasets
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        if os.path.isdir(path):
+            logger.info(f"Loading dataset from directory: {path}")
+            dataset = datasets.load_from_disk(path)
+        elif path.endswith(".csv"):
+            logger.info(f"Loading as CSV: {path}")
+            dataset = datasets.load_dataset("csv", data_files=path)
+        elif path.endswith(".parquet"):
+            logger.info(f"Loading as parquet: {path}")
+            dataset = datasets.load_dataset("parquet", data_files=path)
+        else:
+            raise ValueError(
+                f"Unsupported file format or missing extension for path: {path}. "
+                "Expected .csv, .parquet, or a directory."
+            )
+
+        return cls(dataset)

@@ -19,6 +19,8 @@ from stimulus.cli.transform import main as transform_csv_func
 from stimulus.cli.tuning import tune as tune_func
 
 
+from stimulus.data.interface.dataset_interface import HuggingFaceDataset
+
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(version("stimulus-template"), "-v", "--version")
 def cli() -> None:
@@ -74,6 +76,7 @@ def check_model(
         model_config_path=model_config,
         optuna_results_dirpath=optuna_results_dirpath,
         force_device=force_device,
+        dataset_cls=HuggingFaceDataset,
     )
 
 
@@ -109,6 +112,7 @@ def split_csv(
         data_csv=csv,
         config_yaml=yaml,
         out_path=output,
+        dataset_cls=HuggingFaceDataset,
     )
 
 
@@ -174,6 +178,7 @@ def transform_csv(
         data_csv=csv,
         config_yaml=yaml,
         out_path=output,
+        dataset_cls=HuggingFaceDataset,
     )
 
 
@@ -218,6 +223,7 @@ def encode_csv(
         config_yaml=yaml,
         out_path=output,
         num_proc=num_proc,
+        dataset_cls=HuggingFaceDataset,
     )
 
 
@@ -350,6 +356,7 @@ def predict(
         weight_path=model_weight,
         output=output,
         batch_size=batch_size,
+        dataset_cls=HuggingFaceDataset,
     )
 
 

@@ -5,21 +5,27 @@ import logging
 
 import pandas as pd
 
-from stimulus.data.interface.data_loading import load_dataset_from_path
+from stimulus.data.interface.dataset_interface import HuggingFaceDataset, StimulusDataset
 from stimulus.data.pipelines import transform as transform_pipeline
 
 logger = logging.getLogger(__name__)
 
 
-def main(data_csv: str, config_yaml: str, out_path: str) -> None:
+def main(
+    data_csv: str,
+    config_yaml: str,
+    out_path: str,
+    dataset_cls: type[StimulusDataset] = HuggingFaceDataset,
+) -> None:
     """Transform the data according to the configuration.
 
     Args:
         data_csv: Path to input CSV file.
         config_yaml: Path to config YAML file.
         out_path: Path to output transformed CSV.
+        dataset_cls: The dataset class to use for loading.
     """
-    dataset = load_dataset_from_path(data_csv)
+    dataset = dataset_cls.load_from_disk(data_csv)
 
     # Create transforms from the config
     transforms = transform_pipeline.load_transforms_from_config(config_yaml)
