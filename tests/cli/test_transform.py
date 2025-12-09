@@ -3,7 +3,6 @@
 import os
 import pathlib
 import tempfile
-from typing import Any, Callable
 
 import pytest
 from click.testing import CliRunner
@@ -33,7 +32,6 @@ def yaml_path() -> str:
 def test_transform(
     parquet_path: str,
     yaml_path: str,
-    snapshot: Callable[[], Any],
 ) -> None:
     """Tests the transform function with correct YAML files."""
     # Verify required files exist

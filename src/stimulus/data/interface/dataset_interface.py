@@ -74,6 +74,7 @@ class StimulusDataset(ABC):
     def map(
         self,
         function: Callable,
+        *,
         batched: bool = False,
         fn_kwargs: Optional[dict] = None,
         num_proc: Optional[int] = None,
@@ -111,7 +112,7 @@ class StimulusDataset(ABC):
         """
 
     @abstractmethod
-    def filter(self, function: Callable, batched: bool = False, **kwargs) -> "StimulusDataset":
+    def filter(self, function: Callable, *, batched: bool = False, **kwargs: Any) -> "StimulusDataset":
         """Filter all splits in the dataset.
 
         Args:
@@ -180,6 +181,7 @@ class TorchDatasetWrapper(torch.utils.data.Dataset):
     """Wrapper to make HuggingFace dataset compatible with torch.utils.data.Dataset."""
 
     def __init__(self, dataset: Any):
+        """Initialize the TorchDatasetWrapper."""
         self.dataset = dataset
 
     def __len__(self) -> int:
@@ -193,20 +195,25 @@ class HuggingFaceDataset(StimulusDataset):
     """Wrapper for HuggingFace DatasetDict."""
 
     def __init__(self, dataset: datasets.DatasetDict):
+        """Initialize the HuggingFaceDataset."""
         self._dataset = dataset
 
     @property
     def split_names(self) -> list[str]:
+        """Return the list of split names."""
         return list(self._dataset.keys())
 
     @property
     def column_names(self) -> dict[str, list[str]]:
+        """Return the column names for each split."""
         return {k: v.column_names for k, v in self._dataset.items()}
 
     def get_column(self, split: str, column_name: str) -> list[Any] | np.ndarray:
+        """Get a column from a specific split."""
         return list(self._dataset[split][column_name])
 
     def get_torch_dataset(self, split: Union[str, list[str]]) -> torch.utils.data.Dataset:
+        """Get a PyTorch dataset for the specified split(s)."""
         if isinstance(split, list):
             splits = [self._dataset[s] for s in split]
             ds = datasets.concatenate_datasets(splits)
@@ -219,11 +226,13 @@ class HuggingFaceDataset(StimulusDataset):
     def map(
         self,
         function: Callable,
+        *,
         batched: bool = False,
         fn_kwargs: Optional[dict] = None,
         num_proc: Optional[int] = None,
         remove_columns: Optional[list[str]] = None,
     ) -> "HuggingFaceDataset":
+        """Apply a function to each example in the dataset."""
         new_dataset = self._dataset.map(
             function,
             batched=batched,
@@ -234,6 +243,7 @@ class HuggingFaceDataset(StimulusDataset):
         return HuggingFaceDataset(new_dataset)
 
     def apply(self, transformation: Callable) -> "HuggingFaceDataset":
+        """Apply a transformation to the dataset."""
         scope = getattr(transformation, "scope", "element")
         if scope == "dataset":
             # For dataset-level transforms, we assume the transform takes the dataset
@@ -248,17 +258,21 @@ class HuggingFaceDataset(StimulusDataset):
         # Element-level transform
         return self.map(transformation)
 
-    def filter(self, function: Callable, batched: bool = False, **kwargs) -> "HuggingFaceDataset":
+    def filter(self, function: Callable, *, batched: bool = False, **kwargs: Any) -> "HuggingFaceDataset":
+        """Filter the dataset using a function."""
         new_dataset = self._dataset.filter(function, batched=batched, **kwargs)
         return HuggingFaceDataset(new_dataset)
 
     def save(self, path: str) -> None:
+        """Save the dataset to disk."""
         self._dataset.save_to_disk(path)
 
     def select_split(self, split: str, indices: Any) -> Any:
+        """Select a subset of examples from a split."""
         return self._dataset[split].select(indices)
 
     def create_from_splits(self, splits: dict[str, Any]) -> "HuggingFaceDataset":
+        """Create a new dataset from a dictionary of splits."""
         return HuggingFaceDataset(datasets.DatasetDict(splits))
 
     @property
@@ -279,9 +293,10 @@ class HuggingFaceDataset(StimulusDataset):
         Raises:
             ValueError: If the file extension is not supported or format mismatch occurs.
         """
-        import os
-        import datasets
         import logging
+        import os
+
+        import datasets
 
         logger = logging.getLogger(__name__)
 
@@ -293,8 +308,7 @@ class HuggingFaceDataset(StimulusDataset):
             dataset = datasets.load_dataset("parquet", data_files=path)
         else:
             raise ValueError(
-                f"Unsupported file format or missing extension for path: {path}. "
-                "Expected .parquet or a directory."
+                f"Unsupported file format or missing extension for path: {path}. Expected .parquet or a directory.",
             )
 
         return cls(dataset)

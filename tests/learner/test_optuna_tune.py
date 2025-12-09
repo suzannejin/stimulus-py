@@ -3,7 +3,6 @@
 import inspect
 import logging
 import os
-import shutil
 import tempfile
 import warnings
 from typing import Any
@@ -14,11 +13,11 @@ import pytest
 import torch
 import yaml
 
+from stimulus.data.interface.dataset_interface import HuggingFaceDataset
 from stimulus.learner import optuna_tune
 from stimulus.learner.device_utils import get_device
 from stimulus.learner.interface import model_config_parser, model_schema
 from stimulus.utils import model_file_interface
-from stimulus.data.interface.dataset_interface import HuggingFaceDataset
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +140,7 @@ def test_tune_loop(test_case: dict) -> None:
         # Download the best model
         trial = study.best_trial
         best_artifact_id = trial.user_attrs["model_id"]
-        
+
         # Create a fresh temp dir for download verification
         with tempfile.TemporaryDirectory() as download_dir:
             download_path = os.path.join(download_dir, "downloaded_model.safetensors")
@@ -151,4 +150,3 @@ def test_tune_loop(test_case: dict) -> None:
                 artifact_id=best_artifact_id,
             )
             assert os.path.exists(download_path)
-

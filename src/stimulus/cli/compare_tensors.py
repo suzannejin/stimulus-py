@@ -2,12 +2,15 @@
 
 import logging
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 import pandas as pd
-import torch
 from safetensors.torch import load_file
 
 from stimulus.learner.compare import compare_tensors
+
+if TYPE_CHECKING:
+    import torch
 
 logger = logging.getLogger(__name__)
 

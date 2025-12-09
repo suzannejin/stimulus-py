@@ -216,9 +216,7 @@ def transform(
 
     # Filter out NaN values
     logger.debug(f"Dataset type: {type(dataset)}")
-    dataset = dataset.filter(lambda example: not any(pd.isna(value) for value in example.values()))
-
-    return dataset
+    return dataset.filter(lambda example: not any(pd.isna(value) for value in example.values()))
 
 
 def tune(
@@ -226,9 +224,9 @@ def tune(
     model_class: type[torch.nn.Module],
     model_config: model_schema.Model,
     n_trials: int = 100,
-    max_samples: int = 1000,
-    compute_objective_every_n_samples: int = 50,
-    target_metric: str = "val_loss",
+    _max_samples: int = 1000,
+    _compute_objective_every_n_samples: int = 50,
+    _target_metric: str = "val_loss",
     direction: str = "minimize",
     storage: Optional[optuna.storages.BaseStorage] = None,
     force_device: Optional[str] = None,
@@ -240,9 +238,9 @@ def tune(
         model_class: PyTorch model class to tune.
         model_config: Model configuration with tunable parameters.
         n_trials: Number of trials to run (default: 100).
-        max_samples: Maximum samples per trial (default: 1000).
-        compute_objective_every_n_samples: Frequency to compute objective (default: 50).
-        target_metric: Metric to optimize (default: "val_loss").
+        _max_samples: Maximum samples per trial (default: 1000).
+        _compute_objective_every_n_samples: Frequency to compute objective (default: 50).
+        _target_metric: Metric to optimize (default: "val_loss").
         direction: Optimization direction ("minimize" or "maximize", default: "minimize").
         storage: Optuna storage backend (default: None for in-memory).
         force_device: Force specific device ("cpu", "cuda", "mps") (default: None for auto).
@@ -359,7 +357,7 @@ def check_model(
     model_class: type[torch.nn.Module],
     model_config: model_schema.Model,
     n_trials: int = 3,
-    max_samples: int = 100,
+    _max_samples: int = 100,
     force_device: Optional[str] = None,
 ) -> tuple[dict[str, Any], torch.nn.Module]:
     """Check model configuration and run initial tests.
@@ -372,7 +370,7 @@ def check_model(
         model_class: PyTorch model class to check.
         model_config: Model configuration with tunable parameters.
         n_trials: Number of trials for validation (default: 3).
-        max_samples: Maximum samples per trial (default: 100).
+        _max_samples: Maximum samples per trial (default: 100).
         force_device: Force specific device ("cpu", "cuda", "mps") (default: None for auto).
 
     Returns:
@@ -387,8 +385,6 @@ def check_model(
         model_class=model_class,
         model_config=model_config,
         n_trials=n_trials,
-        max_samples=max_samples,
-        target_metric="val_loss",
         direction="minimize",
         force_device=force_device,
     )

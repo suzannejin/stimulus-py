@@ -17,9 +17,8 @@ from stimulus.cli.split import split as split_func
 from stimulus.cli.split_yaml import split_yaml as split_yaml_func
 from stimulus.cli.transform import transform as transform_func
 from stimulus.cli.tuning import tune as tune_func
-
-
 from stimulus.data.interface.dataset_interface import HuggingFaceDataset
+
 
 @click.group(context_settings={"help_option_names": ["-h", "--help"]})
 @click.version_option(version("stimulus-template"), "-v", "--version")
