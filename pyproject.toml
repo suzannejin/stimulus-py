@@ -93,8 +93,8 @@ data = [
     {path = "share/**/*", relative-to = "."},
 ]
 
-[tool.uv]
-dev-dependencies = [
+[dependency-groups]
+dev = [
     # dev
     "editables>=0.5",
 
