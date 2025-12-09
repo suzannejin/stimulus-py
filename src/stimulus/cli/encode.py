@@ -9,7 +9,7 @@ from stimulus.data.pipelines import encode as encode_pipeline
 logger = logging.getLogger(__name__)
 
 
-def main(
+def encode(
     data_path: str,
     config_yaml: str,
     out_path: str,
@@ -19,7 +19,7 @@ def main(
     """Encode the data according to the configuration.
 
     Args:
-        data_path: Path to input data (CSV, parquet, or HuggingFace dataset directory).
+        data_path: Path to input data (Parquet or HuggingFace dataset directory).
         config_yaml: Path to config YAML file.
         out_path: Path to output encoded dataset directory.
         num_proc: Number of processes to use for encoding.

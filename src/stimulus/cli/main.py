@@ -11,11 +11,11 @@ import click
 
 from stimulus.cli.check_model import check_model as check_model_func
 from stimulus.cli.compare_tensors import compare_tensors_and_save
-from stimulus.cli.encode import main as encode_csv_func
+from stimulus.cli.encode import encode as encode_func
 from stimulus.cli.predict import predict as predict_func
-from stimulus.cli.split import split_csv as split_csv_func
+from stimulus.cli.split import split as split_func
 from stimulus.cli.split_yaml import split_yaml as split_yaml_func
-from stimulus.cli.transform import main as transform_csv_func
+from stimulus.cli.transform import transform as transform_func
 from stimulus.cli.tuning import tune as tune_func
 
 
@@ -33,7 +33,7 @@ def cli() -> None:
     "--data",
     type=click.Path(exists=True),
     required=True,
-    help="Path to input csv file",
+    help="Path to input data file",
 )
 @click.option(
     "-m",
@@ -82,11 +82,11 @@ def check_model(
 
 @cli.command()
 @click.option(
-    "-c",
-    "--csv",
+    "-d",
+    "--data",
     type=click.Path(exists=True),
     required=True,
-    help="The file path for the csv containing all data",
+    help="The file path for the data containing all data",
 )
 @click.option(
     "-y",
@@ -100,16 +100,16 @@ def check_model(
     "--output",
     type=click.Path(),
     required=True,
-    help="The output file path to write the split csv",
+    help="The output file path to write the split dataset",
 )
-def split_csv(
-    csv: str,
+def split(
+    data: str,
     yaml: str,
     output: str,
 ) -> None:
-    """Split rows in a CSV data file."""
-    split_csv_func(
-        data_csv=csv,
+    """Split rows in a data file."""
+    split_func(
+        data_path=data,
         config_yaml=yaml,
         out_path=output,
         dataset_cls=HuggingFaceDataset,
@@ -148,11 +148,11 @@ def split_yaml(
 
 @cli.command()
 @click.option(
-    "-c",
-    "--csv",
+    "-d",
+    "--data",
     type=click.Path(exists=True),
     required=True,
-    help="The file path for the csv containing the data to transform",
+    help="The file path for the data to transform",
 )
 @click.option(
     "-y",
@@ -166,16 +166,16 @@ def split_yaml(
     "--output",
     type=click.Path(),
     required=True,
-    help="The output file path to write the transformed csv",
+    help="The output file path to write the transformed dataset",
 )
-def transform_csv(
-    csv: str,
+def transform(
+    data: str,
     yaml: str,
     output: str,
 ) -> None:
-    """Transform data in a CSV file according to configuration."""
-    transform_csv_func(
-        data_csv=csv,
+    """Transform data in a file according to configuration."""
+    transform_func(
+        data_path=data,
         config_yaml=yaml,
         out_path=output,
         dataset_cls=HuggingFaceDataset,
@@ -188,7 +188,7 @@ def transform_csv(
     "--data",
     type=click.Path(exists=True),
     required=True,
-    help="Path to input data file or directory (CSV, parquet, or HuggingFace dataset)",
+    help="Path to input data file or directory (Parquet or HuggingFace dataset)",
 )
 @click.option(
     "-y",
@@ -211,14 +211,14 @@ def transform_csv(
     default=None,
     help="Number of processes to use for encoding [default: None (disable multiprocessing)]",
 )
-def encode_csv(
+def encode(
     data: str,
     yaml: str,
     output: str,
     num_proc: Optional[int] = None,
 ) -> None:
     """Encode data according to configuration."""
-    encode_csv_func(
+    encode_func(
         data_path=data,
         config_yaml=yaml,
         out_path=output,
@@ -303,7 +303,7 @@ def tune(
     "--data",
     type=click.Path(exists=True),
     required=True,
-    help="Path to input csv file",
+    help="Path to input data file",
 )
 @click.option(
     "-m",

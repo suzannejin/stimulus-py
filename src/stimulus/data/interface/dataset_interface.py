@@ -288,16 +288,13 @@ class HuggingFaceDataset(StimulusDataset):
         if os.path.isdir(path):
             logger.info(f"Loading dataset from directory: {path}")
             dataset = datasets.load_from_disk(path)
-        elif path.endswith(".csv"):
-            logger.info(f"Loading as CSV: {path}")
-            dataset = datasets.load_dataset("csv", data_files=path)
         elif path.endswith(".parquet"):
             logger.info(f"Loading as parquet: {path}")
             dataset = datasets.load_dataset("parquet", data_files=path)
         else:
             raise ValueError(
                 f"Unsupported file format or missing extension for path: {path}. "
-                "Expected .csv, .parquet, or a directory."
+                "Expected .parquet or a directory."
             )
 
         return cls(dataset)

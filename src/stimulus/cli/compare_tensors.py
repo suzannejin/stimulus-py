@@ -3,7 +3,7 @@
 import logging
 from collections import defaultdict
 
-import polars as pl
+import pandas as pd
 import torch
 from safetensors.torch import load_file
 
@@ -36,4 +36,4 @@ def compare_tensors_and_save(
                     results[key].append(tensor.item())
                 else:
                     results[key].append(tensor.mean().item())
-    pl.DataFrame(results).write_csv(output_logs)
+    pd.DataFrame(results).to_csv(output_logs, index=False)

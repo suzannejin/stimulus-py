@@ -11,8 +11,8 @@ from stimulus.data.pipelines import transform as transform_pipeline
 logger = logging.getLogger(__name__)
 
 
-def main(
-    data_csv: str,
+def transform(
+    data_path: str,
     config_yaml: str,
     out_path: str,
     dataset_cls: type[StimulusDataset] = HuggingFaceDataset,
@@ -20,12 +20,12 @@ def main(
     """Transform the data according to the configuration.
 
     Args:
-        data_csv: Path to input CSV file.
+        data_path: Path to input data file (Parquet) or directory.
         config_yaml: Path to config YAML file.
-        out_path: Path to output transformed CSV.
+        out_path: Path to output transformed dataset.
         dataset_cls: The dataset class to use for loading.
     """
-    dataset = dataset_cls.load_from_disk(data_csv)
+    dataset = dataset_cls.load_from_disk(data_path)
 
     # Create transforms from the config
     transforms = transform_pipeline.load_transforms_from_config(config_yaml)
