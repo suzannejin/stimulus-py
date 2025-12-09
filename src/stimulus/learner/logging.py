@@ -8,10 +8,16 @@ logging implementations.
 from __future__ import annotations
 
 import os
-from typing import TYPE_CHECKING, Any, Literal, Self
+from typing import TYPE_CHECKING, Any, Literal
 
 if TYPE_CHECKING:
     import types
+
+try:
+    from typing import Self
+except ImportError:
+    from typing_extensions import Self
+
 
 LoggerBackend = Literal["tensorboard", "wandb", "both"]
 
